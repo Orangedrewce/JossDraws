@@ -202,6 +202,7 @@ const TabManager = {
 const FormManager = {
   form: null,
   messageDiv: null,
+  messageTimeoutId: null,
   
   init() {
     this.form = DOM.getElement('#contact-form');
@@ -338,7 +339,10 @@ const FormManager = {
   },
   
   clearMessageAfterDelay() {
-    setTimeout(() => {
+    if (this.messageTimeoutId) {
+      clearTimeout(this.messageTimeoutId);
+    }
+    this.messageTimeoutId = setTimeout(() => {
       if (this.messageDiv) {
         this.messageDiv.innerHTML = '';
         Logger.log('Form Message', 'Message cleared after timeout');
@@ -697,18 +701,22 @@ const PaginationManager = {
       if (this.currentPage === 1) {
         prevBtn.classList.add('disabled');
         prevBtn.setAttribute('aria-disabled', 'true');
+        prevBtn.disabled = true;
       } else {
         prevBtn.classList.remove('disabled');
         prevBtn.setAttribute('aria-disabled', 'false');
+        prevBtn.disabled = false;
       }
     }
     if (nextBtn) {
       if (this.currentPage === this.totalPages) {
         nextBtn.classList.add('disabled');
         nextBtn.setAttribute('aria-disabled', 'true');
+        nextBtn.disabled = true;
       } else {
         nextBtn.classList.remove('disabled');
         nextBtn.setAttribute('aria-disabled', 'false');
+        nextBtn.disabled = false;
       }
     }
   }
@@ -862,18 +870,22 @@ const ShopPaginationManager = {
       if (this.currentPage === 1) {
         prevBtn.classList.add('disabled');
         prevBtn.setAttribute('aria-disabled', 'true');
+        prevBtn.disabled = true;
       } else {
         prevBtn.classList.remove('disabled');
         prevBtn.setAttribute('aria-disabled', 'false');
+        prevBtn.disabled = false;
       }
     }
     if (nextBtn) {
       if (this.currentPage === this.totalPages) {
         nextBtn.classList.add('disabled');
         nextBtn.setAttribute('aria-disabled', 'true');
+        nextBtn.disabled = true;
       } else {
         nextBtn.classList.remove('disabled');
         nextBtn.setAttribute('aria-disabled', 'false');
+        nextBtn.disabled = false;
       }
     }
     // Numbers
@@ -942,7 +954,8 @@ window.addEventListener('error', (event) => {
 });
 
 window.addEventListener('unhandledrejection', (event) => {
-  Logger.error('Unhandled Promise Rejection', new Error(event.reason));
+  const err = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
+  Logger.error('Unhandled Promise Rejection', err);
 });
 
 // =============================================================================
