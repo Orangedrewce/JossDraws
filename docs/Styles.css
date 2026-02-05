@@ -140,6 +140,22 @@ button {
 }
 
 /* =============================================================================
+   SMALL UTILITIES (Replace Inline Styles)
+   ============================================================================= */
+.muted-center {
+  text-align: center;
+  color: #666;
+}
+
+.loading-message {
+  padding: 2rem;
+}
+
+.section-subtitle {
+  margin-bottom: 2rem;
+}
+
+/* =============================================================================
    TAB SYSTEM (Radio Button Tabs)
    ============================================================================= */
 input[type="radio"][name="tabs"] {
