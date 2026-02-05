@@ -6,6 +6,10 @@
   <title>Joslynn Losee | Artist Gallery & Shop</title>
   <meta name="description" content="Official gallery and shop for Joslynn Losee. View artwork, custom pet portraits, coloring books, and more.">
   
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <link rel="stylesheet" href="Styles.css">
+  
   <!-- Open Graph / Social Media -->
   <meta property="og:title" content="Joslynn Losee | Artist Gallery">
   <meta property="og:description" content="View artwork and shop custom creations">
@@ -29,6 +33,7 @@
   <input type="radio" name="tabs" id="tab-gallery" aria-label="Gallery tab" hidden aria-hidden="true">
   <input type="radio" name="tabs" id="tab-about" aria-label="About tab" hidden aria-hidden="true">
   <input type="radio" name="tabs" id="tab-shop" aria-label="Shop tab" hidden aria-hidden="true">
+  <input type="radio" name="tabs" id="tab-reviews" aria-label="Reviews tab" hidden aria-hidden="true">
   <input type="radio" name="tabs" id="tab-contact" aria-label="Contact tab" hidden aria-hidden="true">
 
   <!-- Preselect tab from URL hash during parse to avoid flash of wrong tab -->
@@ -36,7 +41,7 @@
     (function(){
       try {
         var raw = (location.hash || '').toLowerCase().replace(/^#/, '');
-        var names = ['home','gallery','about','shop','contact'];
+        var names = ['home','gallery','about','shop','reviews','contact'];
         function pick(n){
           if (!n) return 'home';
           if (names.indexOf(n) !== -1) return n;
@@ -66,6 +71,7 @@
           <li><label for="tab-gallery" tabindex="0"><strong>Gallery</strong></label></li>
           <li><label for="tab-about" tabindex="0"><strong>About</strong></label></li>
           <li><label for="tab-shop" tabindex="0"><strong>Shop</strong></label></li>
+          <li><label for="tab-reviews" tabindex="0"><strong>Reviews</strong></label></li>
           <li><label for="tab-contact" tabindex="0"><strong>Contact</strong></label></li>
         </ul>
       </nav>
@@ -133,9 +139,9 @@
         <div class="grid grid-3" id="shop-grid">
           <!-- Best Sellers Section -->
 
-          <article class="card" data-section="Best sellers">
+                    <article class="card" data-section="Best sellers">
             <div class="image-carousel" role="region" aria-label="Product images for Custom Pet Portrait">
-              <button class="arrow left" aria-label="Previous image">&#8592;</button>
+              <button class="arrow left" aria-label="Previous image">←</button>
               <div class="media-container">
                 <img src="https://i.etsystatic.com/25958263/r/il/015511/5965017745/il_794xN.5965017745_b06b.jpg" 
                      alt="Custom pet portrait example" 
@@ -147,6 +153,87 @@
               <h3>Custom Pet Portrait</h3>
               <p><strong>$80.00+</strong></p>
               <a href="https://www.etsy.com/listing/1517173888/custom-pet-portrait" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
+            </div>
+          </article>
+
+          <article class="card" data-section="Best sellers">
+            <div class="image-carousel" role="region" aria-label="Product images for Bugs & Blossoms Coloring Book">
+              <button class="arrow left" aria-label="Previous image">←</button>
+              <div class="media-container">
+                <img src="https://i.etsystatic.com/25958263/r/il/b95b4f/7362253835/il_1140xN.7362253835_4a4u.jpg" 
+                     alt="Bugs & Blossoms Coloring Book cover" 
+                     data-media='["https://i.etsystatic.com/25958263/r/il/b95b4f/7362253835/il_1140xN.7362253835_4a4u.jpg","https://v.etsystatic.com/video/upload/ac_none,du_15,q_auto:good/file_uapxzl.mp4","https://i.etsystatic.com/25958263/r/il/5a2cd7/7362252905/il_794xN.7362252905_7f97.jpg","https://i.etsystatic.com/25958263/r/il/5548ce/7314294768/il_1140xN.7314294768_8z7l.jpg","https.i.etsystatic.com/25958263/r/il/de0543/7362252909/il_1140xN.7362252909_tqib.jpg"]'>
+              </div>
+              <button class="arrow right" aria-label="Next image">→</button>
+            </div>
+            <div class="card-content">
+              <h3>Bugs & Blossoms - Coloring Book</h3>
+              <p><strong>$23.50</strong></p>
+              <a href="https://www.etsy.com/listing/4391097322/bugs-blossoms-coloring-book" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
+            </div>
+          </article>
+
+          <article class="card" data-section="Best sellers">
+            <div class="image-carousel" role="region" aria-label="Product images for faceless-portraits">
+              <button class="arrow left" aria-label="Previous image">←</button>
+              <div class="media-container">
+                <img src="https://lh3.googleusercontent.com/d/16euNg2ICjjUo9f_3dCspbOeqGbhtHVel" alt="Blank product image" 
+                     data-media='["https://lh3.googleusercontent.com/d/16euNg2ICjjUo9f_3dCspbOeqGbhtHVel","https://lh3.googleusercontent.com/d/17ZzvUNf14RbIc73L6nyI5tHMWihVQEtQ" , "https://lh3.googleusercontent.com/d/1psLbjms-CQRyLp0TVi5IHPbdoUerxja6" , "https://lh3.googleusercontent.com/d/1iksM3-0qlCySUIK7R2E9RlfIkdKEmjIq" , "https://lh3.googleusercontent.com/d/1Qe10C5JpGft_hqXbIZpUigLJjJKsHrq1" , "https://lh3.googleusercontent.com/d/1YAXeJ6BsspIEusB5IsdNsEEMVP_4bb4O" , "https://lh3.googleusercontent.com/d/1EjTWxEtG_5s6vSNTcynGUpakSN9msXeU"]'>
+              </div>
+              <button class="arrow right" aria-label="Next image">→</button>
+            </div>
+            <div class="card-content">
+              <h3>Faceless portraits</h3>
+              <p><strong>$79.00+</strong></p>
+              <a href="https://www.etsy.com/listing/1517686781/faceless-portrait-printed-on-canvas" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
+            </div>
+          </article>
+
+          <article class="card" data-section="page 2">
+            <div class="image-carousel" role="region" aria-label="Product images for The Art Prints ">
+              <button class="arrow left" aria-label="Previous image">←</button>
+              <div class="media-container">
+                <img src="https://i.etsystatic.com/25958263/r/il/f6853e/5174654859/il_1140xN.5174654859_1vh1.jpg" alt="Lost in space art print" 
+                     data-media='["https://i.etsystatic.com/25958263/r/il/f6853e/5174654859/il_1140xN.5174654859_1vh1.jpg","https://i.etsystatic.com/25958263/r/il/3d5a55/3285883702/il_1140xN.3285883702_qj40.jpg" , "https://i.etsystatic.com/25958263/r/il/e30bd6/3420988914/il_1140xN.3420988914_1r8e.jpg" , "https://i.etsystatic.com/25958263/r/il/50c61b/2953794688/il_1140xN.2953794688_ooj1.jpg"]'>
+              </div>
+              <button class="arrow right" aria-label="Next image">→</button>
+            </div>
+            <div class="card-content">
+              <h3>Art Prints</h3>
+              <p><strong>$18.00</strong></p>
+              <a href="https://www.etsy.com/shop/JossDrawsLLC?section_id=32688825" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
+            </div>
+          </article>
+
+          <article class="card" data-section="Page 2">
+            <div class="image-carousel" role="region" aria-label="Product images for Sticker">
+              <button class="arrow left" aria-label="Previous image">←</button>
+              <div class="media-container">
+                <img src="https://i.etsystatic.com/25958263/r/il/232611/6104053343/il_1140xN.6104053343_7ady.jpg" alt="Silly Goose Holographic Sticker" 
+                     data-media='["https://i.etsystatic.com/25958263/r/il/232611/6104053343/il_1140xN.6104053343_7ady.jpg","https://i.etsystatic.com/25958263/r/il/962517/6055085414/il_1140xN.6055085414_3dtq.jpg" , "https://i.etsystatic.com/25958263/r/il/3d154b/6055085550/il_1140xN.6055085550_tewj.jpg" , "https://i.etsystatic.com/25958263/r/il/4cf967/6104042909/il_1140xN.6104042909_6vqy.jpg" , "https://i.etsystatic.com/25958263/r/il/399dd6/6459740696/il_1140xN.6459740696_j19g.jpg" , "https://i.etsystatic.com/25958263/r/il/8ca627/6103142173/il_1140xN.6103142173_fgqa.jpg" , "https://i.etsystatic.com/25958263/r/il/49d43b/6104046985/il_1140xN.6104046985_q64a.jpg" , "https://i.etsystatic.com/25958263/r/il/dc1728/6055821626/il_1140xN.6055821626_70lf.jpg" , "https://i.etsystatic.com/25958263/r/il/729698/6055819612/il_1140xN.6055819612_e53f.jpg" , "https://i.etsystatic.com/25958263/r/il/41d541/6055993106/il_1140xN.6055993106_dxta.jpg" , "https://i.etsystatic.com/25958263/r/il/e320af/6105024551/il_1140xN.6105024551_kt31.jpg" , "https://i.etsystatic.com/25958263/r/il/71ac50/6104052719/il_1140xN.6104052719_a31o.jpg"]'>
+              </div>
+              <button class="arrow right" aria-label="Next image">→</button>
+            </div>
+            <div class="card-content">
+              <h3>Stickers</h3>
+              <p><strong>$2.75+</strong></p>
+              <a href="https://www.etsy.com/shop/JossDrawsLLC?section_id=32672192" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
+            </div>
+          </article>
+
+          <article class="card" data-section="Pinned">
+            <div class="image-carousel" role="region" aria-label="Product images for Bookmarks">
+              <button class="arrow left" aria-label="Previous image">←</button>
+              <div class="media-container">
+                <img src="https://i.etsystatic.com/25958263/r/il/39da5a/5914582142/il_1140xN.5914582142_o6dx.jpg" alt="Bookmark product images" 
+                     data-media='["https://i.etsystatic.com/25958263/r/il/39da5a/5914582142/il_1140xN.5914582142_o6dx.jpg","https://i.etsystatic.com/25958263/r/il/ee1668/5914577438/il_1140xN.5914577438_ntqp.jpg" ,"https://i.etsystatic.com/25958263/r/il/5f631a/6122024532/il_1140xN.6122024532_8xwr.jpg"]'>
+              </div>
+              <button class="arrow right" aria-label="Next image">→</button>
+            </div>
+            <div class="card-content">
+              <h3>Bookmarks</h3>
+              <p><strong>$8.00</strong></p>
+              <a href="https://www.etsy.com/shop/JossDrawsLLC?section_id=34093055" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
             </div>
           </article>
 
@@ -300,6 +387,18 @@
       </nav>
     </section>
 
+    <!-- Reviews Tab -->
+    <section class="tab-reviews container" aria-labelledby="reviews-heading">
+      <h2 id="reviews-heading">Client Love</h2>
+      <p style="text-align: center; color: #666; margin-bottom: 2rem;">Kind words from happy collectors.</p>
+      
+      <div id="review-carousel-container" class="carousel-wrapper">
+        <div class="carousel-track" id="track">
+          <div class="review-placeholder">Loading reviews...</div>
+        </div>
+      </div>
+    </section>
+
     <!-- Contact Tab -->
     <section class="tab-contact container" aria-labelledby="contact-heading">
       <h2 id="contact-heading">Contact</h2>
@@ -361,6 +460,62 @@
 <script src="masonry-gallery.js"></script>
 <script async src="FormSubmission.js"></script>
 <script async src="webgl.js"></script>
+
+<script>
+  const SUPABASE_URL = 'https://pciubbwphwpnptgawgok.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjaXViYndwaHdwbnB0Z2F3Z29rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMjA0OTQsImV4cCI6MjA4NTc5NjQ5NH0.3JhpTJREmfxZUYIYWtuAiTl91KFDzh38jkTKXnO5wSI'; 
+  
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  async function initCarousel() {
+    const track = document.getElementById('track');
+    
+    console.log("Attempting to fetch reviews..."); // Debug 1
+
+    const { data, error } = await db
+      .from('reviews')
+      .select('*')
+      .eq('is_approved', true) 
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    // Debug 2: See exactly what happened in the Console (F12)
+    if (error) console.error("Supabase Error:", error);
+    if (data) console.log("Data received:", data);
+
+    if (error || !data || data.length === 0) {
+      console.warn("No approved reviews found. Showing fallback.");
+      track.innerHTML = '<div class="review-card active"><em>"I make art for people who love art."</em><br><small>- Joss</small></div>';
+      return;
+    }
+
+    // ... (Rest of your carousel logic is fine) ...
+    track.innerHTML = ''; 
+    data.forEach((review, index) => {
+      const card = document.createElement('div');
+      card.className = index === 0 ? 'review-card active' : 'review-card'; 
+      const stars = '★'.repeat(review.rating || 5);
+      card.innerHTML = `
+        <div class="review-stars">${stars}</div>
+        <p class="review-text">"${review.review_text}"</p>
+        <div class="review-author">- ${review.client_name}</div>
+      `;
+      track.appendChild(card);
+    });
+    
+    // ... (Interval logic) ...
+     if (data.length > 1) {
+      let currentIndex = 0;
+      const cards = document.querySelectorAll('.review-card');
+      setInterval(() => {
+        cards[currentIndex].classList.remove('active');
+        currentIndex = (currentIndex + 1) % cards.length;
+        cards[currentIndex].classList.add('active');
+      }, 6000);
+    }
+  }
+  initCarousel();
+</script>
 
 </body>
 </html>
