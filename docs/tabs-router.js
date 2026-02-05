@@ -1,5 +1,5 @@
 (function () {
-  const TAB_NAMES = ["home", "gallery", "about", "shop", "contact"];
+  const TAB_NAMES = ["home", "gallery", "about", "shop", "reviews", "contact"];
   const idFor = (name) => `tab-${name}`;
 
   function pickTabFromHash() {
