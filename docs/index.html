@@ -33,15 +33,15 @@
   <input type="radio" name="tabs" id="tab-gallery" aria-label="Gallery tab" hidden aria-hidden="true">
   <input type="radio" name="tabs" id="tab-about" aria-label="About tab" hidden aria-hidden="true">
   <input type="radio" name="tabs" id="tab-shop" aria-label="Shop tab" hidden aria-hidden="true">
-  <input type="radio" name="tabs" id="tab-reviews" aria-label="Reviews tab" hidden aria-hidden="true">
   <input type="radio" name="tabs" id="tab-contact" aria-label="Contact tab" hidden aria-hidden="true">
+  <input type="radio" name="tabs" id="tab-reviews" aria-label="Reviews tab" hidden aria-hidden="true">
 
   <!-- Preselect tab from URL hash during parse to avoid flash of wrong tab -->
   <script>
     (function(){
       try {
         var raw = (location.hash || '').toLowerCase().replace(/^#/, '');
-        var names = ['home','gallery','about','shop','reviews','contact'];
+        var names = ['home','gallery','about','shop','contact','reviews'];
         function pick(n){
           if (!n) return 'home';
           if (names.indexOf(n) !== -1) return n;
@@ -71,8 +71,8 @@
           <li><label for="tab-gallery" tabindex="0"><strong>Gallery</strong></label></li>
           <li><label for="tab-about" tabindex="0"><strong>About</strong></label></li>
           <li><label for="tab-shop" tabindex="0"><strong>Shop</strong></label></li>
-          <li><label for="tab-reviews" tabindex="0"><strong>Reviews</strong></label></li>
           <li><label for="tab-contact" tabindex="0"><strong>Contact</strong></label></li>
+          <li><label for="tab-reviews" tabindex="0"><strong>Reviews</strong></label></li>
         </ul>
       </nav>
     </div>
@@ -390,7 +390,7 @@
     <!-- Reviews Tab -->
     <section class="tab-reviews container" aria-labelledby="reviews-heading">
       <h2 id="reviews-heading">Client Love</h2>
-      <p style="text-align: center; color: #666; margin-bottom: 2rem;">Kind words from happy collectors.</p>
+      <p style="text-align: center; color: #666; margin-bottom: 2rem;">Kind words from happy customers.</p>
       
       <div id="review-carousel-container" class="carousel-wrapper">
         <div class="carousel-track" id="track">
@@ -485,7 +485,7 @@
 
     if (error || !data || data.length === 0) {
       console.warn("No approved reviews found. Showing fallback.");
-      track.innerHTML = '<div class="review-card active"><em>"I make art for people who love art."</em><br><small>- Joss</small></div>';
+      track.innerHTML = '<div class="review-card active"><em>"I make art."</em><br><small>- Joss</small></div>';
       return;
     }
 
