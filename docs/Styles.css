@@ -651,15 +651,17 @@ nav label:focus-visible {
   border-radius: 50%;
   width: 32px;
   height: 32px;
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   font-weight: 600;
-  line-height: 32px;
-  text-align: center;
   cursor: pointer;
   opacity: 0;
   z-index: 2;
   transition: opacity var(--transition-speed-slow), background var(--transition-speed);
   color: var(--color-text);
+  /* Perfect centering with flexbox */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .image-carousel:hover .arrow {
