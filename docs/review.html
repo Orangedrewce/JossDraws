@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Leave a Review | JossDraws</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    /* ... (Previous CSS remains exactly the same) ... */
+    :root { --primary-color: #333; --bg-color: #f9f9f9; --card-bg: #ffffff; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg-color); color: var(--primary-color); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; }
+    .review-container { background: var(--card-bg); padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 500px; }
+    input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 1.2rem; box-sizing: border-box; }
+    .btn { background: #000; color: #fff; padding: 0.75rem 1.5rem; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
+    .btn:disabled { background: #ccc; cursor: not-allowed; }
+    .hidden { display: none; }
+    .loader { text-align: center; color: #666; }
+    .error-screen { text-align: center; color: #d32f2f; }
+  </style>
+</head>
+<body>
+
+  <main class="review-container">
+    
+    <div id="loadingState" class="loader">
+      <h3>Validating Link...</h3>
+    </div>
+
+    <div id="invalidState" class="hidden error-screen">
+      <h2>Link Expired</h2>
+      <p>This review link has already been used or is invalid.</p>
+    </div>
+
+    <div id="formState" class="hidden">
+      <h2>Share Your Experience</h2>
+      <p style="text-align: center; color: #666; margin-bottom: 2rem;">I'd love to hear what you think!</p>
+
+      <form id="reviewForm">
+        <label>Name</label>
+        <input type="text" id="clientName" placeholder="e.g. Joslynn L." required>
+
+        <label>Rating</label>
+        <select id="ratingScore" required>
+            <option value="5">⭐⭐⭐⭐⭐ (5 Stars)</option>
+            <option value="4">⭐⭐⭐⭐ (4 Stars)</option>
+            <option value="3">⭐⭐⭐ (3 Stars)</option>
+            <option value="2">⭐⭐ (2 Stars)</option>
+            <option value="1">⭐ (1 Star)</option>
+        </select>
+
+        <label>Review <small>(Max 280 chars)</small></label>
+        <textarea id="reviewText" rows="5" maxlength="280" placeholder="Loved the print..." required></textarea>
+        
+        <button type="submit" class="btn">Submit Review</button>
+      </form>
+    </div>
+
+    <div id="successState" class="hidden" style="text-align: center; color: green;">
+      <h2>Thank You!</h2>
+      <p>Your review has been submitted securely.</p>
+    </div>
+
+  </main>
+
+  <script>
+    // --- CONFIGURATION ---
+    const SUPABASE_URL = 'https://pciubbwphwpnptgawgok.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv'; // Use your full key
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // --- DOM ELEMENTS ---
+    const loader = document.getElementById('loadingState');
+    const invalidScreen = document.getElementById('invalidState');
+    const formScreen = document.getElementById('formState');
+    const successScreen = document.getElementById('successState');
+    const form = document.getElementById('reviewForm');
+
+    // --- 1. GET TOKEN FROM URL ---
+    // Looks for yoursite.com/review.html?token=YOUR-UUID-HERE
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenID = urlParams.get('token');
+
+    // --- 2. VALIDATE TOKEN ON LOAD ---
+    async function validateToken() {
+      if (!tokenID) {
+        showError("No token provided.");
+        return;
+      }
+
+      // Check DB for this token
+      const { data, error } = await db
+        .from('tokens')
+        .select('*')
+        .eq('id', tokenID)
+        .single();
+
+      if (error || !data) {
+        showError(); // Token doesn't exist
+      } else if (data.is_used) {
+        showError(); // Token already used
+      } else {
+        // Token is valid! Show form.
+        loader.classList.add('hidden');
+        formScreen.classList.remove('hidden');
+      }
+    }
+
+    function showError(msg) {
+      loader.classList.add('hidden');
+      invalidScreen.classList.remove('hidden');
+    }
+
+    // --- 3. HANDLE SUBMIT ---
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = form.querySelector('button');
+      btn.disabled = true;
+      btn.innerText = "Processing...";
+
+      const name = document.getElementById('clientName').value;
+      const text = document.getElementById('reviewText').value;
+      const rating = document.getElementById('ratingScore').value;
+
+      // A. Upload Review
+      const reviewPayload = { client_name: name, review_text: text, rating: parseInt(rating) };
+      const { error: reviewError } = await db.from('reviews').insert([reviewPayload]);
+
+      if (reviewError) {
+        alert("Error: " + reviewError.message);
+        btn.disabled = false;
+        return;
+      }
+
+      // B. Burn the Token (Mark as used)
+      const { error: tokenError } = await db
+        .from('tokens')
+        .update({ is_used: true })
+        .eq('id', tokenID);
+
+      // C. Show Success
+      formScreen.classList.add('hidden');
+      successScreen.classList.remove('hidden');
+    });
+
+    // Run Validation immediately
+    validateToken();
+
+  </script>
+</body>
+</html>
