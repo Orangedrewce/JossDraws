@@ -136,6 +136,7 @@ main > section {
 #tab-gallery:checked ~ main .tab-gallery,
 #tab-about:checked ~ main .tab-about,
 #tab-shop:checked ~ main .tab-shop,
+#tab-reviews:checked ~ main .tab-reviews,
 #tab-contact:checked ~ main .tab-contact {
   display: flex;
   flex-direction: column;
@@ -157,6 +158,7 @@ main > section {
 #tab-gallery:checked ~ main .tab-gallery h2,
 #tab-about:checked ~ main .tab-about h2,
 #tab-shop:checked ~ main .tab-shop h2,
+#tab-reviews:checked ~ main .tab-reviews h2,
 #tab-contact:checked ~ main .tab-contact h2 {
   display: none;
 }
