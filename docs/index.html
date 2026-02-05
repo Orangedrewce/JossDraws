@@ -20,7 +20,7 @@
   <meta name="twitter:title" content="Joslynn Losee | Artist Gallery">
   <meta name="twitter:description" content="View artwork and shop custom creations">
   <meta name="twitter:image" content="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw">
-  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
   
   <!-- JSON-LD Structured Data for SEO -->
   <script type="application/ld+json">
@@ -33,9 +33,10 @@
     "url": "https://orangedrewce.github.io/JossDraws/",
     "image": "https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw",
     "address": {
-      "@type": "84107",
+      "@type": "PostalAddress",
       "addressLocality": "Salt Lake City",
-      "addressRegion": "UT"
+      "addressRegion": "UT",
+      "postalCode": "84107"
     },
     "sameAs": [
       "https://www.etsy.com/shop/JossDrawsLLC",
@@ -57,28 +58,7 @@
   <input type="radio" name="tabs" id="tab-contact" aria-label="Contact tab" hidden aria-hidden="true">
   <input type="radio" name="tabs" id="tab-reviews" aria-label="Reviews tab" hidden aria-hidden="true">
 
-  <!-- Preselect tab from URL hash during parse to avoid flash of wrong tab -->
-  <script>
-    (function(){
-      try {
-        var raw = (location.hash || '').toLowerCase().replace(/^#/, '');
-        var names = ['home','gallery','about','shop','contact','reviews'];
-        function pick(n){
-          if (!n) return 'home';
-          if (names.indexOf(n) !== -1) return n;
-          if (n.indexOf('tab-') === 0) {
-            var p = n.slice(4); if (names.indexOf(p) !== -1) return p;
-          }
-          for (var i=0;i<names.length;i++){ if (n.indexOf(names[i]) !== -1) return names[i]; }
-          return 'home';
-        }
-        var tab = pick(raw);
-        var id = 'tab-' + tab;
-        var el = document.getElementById(id);
-        if (el) el.checked = true;
-      } catch(_) {}
-    })();
-  </script>
+  <script src="page-inline.js"></script>
 
   <!-- Header -->
   <header role="banner">
@@ -116,18 +96,18 @@
     </section>
 
     <!-- Gallery Tab -->
-    <section class="tab-gallery" aria-labelledby="gallery-heading">
+    <section class="tab-gallery" aria-labelledby="gallery-title">
       <div class="hero">
-    <h2 id="gallery-heading">Joslynn Losee</h2>
-  </div>
+        <h2 id="gallery-heading">Joslynn Losee</h2>
+      </div>
 
-  <div class="container">
-    <h2>Gallery</h2>
-    <div id="masonry-gallery">
-      <p style="text-align: center; color: #666; padding: 2rem;">Loading artwork...</p>
-    </div>
-  </div>
-</section>
+      <div class="container">
+        <h3 id="gallery-title" class="sr-only">Gallery</h3>
+        <div id="masonry-gallery">
+          <p class="muted-center loading-message">Loading artwork...</p>
+        </div>
+      </div>
+    </section>
 
     <!-- About Tab -->
     <section class="tab-about container" aria-labelledby="about-heading">
@@ -352,7 +332,7 @@
     <!-- Reviews Tab -->
     <section class="tab-reviews container" aria-labelledby="reviews-heading">
       <h2 id="reviews-heading">Client Love</h2>
-      <p style="text-align: center; color: #666; margin-bottom: 2rem;">Kind words from happy customers.</p>
+      <p class="muted-center section-subtitle">Kind words from happy customers.</p>
       
       <div id="review-carousel-container" class="carousel-wrapper">
         <div class="carousel-track" id="track">
@@ -422,62 +402,6 @@
 <script src="masonry-gallery.js"></script>
 <script async src="FormSubmission.js"></script>
 <script async src="webgl.js"></script>
-
-<script>
-  const SUPABASE_URL = 'https://pciubbwphwpnptgawgok.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjaXViYndwaHdwbnB0Z2F3Z29rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMjA0OTQsImV4cCI6MjA4NTc5NjQ5NH0.3JhpTJREmfxZUYIYWtuAiTl91KFDzh38jkTKXnO5wSI'; 
-  
-  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-  async function initCarousel() {
-    const track = document.getElementById('track');
-    
-    console.log("Attempting to fetch reviews..."); // Debug 1
-
-    const { data, error } = await db
-      .from('reviews')
-      .select('*')
-      .eq('is_approved', true) 
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    // Debug 2: See exactly what happened in the Console (F12)
-    if (error) console.error("Supabase Error:", error);
-    if (data) console.log("Data received:", data);
-
-    if (error || !data || data.length === 0) {
-      console.warn("No approved reviews found. Showing fallback.");
-      track.innerHTML = '<div class="review-card active"><em>"I make art."</em><br><small>- Joss</small></div>';
-      return;
-    }
-
-    // ... (Rest of your carousel logic is fine) ...
-    track.innerHTML = ''; 
-    data.forEach((review, index) => {
-      const card = document.createElement('div');
-      card.className = index === 0 ? 'review-card active' : 'review-card'; 
-      const stars = '★'.repeat(review.rating || 5);
-      card.innerHTML = `
-        <div class="review-stars">${stars}</div>
-        <p class="review-text">"${review.review_text}"</p>
-        <div class="review-author">- ${review.client_name}</div>
-      `;
-      track.appendChild(card);
-    });
-    
-    // ... (Interval logic) ...
-     if (data.length > 1) {
-      let currentIndex = 0;
-      const cards = document.querySelectorAll('.review-card');
-      setInterval(() => {
-        cards[currentIndex].classList.remove('active');
-        currentIndex = (currentIndex + 1) % cards.length;
-        cards[currentIndex].classList.add('active');
-      }, 6000);
-    }
-  }
-  initCarousel();
-</script>
 
 </body>
 </html>
