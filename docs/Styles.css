@@ -4,7 +4,7 @@
    - Makes theming and maintenance easier
    ============================================================================= */
 :root {
-  /* Colors */
+  /* Base Colors */
   --color-bg: #fff;
   --color-text: #000;
   --color-border: #e0e0e0;
@@ -12,6 +12,27 @@
   --color-hover-bg: #e0e0e0;
   --color-overlay: rgba(0, 0, 0, 0.6);
   --color-overlay-hover: rgba(0, 0, 0, 0.8);
+  
+  /* UI Colors */
+  --color-light-bg: #f9f9f9;
+  --color-lighter-bg: #f5f5f5;
+  --color-border-light: #ccc;
+  --color-white-transparent: rgba(255, 255, 255, 0.95);
+  --color-white-semitransparent: rgba(255, 255, 255, 0.9);
+  --color-white-transparent-85: rgba(255, 255, 255, 0.85);
+  --color-black-transparent: rgba(0, 0, 0, 0.6);
+  --color-black-semitransparent: rgba(0, 0, 0, 0.8);
+  
+  /* Tab Colors */
+  --tab-home-color: #04a2bd;
+  --tab-gallery-color: #89e6e3;
+  --tab-about-color: #fef420;
+  --tab-shop-color: #fea035;
+  --tab-contact-color: #ff629e;
+  --tab-reviews-color: #e0e0e0;
+  
+  /* Brand Colors */
+  --color-etsy-orange: #F1641E;
   
   /* Spacing */
   --spacing-xs: 0.25rem;
@@ -237,33 +258,39 @@ nav label:hover {
 
 /* Active tab styling - Custom colors for each tab */
 #tab-home:checked ~ header label[for="tab-home"] {
-  border-bottom-color: #04a2bd;
-  background: #04a2bd;
+  border-bottom-color: var(--tab-home-color);
+  background: var(--tab-home-color);
   color: var(--color-bg);
 }
 
 #tab-gallery:checked ~ header label[for="tab-gallery"] {
-  border-bottom-color: #89e6e3;
-  background: #89e6e3;
+  border-bottom-color: var(--tab-gallery-color);
+  background: var(--tab-gallery-color);
   color: var(--color-bg);
 }
 
 #tab-about:checked ~ header label[for="tab-about"] {
-  border-bottom-color: #fef420;
-  background: #fef420;
+  border-bottom-color: var(--tab-about-color);
+  background: var(--tab-about-color);
   color: var(--color-bg);
 }
 
 #tab-shop:checked ~ header label[for="tab-shop"] {
-  border-bottom-color: #fea035;
-  background: #fea035;
+  border-bottom-color: var(--tab-shop-color);
+  background: var(--tab-shop-color);
   color: var(--color-bg);
 }
 
 #tab-contact:checked ~ header label[for="tab-contact"] {
-  border-bottom-color: #ff629e;
-  background: #ff629e;
+  border-bottom-color: var(--tab-contact-color);
+  background: var(--tab-contact-color);
   color: var(--color-bg);
+}
+
+#tab-reviews:checked ~ header label[for="tab-reviews"] {
+  border-bottom-color: var(--tab-reviews-color);
+  background: var(--tab-reviews-color);
+  color: var(--color-text);
 }
 
 /* Focus styles for accessibility */
@@ -485,7 +512,7 @@ nav label:focus-visible {
   flex-direction: column;
   gap: var(--spacing-sm);
   padding: var(--spacing-md);
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--color-white-transparent);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   width: 100%;
   border-radius: 0 0 var(--border-radius) var(--border-radius);
@@ -515,7 +542,7 @@ nav label:focus-visible {
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
   align-self: start;
-  background: var(--color-sm);
+  background: var(--color-bg);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   transition: all var(--transition-speed);
   padding: 0;
@@ -534,7 +561,7 @@ nav label:focus-visible {
   height: auto;
   min-height: 200px;
   object-fit: contain;
-  background: #f9f9f9;
+  background: var(--color-light-bg);
   padding: var(--spacing-xs);
   border-radius: var(--border-radius) var(--border-radius) 0 0;
 }
@@ -583,8 +610,8 @@ nav label:focus-visible {
 
 /* View on Etsy button custom hover color */
 .tab-shop .btn:hover {
-  background: #F1641E;
-  border-color: #F1641E;
+  background: var(--color-etsy-orange);
+  border-color: var(--color-etsy-orange);
   color: var(--color-bg);
 }
 
@@ -596,7 +623,7 @@ nav label:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f5f5f5;
+  background: var(--color-lighter-bg);
   min-height: 200px;
 
 }
@@ -619,8 +646,8 @@ nav label:focus-visible {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #ccc;
+  background: var(--color-white-semitransparent);
+  border: 1px solid var(--color-border-light);
   border-radius: 50%;
   width: 32px;
   height: 32px;
@@ -802,9 +829,11 @@ footer a:focus-visible {
 }
 
 /* =============================================================================
-   PAGINATION
+   PAGINATION (Unified for Gallery & Shop)
    ============================================================================= */
-.gallery-pagination-nav {
+.pagination-nav,
+.gallery-pagination-nav,
+.shop-pagination-nav {
   position: sticky;
   bottom: 0;
   background: var(--color-bg);
@@ -862,18 +891,6 @@ footer a:focus-visible {
 .pagination-btn.disabled {
   opacity: 0.5;
   pointer-events: none;
-}
-
-/* Shop Pagination - Unified with Gallery */
-.shop-pagination-nav {
-  position: sticky;
-  bottom: 0;
-  background: var(--color-bg);
-  padding: var(--spacing-md) 0;
-  border-top: 1px solid var(--color-border);
-  box-shadow: 0 -2px 8px var(--color-shadow);
-  z-index: 10;
-  margin-top: auto;
 }
 
 /* Make shop pagination full-bleed like gallery, even though shop section has .container */
@@ -1036,7 +1053,7 @@ footer a:focus-visible {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--color-white-transparent-85);
   color: var(--color-text);
   padding: var(--spacing-xs) var(--spacing-sm);
   font-size: var(--font-size-base);
@@ -1061,7 +1078,7 @@ footer a:focus-visible {
   object-fit: contain;
   border-radius: var(--border-radius);
   display: block;
-  background: #f9f9f9;
+  background: var(--color-light-bg);
 }
 
 /* Pseudo controls for masonry videos */
@@ -1082,8 +1099,8 @@ footer a:focus-visible {
 }
 
 .masonry-video-controls .mvc-btn {
-  background: rgba(0,0,0,0.6);
-  color: #fff;
+  background: var(--color-black-transparent);
+  color: var(--color-bg);
   border: 1px solid rgba(255,255,255,0.5);
   border-radius: 6px;
   padding: 4px 8px;
@@ -1094,6 +1111,6 @@ footer a:focus-visible {
 
 .masonry-video-controls .mvc-btn:hover,
 .masonry-video-controls .mvc-btn:focus-visible {
-  background: rgba(0,0,0,0.8);
+  background: var(--color-black-semitransparent);
   outline: none;
 }
