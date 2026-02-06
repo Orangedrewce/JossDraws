@@ -2,7 +2,7 @@
   "use strict";
 
   // ---------------------------------------------------------------------------
-  // Preselect tab from URL hash during parse to avoid flash of wrong tab
+  // 1. Tab Logic (Keep tabs working)
   // ---------------------------------------------------------------------------
   (function preselectTabFromHash() {
     try {
@@ -32,91 +32,117 @@
   })();
 
   // ---------------------------------------------------------------------------
-  // Reviews carousel (Supabase)
+  // 2. Reviews Carousel (The Fix)
   // ---------------------------------------------------------------------------
   function initCarousel() {
     var track = document.getElementById("track");
     if (!track) return;
 
     if (!window.supabase || typeof window.supabase.createClient !== "function") {
-      // Supabase library not loaded or blocked
       return;
     }
 
     var SUPABASE_URL = "https://pciubbwphwpnptgawgok.supabase.co";
-    // ensure RLS is configured.
-    var SUPABASE_KEY =
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjaXViYndwaHdwbnB0Z2F3Z29rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMjA0OTQsImV4cCI6MjA4NTc5NjQ5NH0.3JhpTJREmfxZUYIYWtuAiTl91KFDzh38jkTKXnO5wSI";
-
+    var SUPABASE_KEY = "sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv"; 
     var db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // --- MAPPING: The text that shows up on the badge ---
+    var sourceMap = {
+      commission: "🎨 Commission",
+      etsy: "🛍️ Etsy Order",
+      print: "🖨️ Art Print",
+      sticker: "🏷️ Sticker",
+      bookmark: "🔖 Bookmark",
+      pet_portrait: "🐾 Pet Portrait",
+      faceless_portrait: "👤 Faceless Portrait",
+      coloring_book: "🖍️ Coloring Book",
+      general: "Verified Review"
+    };
+
+    function normalizeSourceKey(value) {
+      return String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "_")
+        .replace(/-+/g, "_")
+        .replace(/[^a-z0-9_]/g, "");
+    }
 
     (async function run() {
       try {
-        // Debug 1: See exactly what happened in the Console (F12)
-        console.log("Attempting to fetch reviews...");
-
+        // --- IMPORTANT: We MUST select 'source' here or it won't work ---
         var result = await db
           .from("reviews")
-          .select("client_name, review_text, rating, created_at")
-          .eq("is_approved", true)
+          .select("client_name, review_text, rating, created_at, source") 
           .order("created_at", { ascending: false })
           .limit(10);
 
         var data = result && result.data;
         var error = result && result.error;
 
-        // Debug 2: See exactly what happened in the Console (F12)
-        if (error) console.error("Supabase Error:", error);
-        if (data) console.log("Data received:", data);
-
         if (error || !data || data.length === 0) {
-          console.warn("No approved reviews found. Showing fallback.");
-          track.textContent = "";
-          var fallbackCard = document.createElement("div");
-          fallbackCard.className = "review-card active";
-          var fallbackText = document.createElement("p");
-          fallbackText.className = "review-text";
-          fallbackText.textContent = '"I make art."';
-          var fallbackAuthor = document.createElement("div");
-          fallbackAuthor.className = "review-author";
-          fallbackAuthor.textContent = "- Joss";
-          fallbackCard.appendChild(fallbackText);
-          fallbackCard.appendChild(fallbackAuthor);
-          track.appendChild(fallbackCard);
-          return;
+            // Fallback content if empty
+            track.textContent = "";
+            var fallback = document.createElement("div");
+            fallback.className = "review-card active";
+            fallback.innerHTML = `
+              <span class="review-source-badge">Verified Review</span>
+              <div class="review-stars">⭐⭐⭐⭐⭐</div>
+              <p class="review-text">"I make art."</p>
+              <div class="review-author">Joss</div>
+            `;
+            track.appendChild(fallback);
+            return;
         }
 
         track.textContent = "";
+        
         data.forEach(function (review, index) {
           var card = document.createElement("div");
           card.className = index === 0 ? "review-card active" : "review-card";
 
-          var rating = Number(review && review.rating);
-          var safeRating = Number.isFinite(rating)
-            ? Math.max(1, Math.min(5, Math.floor(rating)))
-            : 5;
-          var stars = "★".repeat(safeRating);
+          // --- 1. BADGE (Product Name) ---
+          var rawSource = review.source;
+          var badgeKey = normalizeSourceKey(rawSource);
+          var badgeLabel = sourceMap[badgeKey];
+          if (!badgeLabel) {
+            var fallbackLabel = String(rawSource || "").trim();
+            badgeLabel = fallbackLabel || sourceMap["general"];
+          }
+          
+          var badgeEl = document.createElement("span");
+          badgeEl.className = "review-source-badge";
+          badgeEl.textContent = badgeLabel;
+          badgeEl.style.marginBottom = "0.5rem"; 
+          badgeEl.style.display = "inline-block";
 
+          // --- 2. STARS ---
+          var rating = Number(review.rating) || 5;
+          var safeRating = Math.max(1, Math.min(5, Math.floor(rating)));
           var starsEl = document.createElement("div");
           starsEl.className = "review-stars";
-          starsEl.textContent = stars;
+          starsEl.textContent = "⭐".repeat(safeRating);
 
+          // --- 4. REVIEW TEXT ---
           var textEl = document.createElement("p");
           textEl.className = "review-text";
-          textEl.textContent =
-            '"' + ((review && review.review_text) ? String(review.review_text) : "") + '"';
+          textEl.textContent = '"' + (review.review_text || "") + '"';
 
+          // --- 5. NAME ---
           var authorEl = document.createElement("div");
           authorEl.className = "review-author";
-          authorEl.textContent =
-            "- " + ((review && review.client_name) ? String(review.client_name) : "Anonymous");
+          authorEl.textContent = review.client_name || "Anonymous";
 
+          // --- BUILD CARD ---
+          card.appendChild(badgeEl);  // Top
           card.appendChild(starsEl);
           card.appendChild(textEl);
-          card.appendChild(authorEl);
+          card.appendChild(authorEl); // Bottom
+
           track.appendChild(card);
         });
 
+        // Start Animation
         if (data.length > 1) {
           var currentIndex = 0;
           var cards = document.querySelectorAll(".review-card");
@@ -126,8 +152,9 @@
             cards[currentIndex].classList.add("active");
           }, 6000);
         }
+
       } catch (e) {
-        console.error("Review carousel initialization failed:", e);
+        console.error("Carousel Error:", e);
       }
     })();
   }
