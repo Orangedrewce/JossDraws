@@ -9,8 +9,9 @@
   <style>
     :root { --primary-color: #333; --bg-color: #f9f9f9; --card-bg: #ffffff; }
     body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg-color); color: var(--primary-color); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; }
-    .review-container { background: var(--card-bg); padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 500px; }
-    input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 0.5rem; box-sizing: border-box; }
+    .review-container { background: var(--card-bg); padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 500px; overflow: hidden; }
+    input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 0.5rem; box-sizing: border-box; max-width: 100%; }
+    textarea { resize: vertical; min-height: 120px; max-height: 300px; }
     
     /* Countdown Style */
     #charCounter { 
@@ -26,6 +27,7 @@
     .hidden { display: none; }
     .loader { text-align: center; color: #666; }
     .error-screen { text-align: center; color: #d32f2f; }
+    .honeypot { position: absolute; left: -9999px; opacity: 0; pointer-events: none; }
   </style>
 </head>
 <body>
@@ -46,8 +48,11 @@
       <p style="text-align: center; color: #666; margin-bottom: 2rem;">I'd love to hear what you think!</p>
 
       <form id="reviewForm">
+        <!-- Honeypot field for bot prevention -->
+        <input type="text" name="website" class="honeypot" tabindex="-1" autocomplete="off">
+        
         <label>Name</label>
-        <input type="text" id="clientName" placeholder="First Last" maxlength="60" required>
+        <input type="text" id="clientName" placeholder="First Last" maxlength="60" pattern="^[a-zA-Z\s\-\.]+$" title="Please enter a valid name (letters, spaces, hyphens, and periods only)" autocomplete="name" required>
 
         <label>Rating</label>
         <select id="ratingScore" required>
@@ -59,7 +64,7 @@
         </select>
 
         <label>Review</label>
-        <textarea id="reviewText" rows="5" maxlength="280" placeholder="Loved the print..." required></textarea>
+        <textarea id="reviewText" rows="5" maxlength="280" placeholder="Loved the print..." spellcheck="true" required></textarea>
         
         <div id="charCounter">280 remaining</div>
         
@@ -137,13 +142,30 @@
     // --- 2. SUBMIT FORM ---
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      
+      // Check honeypot field (bot prevention)
+      const honeypot = form.querySelector('[name="website"]');
+      if (honeypot && honeypot.value) {
+        // Silent fail - likely a bot
+        return;
+      }
+      
       const btn = form.querySelector('button');
       btn.disabled = true;
       btn.innerText = "Processing...";
 
-      const name = document.getElementById('clientName').value;
-      const text = document.getElementById('reviewText').value;
+      // Sanitize inputs - trim and basic XSS prevention
+      const name = document.getElementById('clientName').value.trim().substring(0, 60);
+      const text = document.getElementById('reviewText').value.trim().substring(0, 280);
       const rating = document.getElementById('ratingScore').value;
+      
+      // Validate inputs aren't empty after trimming
+      if (!name || !text) {
+        alert('Please fill in all required fields.');
+        btn.disabled = false;
+        btn.innerText = "Submit Review";
+        return;
+      }
 
       // --- SEND DATA TO DB ---
       const reviewPayload = {
