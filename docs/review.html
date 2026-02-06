@@ -8,10 +8,9 @@
 
   <style>
     :root { --primary-color: #333; --bg-color: #f9f9f9; --card-bg: #ffffff; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg-color); color: var(--primary-color); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; margin: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg-color); color: var(--primary-color); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; }
     .review-container { background: var(--card-bg); padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 500px; }
-    input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 0.5rem; box-sizing: border-box; font-family: inherit; }
-    textarea { resize: vertical; min-height: 100px; }
+    input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 0.5rem; box-sizing: border-box; }
     
     /* Countdown Style */
     #charCounter { 
@@ -19,20 +18,14 @@
         font-size: 0.85rem; 
         color: #666; 
         margin-bottom: 1.5rem; 
-        font-variant-numeric: tabular-nums;
+        font-variant-numeric: tabular-nums; /* Prevents jittering numbers */
     }
-    #charCounter.warning { color: #ff6b00; }
-    #charCounter.danger { color: #d32f2f; font-weight: bold; }
     
-    .btn { background: #000; color: #fff; padding: 0.75rem 1.5rem; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; transition: background 0.2s; }
-    .btn:hover:not(:disabled) { background: #333; }
+    .btn { background: #000; color: #fff; padding: 0.75rem 1.5rem; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
     .btn:disabled { background: #ccc; cursor: not-allowed; }
     .hidden { display: none; }
     .loader { text-align: center; color: #666; }
     .error-screen { text-align: center; color: #d32f2f; }
-    .error-message { background: #ffebee; border: 1px solid #ef5350; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; color: #c62828; }
-    label { display: block; margin-bottom: 0.25rem; font-weight: 500; }
-    .field-error { border-color: #d32f2f !important; }
   </style>
 </head>
 <body>
@@ -46,22 +39,18 @@
     <div id="invalidState" class="hidden error-screen">
       <h2>Link Invalid or Expired</h2>
       <p>This review link has already been used or has expired.</p>
-      <p style="font-size: 0.9rem; color: #666; margin-top: 1rem;">Please contact JossDraws if you believe this is an error.</p>
     </div>
 
     <div id="formState" class="hidden">
       <h2>Share Your Experience</h2>
       <p style="text-align: center; color: #666; margin-bottom: 2rem;">I'd love to hear what you think!</p>
 
-      <div id="formError" class="error-message hidden"></div>
+      <form id="reviewForm">
+        <label>Name</label>
+        <input type="text" id="clientName" placeholder="First Last" maxlength="60" required>
 
-      <form id="reviewForm" novalidate>
-        <label for="clientName">Name *</label>
-        <input type="text" id="clientName" name="clientName" placeholder="e.g. Jane D." maxlength="60" required autocomplete="name">
-
-        <label for="ratingScore">Rating *</label>
-        <select id="ratingScore" name="ratingScore" required>
-            <option value="">Select a rating</option>
+        <label>Rating</label>
+        <select id="ratingScore" required>
             <option value="5">⭐⭐⭐⭐⭐ (5 Stars)</option>
             <option value="4">⭐⭐⭐⭐ (4 Stars)</option>
             <option value="3">⭐⭐⭐ (3 Stars)</option>
@@ -69,12 +58,12 @@
             <option value="1">⭐ (1 Star)</option>
         </select>
 
-        <label for="reviewText">Review *</label>
-        <textarea id="reviewText" name="reviewText" rows="5" maxlength="280" placeholder="Loved the print..." required></textarea>
+        <label>Review</label>
+        <textarea id="reviewText" rows="5" maxlength="280" placeholder="Loved the print..." required></textarea>
         
         <div id="charCounter">280 remaining</div>
         
-        <button type="submit" class="btn" id="submitBtn">Submit Review</button>
+        <button type="submit" class="btn">Submit Review</button>
       </form>
     </div>
 
@@ -86,317 +75,105 @@
   </main>
 
 <script>
-    (function() {
-        'use strict';
+    // --- CONFIGURATION ---
+    const SUPABASE_URL = 'https://pciubbwphwpnptgawgok.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv'; 
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // --- CONFIGURATION ---
-        const SUPABASE_URL = 'https://pciubbwphwpnptgawgok.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjaXViYndwaHdwbnB0Z2F3Z29rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg4NTAwOTQsImV4cCI6MjA1NDQyNjA5NH0.sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv'; 
-        const MAX_CHARS = 280;
-        const MAX_NAME_LENGTH = 60;
-        const TOKEN_RETRY_ATTEMPTS = 2;
-        const REQUEST_TIMEOUT = 10000; // 10 seconds
+    // --- DOM ELEMENTS ---
+    const loader = document.getElementById('loadingState');
+    const invalidScreen = document.getElementById('invalidState');
+    const formScreen = document.getElementById('formState');
+    const successScreen = document.getElementById('successState');
+    const form = document.getElementById('reviewForm');
+    
+    // --- COUNTER LOGIC ---
+    const textarea = document.getElementById('reviewText');
+    const counterDisplay = document.getElementById('charCounter');
+    const MAX_CHARS = 280;
 
-        // --- SUPABASE CLIENT ---
-        let db;
-        try {
-            db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        } catch (error) {
-            console.error('Failed to initialize Supabase client:', error);
-            showError('System initialization failed. Please try again later.');
-            return;
-        }
+    if (textarea) {
+        textarea.addEventListener('input', () => {
+        const currentLength = textarea.value.length;
+        const remaining = MAX_CHARS - currentLength;
+        counterDisplay.textContent = `${remaining} remaining`;
+        });
+    }
 
-        // --- DOM ELEMENTS ---
-        const loader = document.getElementById('loadingState');
-        const invalidScreen = document.getElementById('invalidState');
-        const formScreen = document.getElementById('formState');
-        const successScreen = document.getElementById('successState');
-        const form = document.getElementById('reviewForm');
-        const formError = document.getElementById('formError');
-        const submitBtn = document.getElementById('submitBtn');
+    // --- GLOBAL VARIABLE TO HOLD THE TAG ---
+    let globalSource = null;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenID = urlParams.get('token');
+
+    // --- 1. VALIDATE TOKEN ---
+    async function validateToken() {
+      if (!tokenID) { return showError(); }
+
+      const { data, error } = await db
+        .from('tokens')
+        .select('id, is_used, expires_at, source')
+        .eq('id', tokenID)
+        .single();
+
+      if (error || !data || data.is_used) {
+        showError();
+      } else if (new Date(data.expires_at) < new Date()) {
+        showError();
+      } else {
+        // --- CAPTURE THE SOURCE FROM THE TOKEN ---
+        globalSource = data.source ? String(data.source).trim() : null;
         
-        const nameInput = document.getElementById('clientName');
-        const ratingSelect = document.getElementById('ratingScore');
-        const textarea = document.getElementById('reviewText');
-        const counterDisplay = document.getElementById('charCounter');
+        loader.classList.add('hidden');
+        formScreen.classList.remove('hidden');
+      }
+    }
 
-        // --- VALIDATION STATE ---
-        let isSubmitting = false;
-        let globalSource = null;
-        let tokenID = null;
+    function showError() {
+      loader.classList.add('hidden');
+      invalidScreen.classList.remove('hidden');
+    }
 
-        // --- UTILITY FUNCTIONS ---
-        function sanitizeInput(input) {
-            if (typeof input !== 'string') return '';
-            return input.trim().replace(/[<>]/g, '');
-        }
+    // --- 2. SUBMIT FORM ---
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = form.querySelector('button');
+      btn.disabled = true;
+      btn.innerText = "Processing...";
 
-        function showFormError(message) {
-            formError.textContent = message;
-            formError.classList.remove('hidden');
-            setTimeout(() => {
-                formError.classList.add('hidden');
-            }, 5000);
-        }
+      const name = document.getElementById('clientName').value;
+      const text = document.getElementById('reviewText').value;
+      const rating = document.getElementById('ratingScore').value;
 
-        function hideFormError() {
-            formError.classList.add('hidden');
-        }
+      // --- SEND DATA TO DB ---
+      const reviewPayload = {
+        client_name: name,
+        review_text: text,
+        rating: parseInt(rating, 10),
+        token_id: tokenID,
+        source: globalSource || 'general'
+      };
+      const { data: reviewData, error: reviewError } = await db
+        .from('reviews')
+        .insert([reviewPayload])
+        .select('id, source')
+        .single();
 
-        // --- CHARACTER COUNTER ---
-        if (textarea && counterDisplay) {
-            textarea.addEventListener('input', () => {
-                const currentLength = textarea.value.length;
-                const remaining = MAX_CHARS - currentLength;
-                counterDisplay.textContent = `${remaining} remaining`;
-                
-                // Visual warnings
-                counterDisplay.classList.remove('warning', 'danger');
-                if (remaining < 50) counterDisplay.classList.add('warning');
-                if (remaining < 20) counterDisplay.classList.add('danger');
-            });
-        }
+      if (reviewError) {
+        alert("Error: " + reviewError.message);
+        btn.disabled = false;
+        btn.innerText = "Submit Review";
+        return;
+      }
 
-        // --- INPUT VALIDATION ---
-        function validateName(name) {
-            if (!name || name.length === 0) {
-                return { valid: false, error: 'Name is required' };
-            }
-            if (name.length > MAX_NAME_LENGTH) {
-                return { valid: false, error: 'Name is too long' };
-            }
-            if (!/^[a-zA-Z\s.\-']+$/.test(name)) {
-                return { valid: false, error: 'Name contains invalid characters' };
-            }
-            return { valid: true };
-        }
+      // Mark token as used
+      await db.from('tokens').update({ is_used: true }).eq('id', tokenID);
 
-        function validateRating(rating) {
-            const ratingNum = parseInt(rating, 10);
-            if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-                return { valid: false, error: 'Please select a valid rating' };
-            }
-            return { valid: true };
-        }
+      formScreen.classList.add('hidden');
+      successScreen.classList.remove('hidden');
+    });
 
-        function validateReview(text) {
-            if (!text || text.trim().length === 0) {
-                return { valid: false, error: 'Review text is required' };
-            }
-            if (text.length > MAX_CHARS) {
-                return { valid: false, error: `Review exceeds ${MAX_CHARS} characters` };
-            }
-            if (text.trim().length < 10) {
-                return { valid: false, error: 'Review must be at least 10 characters' };
-            }
-            return { valid: true };
-        }
-
-        // --- CLEAR FIELD ERRORS ---
-        function clearFieldError(field) {
-            field.classList.remove('field-error');
-        }
-
-        [nameInput, ratingSelect, textarea].forEach(field => {
-            if (field) {
-                field.addEventListener('input', () => clearFieldError(field));
-                field.addEventListener('change', () => clearFieldError(field));
-            }
-        });
-
-        // --- TOKEN EXTRACTION ---
-        function getTokenFromURL() {
-            try {
-                const urlParams = new URLSearchParams(window.location.search);
-                const token = urlParams.get('token');
-                
-                if (!token) return null;
-                
-                // Basic token format validation (UUID format)
-                const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-                if (!uuidPattern.test(token)) {
-                    console.error('Invalid token format');
-                    return null;
-                }
-                
-                return token;
-            } catch (error) {
-                console.error('Error parsing URL:', error);
-                return null;
-            }
-        }
-
-        // --- TIMEOUT WRAPPER ---
-        function withTimeout(promise, timeoutMs) {
-            return Promise.race([
-                promise,
-                new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
-                )
-            ]);
-        }
-
-        // --- TOKEN VALIDATION ---
-        async function validateToken(attempt = 1) {
-            tokenID = getTokenFromURL();
-            
-            if (!tokenID) {
-                showError();
-                return;
-            }
-
-            try {
-                const { data, error } = await withTimeout(
-                    db.from('tokens')
-                        .select('id, is_used, expires_at, source')
-                        .eq('id', tokenID)
-                        .single(),
-                    REQUEST_TIMEOUT
-                );
-
-                if (error) {
-                    if (attempt < TOKEN_RETRY_ATTEMPTS) {
-                        console.warn(`Token validation attempt ${attempt} failed, retrying...`);
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        return validateToken(attempt + 1);
-                    }
-                    throw error;
-                }
-
-                if (!data || data.is_used) {
-                    showError('This review link has already been used.');
-                    return;
-                }
-
-                if (new Date(data.expires_at) < new Date()) {
-                    showError('This review link has expired.');
-                    return;
-                }
-
-                // Token is valid
-                globalSource = data.source ? String(data.source).trim() : null;
-                loader.classList.add('hidden');
-                formScreen.classList.remove('hidden');
-
-            } catch (error) {
-                console.error('Token validation error:', error);
-                showError('Unable to validate link. Please try again later.');
-            }
-        }
-
-        function showError(message) {
-            loader.classList.add('hidden');
-            invalidScreen.classList.remove('hidden');
-            if (message && invalidScreen.querySelector('p')) {
-                invalidScreen.querySelector('p').textContent = message;
-            }
-        }
-
-        // --- FORM SUBMISSION ---
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            if (isSubmitting) return;
-            
-            hideFormError();
-
-            // Get and sanitize inputs
-            const name = sanitizeInput(nameInput.value);
-            const text = sanitizeInput(textarea.value);
-            const rating = ratingSelect.value;
-
-            // Validate all fields
-            const nameValidation = validateName(name);
-            const ratingValidation = validateRating(rating);
-            const reviewValidation = validateReview(text);
-
-            // Check for errors
-            const errors = [];
-            if (!nameValidation.valid) {
-                errors.push(nameValidation.error);
-                nameInput.classList.add('field-error');
-            }
-            if (!ratingValidation.valid) {
-                errors.push(ratingValidation.error);
-                ratingSelect.classList.add('field-error');
-            }
-            if (!reviewValidation.valid) {
-                errors.push(reviewValidation.error);
-                textarea.classList.add('field-error');
-            }
-
-            if (errors.length > 0) {
-                showFormError(errors.join('. '));
-                return;
-            }
-
-            // Start submission
-            isSubmitting = true;
-            submitBtn.disabled = true;
-            submitBtn.textContent = "Submitting...";
-
-            try {
-                // Insert review
-                const reviewPayload = {
-                    client_name: name,
-                    review_text: text,
-                    rating: parseInt(rating, 10),
-                    token_id: tokenID,
-                    source: globalSource || 'general',
-                    submitted_at: new Date().toISOString()
-                };
-
-                const { data: reviewData, error: reviewError } = await withTimeout(
-                    db.from('reviews')
-                        .insert([reviewPayload])
-                        .select('id')
-                        .single(),
-                    REQUEST_TIMEOUT
-                );
-
-                if (reviewError) {
-                    throw new Error(reviewError.message || 'Failed to submit review');
-                }
-
-                // Mark token as used
-                const { error: tokenError } = await withTimeout(
-                    db.from('tokens')
-                        .update({ is_used: true, used_at: new Date().toISOString() })
-                        .eq('id', tokenID),
-                    REQUEST_TIMEOUT
-                );
-
-                if (tokenError) {
-                    console.error('Warning: Token update failed:', tokenError);
-                    // Don't fail the submission if token update fails
-                }
-
-                // Success!
-                formScreen.classList.add('hidden');
-                successScreen.classList.remove('hidden');
-
-            } catch (error) {
-                console.error('Submission error:', error);
-                showFormError('Unable to submit review. Please try again.');
-                submitBtn.disabled = false;
-                submitBtn.textContent = "Submit Review";
-                isSubmitting = false;
-            }
-        });
-
-        // --- PREVENT ACCIDENTAL NAVIGATION ---
-        window.addEventListener('beforeunload', (e) => {
-            if (isSubmitting) {
-                e.preventDefault();
-                e.returnValue = '';
-            }
-        });
-
-        // --- INITIALIZE ---
-        validateToken();
-
-    })();
-</script>
+    validateToken();
+  </script>
 </body>
 </html>
