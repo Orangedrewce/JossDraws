@@ -47,7 +47,7 @@
 
       <form id="reviewForm">
         <label>Name</label>
-        <input type="text" id="clientName" placeholder="e.g. Joslynn L." required>
+        <input type="text" id="clientName" placeholder="e.g. Joslynn L." maxlength="60" required>
 
         <label>Rating</label>
         <select id="ratingScore" required>
@@ -75,17 +75,6 @@
   </main>
 
 <script>
-    // --- HIDE ANY DEBUG ELEMENTS ---
-    (function() {
-      const debugEl = document.getElementById('debugBlock');
-      if (debugEl) debugEl.remove();
-      document.querySelectorAll('[id*="debug"], [class*="debug"], pre').forEach(el => {
-        if (el.textContent.includes('tokenID') || el.textContent.includes('fetchedToken')) {
-          el.remove();
-        }
-      });
-    })();
-
     // --- CONFIGURATION ---
     const SUPABASE_URL = 'https://pciubbwphwpnptgawgok.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv'; 
@@ -134,17 +123,6 @@
       } else {
         // --- CAPTURE THE SOURCE FROM THE TOKEN ---
         globalSource = data.source ? String(data.source).trim() : null;
-        
-        // Clean up any debug displays
-        const debugElements = document.querySelectorAll('[id*="debug"], [id*="Debug"], [class*="debug"]');
-        debugElements.forEach(el => el.remove());
-        document.querySelectorAll('*').forEach(el => {
-          if (el.textContent && (el.textContent.includes('tokenID') || el.textContent.includes('fetchedToken') || el.textContent.includes('globalSource'))) {
-            if (el.tagName === 'PRE' || el.id.includes('debug') || el.className.includes('debug')) {
-              el.remove();
-            }
-          }
-        });
         
         loader.classList.add('hidden');
         formScreen.classList.remove('hidden');
