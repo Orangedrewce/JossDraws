@@ -131,7 +131,7 @@
           // --- 5. NAME ---
           var authorEl = document.createElement("div");
           authorEl.className = "review-author";
-          authorEl.textContent = review.client_name || "Anonymous";
+          authorEl.textContent = "- " + (review.client_name || "Anonymous");
 
           // --- BUILD CARD ---
           card.appendChild(badgeEl);  // Top
