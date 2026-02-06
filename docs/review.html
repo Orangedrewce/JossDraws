@@ -45,9 +45,6 @@
       <h2>Share Your Experience</h2>
       <p style="text-align: center; color: #666; margin-bottom: 2rem;">I'd love to hear what you think!</p>
 
-      <p id="sourceDebug" class="hidden" style="text-align: center; color: #666; margin-bottom: 1rem;"></p>
-      <pre id="debugBlock" class="hidden" style="font-size: 0.8rem; color: #555; background: #f1f1f1; padding: 0.75rem; border-radius: 6px; white-space: pre-wrap; margin-bottom: 1.5rem;"></pre>
-
       <form id="reviewForm">
         <label>Name</label>
         <input type="text" id="clientName" placeholder="e.g. Joslynn L." required>
@@ -78,6 +75,17 @@
   </main>
 
 <script>
+    // --- HIDE ANY DEBUG ELEMENTS ---
+    (function() {
+      const debugEl = document.getElementById('debugBlock');
+      if (debugEl) debugEl.remove();
+      document.querySelectorAll('[id*="debug"], [class*="debug"], pre').forEach(el => {
+        if (el.textContent.includes('tokenID') || el.textContent.includes('fetchedToken')) {
+          el.remove();
+        }
+      });
+    })();
+
     // --- CONFIGURATION ---
     const SUPABASE_URL = 'https://pciubbwphwpnptgawgok.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv'; 
@@ -126,26 +134,17 @@
       } else {
         // --- CAPTURE THE SOURCE FROM THE TOKEN ---
         globalSource = data.source ? String(data.source).trim() : null;
-
-        var debugEl = document.getElementById('sourceDebug');
-        if (debugEl) {
-          debugEl.textContent = `Source: ${globalSource}`;
-          debugEl.classList.remove('hidden');
-        }
-
-        var debugBlock = document.getElementById('debugBlock');
-        if (debugBlock) {
-          debugBlock.textContent = JSON.stringify(
-            {
-              tokenID,
-              globalSource,
-              fetchedToken: data
-            },
-            null,
-            2
-          );
-          debugBlock.classList.remove('hidden');
-        }
+        
+        // Clean up any debug displays
+        const debugElements = document.querySelectorAll('[id*="debug"], [id*="Debug"], [class*="debug"]');
+        debugElements.forEach(el => el.remove());
+        document.querySelectorAll('*').forEach(el => {
+          if (el.textContent && (el.textContent.includes('tokenID') || el.textContent.includes('fetchedToken') || el.textContent.includes('globalSource'))) {
+            if (el.tagName === 'PRE' || el.id.includes('debug') || el.className.includes('debug')) {
+              el.remove();
+            }
+          }
+        });
         
         loader.classList.add('hidden');
         formScreen.classList.remove('hidden');
@@ -176,8 +175,6 @@
         token_id: tokenID,
         source: globalSource || 'general'
       };
-      
-      console.log('Review payload:', reviewPayload);
       const { data: reviewData, error: reviewError } = await db
         .from('reviews')
         .insert([reviewPayload])
@@ -190,8 +187,6 @@
         btn.innerText = "Submit Review";
         return;
       }
-
-      console.log('Review saved:', reviewData);
 
       // Mark token as used
       await db.from('tokens').update({ is_used: true }).eq('id', tokenID);
