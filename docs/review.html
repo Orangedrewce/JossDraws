@@ -7,11 +7,20 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    /* ... (Previous CSS remains exactly the same) ... */
     :root { --primary-color: #333; --bg-color: #f9f9f9; --card-bg: #ffffff; }
     body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg-color); color: var(--primary-color); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; }
     .review-container { background: var(--card-bg); padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 100%; max-width: 500px; }
-    input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 1.2rem; box-sizing: border-box; }
+    input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 0.5rem; box-sizing: border-box; }
+    
+    /* Countdown Style */
+    #charCounter { 
+        text-align: right; 
+        font-size: 0.85rem; 
+        color: #666; 
+        margin-bottom: 1.5rem; 
+        font-variant-numeric: tabular-nums; /* Prevents jittering numbers */
+    }
+    
     .btn { background: #000; color: #fff; padding: 0.75rem 1.5rem; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; }
     .btn:disabled { background: #ccc; cursor: not-allowed; }
     .hidden { display: none; }
@@ -28,13 +37,16 @@
     </div>
 
     <div id="invalidState" class="hidden error-screen">
-      <h2>Link Expired</h2>
-      <p>This review link has already been used or is invalid.</p>
+      <h2>Link Invalid or Expired</h2>
+      <p>This review link has already been used or has expired.</p>
     </div>
 
     <div id="formState" class="hidden">
       <h2>Share Your Experience</h2>
       <p style="text-align: center; color: #666; margin-bottom: 2rem;">I'd love to hear what you think!</p>
+
+      <p id="sourceDebug" class="hidden" style="text-align: center; color: #666; margin-bottom: 1rem;"></p>
+      <pre id="debugBlock" class="hidden" style="font-size: 0.8rem; color: #555; background: #f1f1f1; padding: 0.75rem; border-radius: 6px; white-space: pre-wrap; margin-bottom: 1.5rem;"></pre>
 
       <form id="reviewForm">
         <label>Name</label>
@@ -49,8 +61,10 @@
             <option value="1">⭐ (1 Star)</option>
         </select>
 
-        <label>Review <small>(Max 280 chars)</small></label>
+        <label>Review</label>
         <textarea id="reviewText" rows="5" maxlength="280" placeholder="Loved the print..." required></textarea>
+        
+        <div id="charCounter">280 remaining</div>
         
         <button type="submit" class="btn">Submit Review</button>
       </form>
@@ -63,10 +77,10 @@
 
   </main>
 
-  <script>
+<script>
     // --- CONFIGURATION ---
     const SUPABASE_URL = 'https://pciubbwphwpnptgawgok.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv'; // Use your full key
+    const SUPABASE_KEY = 'sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv'; 
     const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // --- DOM ELEMENTS ---
@@ -75,43 +89,75 @@
     const formScreen = document.getElementById('formState');
     const successScreen = document.getElementById('successState');
     const form = document.getElementById('reviewForm');
+    
+    // --- COUNTER LOGIC ---
+    const textarea = document.getElementById('reviewText');
+    const counterDisplay = document.getElementById('charCounter');
+    const MAX_CHARS = 280;
 
-    // --- 1. GET TOKEN FROM URL ---
-    // Looks for yoursite.com/review.html?token=YOUR-UUID-HERE
+    if (textarea) {
+        textarea.addEventListener('input', () => {
+        const currentLength = textarea.value.length;
+        const remaining = MAX_CHARS - currentLength;
+        counterDisplay.textContent = `${remaining} remaining`;
+        });
+    }
+
+    // --- GLOBAL VARIABLE TO HOLD THE TAG ---
+    let globalSource = null;
+
     const urlParams = new URLSearchParams(window.location.search);
     const tokenID = urlParams.get('token');
 
-    // --- 2. VALIDATE TOKEN ON LOAD ---
+    // --- 1. VALIDATE TOKEN ---
     async function validateToken() {
-      if (!tokenID) {
-        showError("No token provided.");
-        return;
-      }
+      if (!tokenID) { return showError(); }
 
-      // Check DB for this token
       const { data, error } = await db
         .from('tokens')
-        .select('*')
+        .select('id, is_used, expires_at, source')
         .eq('id', tokenID)
         .single();
 
-      if (error || !data) {
-        showError(); // Token doesn't exist
-      } else if (data.is_used) {
-        showError(); // Token already used
+      if (error || !data || data.is_used) {
+        showError();
+      } else if (new Date(data.expires_at) < new Date()) {
+        showError();
       } else {
-        // Token is valid! Show form.
+        // --- CAPTURE THE SOURCE FROM THE TOKEN ---
+        globalSource = data.source ? String(data.source).trim() : null;
+
+        var debugEl = document.getElementById('sourceDebug');
+        if (debugEl) {
+          debugEl.textContent = `Source: ${globalSource}`;
+          debugEl.classList.remove('hidden');
+        }
+
+        var debugBlock = document.getElementById('debugBlock');
+        if (debugBlock) {
+          debugBlock.textContent = JSON.stringify(
+            {
+              tokenID,
+              globalSource,
+              fetchedToken: data
+            },
+            null,
+            2
+          );
+          debugBlock.classList.remove('hidden');
+        }
+        
         loader.classList.add('hidden');
         formScreen.classList.remove('hidden');
       }
     }
 
-    function showError(msg) {
+    function showError() {
       loader.classList.add('hidden');
       invalidScreen.classList.remove('hidden');
     }
 
-    // --- 3. HANDLE SUBMIT ---
+    // --- 2. SUBMIT FORM ---
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = form.querySelector('button');
@@ -122,30 +168,39 @@
       const text = document.getElementById('reviewText').value;
       const rating = document.getElementById('ratingScore').value;
 
-      // A. Upload Review
-      const reviewPayload = { client_name: name, review_text: text, rating: parseInt(rating) };
-      const { error: reviewError } = await db.from('reviews').insert([reviewPayload]);
+      // --- SEND DATA TO DB ---
+      const reviewPayload = {
+        client_name: name,
+        review_text: text,
+        rating: parseInt(rating, 10),
+        token_id: tokenID,
+        source: globalSource || 'general'
+      };
+      
+      console.log('Review payload:', reviewPayload);
+      const { data: reviewData, error: reviewError } = await db
+        .from('reviews')
+        .insert([reviewPayload])
+        .select('id, source')
+        .single();
 
       if (reviewError) {
         alert("Error: " + reviewError.message);
         btn.disabled = false;
+        btn.innerText = "Submit Review";
         return;
       }
 
-      // B. Burn the Token (Mark as used)
-      const { error: tokenError } = await db
-        .from('tokens')
-        .update({ is_used: true })
-        .eq('id', tokenID);
+      console.log('Review saved:', reviewData);
 
-      // C. Show Success
+      // Mark token as used
+      await db.from('tokens').update({ is_used: true }).eq('id', tokenID);
+
       formScreen.classList.add('hidden');
       successScreen.classList.remove('hidden');
     });
 
-    // Run Validation immediately
     validateToken();
-
   </script>
 </body>
 </html>
