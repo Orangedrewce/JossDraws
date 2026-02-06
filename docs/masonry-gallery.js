@@ -126,14 +126,13 @@ class MasonryGallery {
     const columnWidth = this.width / this.columns;
 
     // Lay out focused first so it pushes others down
-    const focusedIndex = this.focusedItemId
-      ? this.items.findIndex(i => i.id === this.focusedItemId)
-      : -1;
-    const ordered = focusedIndex >= 0
-      ? [this.items[focusedIndex], ...this.items.filter((_, idx) => idx !== focusedIndex)]
-      : [...this.items];
-    
-    this.grid = ordered.map(child => {
+    const focusedItem = this.items.find(i => i.id === this.focusedItemId);
+    const orderedItems = focusedItem
+      ? [focusedItem, ...this.items.filter(i => i.id !== this.focusedItemId)]
+      : this.items;
+
+    const layoutMap = new Map();
+    orderedItems.forEach(child => {
       const isFocused = this.focusedItemId === child.id;
       if (isFocused) {
         const y = Math.min(...colHeights);
@@ -142,7 +141,8 @@ class MasonryGallery {
         for (let i = 0; i < colHeights.length; i++) {
           colHeights[i] = y + h;
         }
-        return { ...child, x: 0, y, w, h, focused: true };
+        layoutMap.set(child.id, { ...child, x: 0, y, w, h, focused: true });
+        return;
       }
       const col = colHeights.indexOf(Math.min(...colHeights));
       const x = columnWidth * col;
@@ -151,8 +151,12 @@ class MasonryGallery {
       const height = Math.max(80, Math.round(columnWidth * ratio));
       const y = colHeights[col];
       colHeights[col] += height;
-      return { ...child, x, y, w: columnWidth, h: height, focused: false };
+      layoutMap.set(child.id, { ...child, x, y, w: columnWidth, h: height, focused: false });
     });
+
+    this.grid = this.items
+      .map(child => layoutMap.get(child.id))
+      .filter(Boolean);
   }
   
   getInitialPosition(item, index) {
@@ -210,37 +214,17 @@ class MasonryGallery {
       if (item.type === 'video' || item.video) {
         mediaContainer = document.createElement('div');
         mediaContainer.className = 'masonry-item-video';
-        mediaContainer.style.cssText = `
-          width: 100%;
-          height: 100%;
-          padding: var(--spacing-xs);
-          box-sizing: border-box;
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        `;
         const videoEl = document.createElement('video');
         videoEl.src = item.video || item.img;
-  // No poster so it starts playing immediately (no thumbnail)
+        // No poster by default (keeps layout simple)
   // if (item.poster) videoEl.poster = item.poster;
   videoEl.muted = true;
         videoEl.playsInline = true;
         videoEl.setAttribute('playsinline', '');
         // Loop by default unless explicitly disabled on the item
         videoEl.loop = item.loop !== false;
-  // Autoplay on load and aggressively buffer first frames
-  videoEl.autoplay = true;
-  videoEl.setAttribute('autoplay', '');
-  videoEl.preload = 'auto';
-        videoEl.style.cssText = `
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-          border-radius: var(--border-radius);
-          display: block;
-          background: #f9f9f9;
-        `;
+  // Keep network use light until focus
+  videoEl.preload = 'metadata';
         mediaContainer.appendChild(videoEl);
 
         // Pseudo controls (play/pause and mute) overlay
@@ -301,15 +285,7 @@ class MasonryGallery {
         const imgDiv = document.createElement('div');
         imgDiv.className = 'masonry-item-img';
         imgDiv.style.cssText = `
-          width: 100%;
-          height: 100%;
-          padding: var(--spacing-xs);
-          background-clip: content-box;
           background-image: url('${item.img}');
-          background-size: ${item.focused ? 'contain' : 'contain'};
-          background-position: center;
-          background-repeat: no-repeat;
-          position: relative;
         `;
         mediaContainer = imgDiv;
       }
@@ -414,9 +390,7 @@ class MasonryGallery {
       element.style.height = `${item.h}px`;
       const imgDiv = element.querySelector('.masonry-item-img');
       if (imgDiv) {
-        imgDiv.style.backgroundSize = item.focused ? 'contain' : 'contain';
-        imgDiv.style.backgroundPosition = 'center';
-        imgDiv.style.backgroundRepeat = 'no-repeat';
+        imgDiv.style.backgroundImage = `url('${item.img}')`;
       }
     });
     
@@ -454,7 +428,7 @@ class MasonryGallery {
     element.setAttribute('aria-pressed', 'true');
     this.calculateGrid();
     this.updateLayout();
-    // Autoplay videos when focused (muted, inline)
+    // Play videos when focused (muted, inline)
     if (item.type === 'video' || item.video) {
       const v = element.querySelector('video');
       if (v) {
@@ -466,6 +440,10 @@ class MasonryGallery {
   unfocusCard(element) {
     element.classList.remove('card-focused');
     element.setAttribute('aria-pressed', 'false');
+    const v = element.querySelector('video');
+    if (v) {
+      v.pause();
+    }
     this.focusedItemId = null;
     this.calculateGrid();
     this.updateLayout();
@@ -817,7 +795,6 @@ if (document.readyState === 'loading') {
     });
   }
 }
-
 
 
 
