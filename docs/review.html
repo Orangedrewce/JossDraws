@@ -41,6 +41,7 @@
     <div id="invalidState" class="hidden error-screen">
       <h2>Link Invalid or Expired</h2>
       <p>This review link has already been used or has expired.</p>
+      <p style="font-size: 0.9rem; margin-top: 1rem;">If you'd still like to leave feedback, please reach out directly 💛</p>
     </div>
 
     <div id="formState" class="hidden">
@@ -117,21 +118,33 @@
 
       const { data, error } = await db
         .from('tokens')
-        .select('id, is_used, expires_at, source')
+        .select('id, is_used, expires_at, source, used_at')
         .eq('id', tokenID)
         .single();
 
-      if (error || !data || data.is_used) {
+      if (error || !data) {
         showError();
-      } else if (new Date(data.expires_at) < new Date()) {
-        showError();
-      } else {
-        // --- CAPTURE THE SOURCE FROM THE TOKEN ---
-        globalSource = data.source ? String(data.source).trim() : null;
-        
-        loader.classList.add('hidden');
-        formScreen.classList.remove('hidden');
+        return;
       }
+      
+      // Check if already used
+      if (data.is_used) {
+        showError();
+        return;
+      }
+      
+      // Check if expired
+      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+        showError();
+        return;
+      }
+      
+      // Token is valid!
+      // --- CAPTURE THE SOURCE FROM THE TOKEN ---
+      globalSource = data.source ? String(data.source).trim() : null;
+      
+      loader.classList.add('hidden');
+      formScreen.classList.remove('hidden');
     }
 
     function showError() {
@@ -188,8 +201,15 @@
         return;
       }
 
-      // Mark token as used
-      await db.from('tokens').update({ is_used: true }).eq('id', tokenID);
+      // Mark token as used with timestamp (one-time enforcement)
+      await db
+        .from('tokens')
+        .update({ 
+          is_used: true, 
+          used_at: new Date().toISOString() 
+        })
+        .eq('id', tokenID)
+        .eq('is_used', false);
 
       formScreen.classList.add('hidden');
       successScreen.classList.remove('hidden');
