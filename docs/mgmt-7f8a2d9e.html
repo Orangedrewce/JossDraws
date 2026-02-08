@@ -765,34 +765,36 @@
             margin-top: 0.25rem;
         }
         .gallery-edit-toggle-container {
-            display: flex; align-items: center; gap: 0.5rem;
-            padding: 0.5rem 0; margin: 0.5rem 0;
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.75rem; margin: 0.5rem 0;
+            background: var(--color-surface-2);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--color-border-soft);
         }
         .gallery-edit-toggle-container label {
             margin: 0; flex: 1; font-weight: 500;
         }
-        .gallery-edit-toggle {
-            position: relative; display: inline-block;
-            width: 44px; height: 24px;
-        }
-        .gallery-edit-toggle input {
-            opacity: 0; width: 0; height: 0;
-        }
-        .gallery-edit-toggle-slider {
-            position: absolute; cursor: pointer; inset: 0;
-            background: var(--color-border-strong); border-radius: 24px;
-            transition: 0.2s;
-        }
-        .gallery-edit-toggle-slider:before {
-            position: absolute; content: ''; height: 18px; width: 18px;
-            left: 3px; bottom: 3px; background: white;
-            border-radius: 50%; transition: 0.2s;
-        }
-        .gallery-edit-toggle input:checked + .gallery-edit-toggle-slider {
+        .gallery-edit-toggle-btn {
+            padding: 0.5rem 0.85rem;
+            font-size: 1.1rem;
             background: var(--color-success);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+            min-width: 80px;
+            flex-shrink: 0;
         }
-        .gallery-edit-toggle input:checked + .gallery-edit-toggle-slider:before {
-            transform: translateX(20px);
+        .gallery-edit-toggle-btn:hover {
+            background: var(--color-success-hover);
+        }
+        .gallery-edit-toggle-btn.inactive {
+            background: var(--color-danger);
+        }
+        .gallery-edit-toggle-btn.inactive:hover {
+            background: var(--color-danger-hover);
         }
         .gallery-edit-message {
             padding: 0.75rem; border-radius: var(--radius-md);
@@ -2283,12 +2285,19 @@
                 gEl.addBtn.textContent = 'Adding...';
 
                 try {
+                    // Calculate next sort order (find max and add 1, starting from 1)
+                    const maxSort = galleryItems.length > 0 
+                        ? Math.max(...galleryItems.map(i => i.sort_order || 0))
+                        : 0;
+                    const nextSort = Math.max(1, maxSort + 1);
+
                     const { data, error } = await db.rpc('admin_add_gallery_item', {
                         p_admin_code: adminCode,
                         p_img_url: imgUrl,
                         p_title: title,
                         p_medium: medium,
-                        p_year_created: year
+                        p_year_created: year,
+                        p_sort_order: nextSort
                     });
 
                     if (error) throw new Error(error.message);
@@ -2366,7 +2375,7 @@
                                 <div class="gallery-item-title">${sanitizeText(caption)}</div>
                                 <div class="gallery-item-meta">Added ${date}</div>
                             </div>
-                            <input type="number" class="gallery-sort-input" value="${safeSortOrder}" min="0" max="9999" title="Position (lower = earlier)" data-gallery-action="sort" data-gallery-id="${safeId}" aria-label="Sort order for ${sanitizeText(item.title)}">
+                            <input type="number" class="gallery-sort-input" value="${Math.max(1, safeSortOrder)}" min="1" max="9999" title="Position (1 = first)" data-gallery-action="sort" data-gallery-id="${safeId}" aria-label="Sort order for ${sanitizeText(item.title)}">
                             <div class="gallery-item-actions">
                                 <button class="mini-btn gallery-item-badge ${isActive ? 'active' : 'hidden'}" role="switch" aria-checked="${isActive}" data-gallery-action="toggle" data-gallery-id="${safeId}" title="Click to ${isActive ? 'hide' : 'show'}">${isActive ? '👁️' : '🚫'}</button>
                                 <button class="mini-btn secondary" data-gallery-action="edit" data-gallery-id="${safeId}" title="Edit details">✏️</button>
@@ -2484,15 +2493,14 @@
                             <input type="text" id="editMedium" value="${sanitizeAttr(item.medium || '')}" list="mediumOptions" placeholder="e.g. Digital, Canvas, Physical">
                             <label for="editYear">Year</label>
                             <input type="number" id="editYear" min="1900" max="2100" value="${item.year_created || ''}" placeholder="e.g. 2024">
-                            <label for="editSortOrder">Position (lower = shown earlier)</label>
-                            <input type="number" id="editSortOrder" min="0" max="9999" value="${item.sort_order}" placeholder="e.g. 1">
+                            <label for="editSortOrder">Position (1 = first, higher numbers shown later)</label>
+                            <input type="number" id="editSortOrder" min="1" max="9999" value="${Math.max(1, item.sort_order)}" placeholder="e.g. 1">
                             
                             <div class="gallery-edit-toggle-container">
-                                <label for="editActiveToggle">Show on website</label>
-                                <label class="gallery-edit-toggle">
-                                    <input type="checkbox" id="editActiveToggle" ${item.is_active ? 'checked' : ''}>
-                                    <span class="gallery-edit-toggle-slider"></span>
-                                </label>
+                                <label>Visibility Status</label>
+                                <button type="button" id="editActiveToggle" class="gallery-edit-toggle-btn ${item.is_active ? '' : 'inactive'}" data-active="${item.is_active}">
+                                    ${item.is_active ? '👁️ Visible' : '🚫 Hidden'}
+                                </button>
                             </div>
                             
                             <div class="gallery-edit-actions">
@@ -2515,6 +2523,16 @@
                 const previewCaption = editOverlay.querySelector('#editPreviewCaption');
                 const previewSubtext = editOverlay.querySelector('#editPreviewSubtext');
                 const editMessage = editOverlay.querySelector('#editMessage');
+
+                // Active toggle button handler
+                activeToggle.addEventListener('click', () => {
+                    const isActive = activeToggle.dataset.active === 'true';
+                    const newActive = !isActive;
+                    activeToggle.dataset.active = newActive;
+                    activeToggle.className = newActive ? 'gallery-edit-toggle-btn' : 'gallery-edit-toggle-btn inactive';
+                    activeToggle.textContent = newActive ? '👁️ Visible' : '🚫 Hidden';
+                    previewSubtext.textContent = newActive ? '✅ Visible on site' : '🚫 Hidden from site';
+                });
 
                 // URL input handler with Google Drive converter
                 function handleEditUrlInput() {
@@ -2555,7 +2573,8 @@
 
                 // Active toggle preview
                 function updateEditActivePreview() {
-                    previewSubtext.textContent = activeToggle.checked ? '✅ Visible on site' : '🚫 Hidden from site';
+                    const isActive = activeToggle.dataset.active === 'true';
+                    previewSubtext.textContent = isActive ? '✅ Visible on site' : '🚫 Hidden from site';
                 }
 
                 // Attach live preview handlers
@@ -2564,7 +2583,6 @@
                 titleInput.addEventListener('input', updateEditCaptionPreview);
                 mediumInput.addEventListener('input', updateEditCaptionPreview);
                 yearInput.addEventListener('input', updateEditCaptionPreview);
-                activeToggle.addEventListener('change', updateEditActivePreview);
 
                 // Focus title input
                 titleInput.focus();
@@ -2617,8 +2635,8 @@
                     const newTitle = titleInput.value.trim();
                     const newMedium = mediumInput.value.trim() || null;
                     const newYear = yearInput.value ? parseInt(yearInput.value, 10) : null;
-                    const newSort = editOverlay.querySelector('#editSortOrder').value !== '' ? parseInt(editOverlay.querySelector('#editSortOrder').value, 10) : null;
-                    const newActive = activeToggle.checked;
+                    const newSort = editOverlay.querySelector('#editSortOrder').value !== '' ? Math.max(1, parseInt(editOverlay.querySelector('#editSortOrder').value, 10)) : 1;
+                    const newActive = activeToggle.dataset.active === 'true';
 
                     if (!newUrl) { showEditMessage('Image URL is required.', true); return; }
                     if (!newTitle) { showEditMessage('Title is required.', true); return; }
@@ -2680,18 +2698,24 @@
                 const id = input.getAttribute('data-gallery-id');
                 const item = galleryItems.find(i => String(i.id) === String(id));
                 if (!item) return;
-                const newVal = parseInt(input.value, 10);
-                if (isNaN(newVal) || newVal === item.sort_order) return;
+                let newVal = parseInt(input.value, 10);
+                if (isNaN(newVal) || newVal < 1) {
+                    input.value = Math.max(1, item.sort_order);
+                    return;
+                }
+                if (newVal === item.sort_order) return;
 
                 input.disabled = true;
                 try {
                     const { data, error } = await db.rpc('admin_edit_gallery_item', {
                         p_admin_code: adminCode,
                         p_item_id: parseInt(id, 10),
+                        p_img_url: item.img_url,
                         p_title: item.title,
                         p_medium: item.medium || null,
                         p_year_created: item.year_created || null,
-                        p_sort_order: newVal
+                        p_sort_order: newVal,
+                        p_is_active: item.is_active
                     });
                     if (error) throw new Error(error.message);
                     if (!data || !data.success) { showGalleryMsg(data?.error || 'Sort update failed', true); return; }
