@@ -1621,17 +1621,20 @@
                     elements.recentLinksSentinel.textContent = 'Loading…';
                 }
 
-                let query = db
-                    .from('tokens')
-                    .select('id, source, created_at, expires_at, is_used')
-                    .order('created_at', { ascending: false })
-                    .range(startOffset, startOffset + state.links.pageSize - 1);
-                
-                if (filterSource) {
-                    query = query.eq('source', filterSource);
+                const { data: rpcResult, error } = await db.rpc('admin_list_tokens', {
+                    p_admin_code: adminCode,
+                    p_source: filterSource,
+                    p_offset: startOffset,
+                    p_limit: state.links.pageSize
+                });
+
+                const data = rpcResult?.items;
+
+                if (!error && rpcResult && rpcResult.success === false && rpcResult.error === 'Unauthorized') {
+                    adminCode = null;
+                    document.body.innerHTML = '<div class="auth-screen auth-screen--danger"><h2>Access Denied</h2><p>Invalid admin code.</p></div>';
+                    return;
                 }
-                
-                const { data, error } = await query;
 
                 // If filter/reset happened while awaiting, ignore this response
                 if (queryKey !== state.links.queryKey) {
@@ -1642,6 +1645,11 @@
                 if (error) {
                     console.error('Recent links error:', error);
                     Trace.log('FETCH_ERROR', { message: error?.message || String(error) });
+                    return;
+                }
+
+                if (!rpcResult || rpcResult.success !== true || !Array.isArray(data)) {
+                    Trace.log('FETCH_ERROR', { message: rpcResult?.error || 'Invalid response from server' });
                     return;
                 }
 

@@ -454,33 +454,19 @@
       }
 
       try {
-        const { data, error } = await withRetry(async () => {
-          return await db
-            .from('tokens')
-            .select('id, is_used, expires_at, source, used_at')
-            .eq('id', tokenID)
-            .single();
+        const { data: result, error } = await withRetry(async () => {
+          return await db.rpc('validate_review_token', { p_token_id: tokenID });
         });
 
-        if (error || !data) {
+        if (error || !result || !result.success || !result.token) {
           showInvalidScreen();
           return;
         }
 
-        // Check if already used
-        if (data.is_used) {
-          showInvalidScreen();
-          return;
-        }
-
-        // Check if expired
-        if (data.expires_at && new Date(data.expires_at) < new Date()) {
-          showInvalidScreen();
-          return;
-        }
+        const token = result.token;
 
         // Token is valid — capture source with validation
-        globalSource = data.source ? validateSource(data.source) : null;
+        globalSource = token.source ? validateSource(token.source) : null;
 
         elements.loader.classList.add('hidden');
         elements.formScreen.classList.remove('hidden');
