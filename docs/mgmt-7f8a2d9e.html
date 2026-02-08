@@ -699,6 +699,10 @@
         .gallery-item.inactive { opacity: 0.5; }
         .gallery-item.dragging {
             opacity: 0.4; transform: scale(0.97); cursor: grabbing;
+            pointer-events: none;
+        }
+        .gallery-item.dropped {
+            transition: none;
         }
         .gallery-item.drag-over {
             border-color: var(--color-primary);
@@ -736,13 +740,19 @@
             -webkit-touch-callout: none;  /* prevent iOS callout */
         }
         .gallery-item .drag-handle:active { cursor: grabbing; }
-        /* While dragging, show grabbing cursor everywhere */
+        /* While dragging, show grabbing cursor everywhere and kill ALL selection */
         body.is-dragging,
         body.is-dragging * {
             cursor: grabbing !important;
             -webkit-user-select: none !important;
             -moz-user-select: none !important;
             user-select: none !important;
+        }
+        body.is-dragging ::selection {
+            background: transparent !important;
+        }
+        body.is-dragging ::-moz-selection {
+            background: transparent !important;
         }
 
         .gallery-item-thumb {
@@ -2726,6 +2736,18 @@
                             return;
                         }
                         showEditMessage('✅ Artwork updated successfully!', false);
+
+                        // If sort_order changed, issue a reorder RPC
+                        if (newSort !== item.sort_order) {
+                            try {
+                                await db.rpc('admin_reorder_gallery_item', {
+                                    p_admin_code: adminCode,
+                                    p_item_id: parseInt(id, 10),
+                                    p_new_sort_order: newSort
+                                });
+                            } catch (_) { /* best-effort */ }
+                        }
+
                         setTimeout(() => {
                             closeEditModal();
                             loadGalleryItems();
@@ -2755,6 +2777,32 @@
                 if (action === 'delete') deleteGalleryItem(id, btn);
             });
 
+            // ----- Quiet Background Sync (updates local state + inputs, no DOM rebuild) -----
+            async function syncSortOrders() {
+                if (!db || !adminCode) return;
+                try {
+                    const { data, error } = await db.rpc('admin_list_gallery', {
+                        p_admin_code: adminCode
+                    });
+                    if (error || !data || !data.success) return;
+                    const serverItems = data.items || [];
+                    // Build a lookup from server
+                    const serverMap = new Map(serverItems.map(i => [String(i.id), i]));
+                    // Update local array with server sort_order values
+                    galleryItems.forEach(item => {
+                        const server = serverMap.get(String(item.id));
+                        if (server) item.sort_order = server.sort_order;
+                    });
+                    // Re-sort local array to match server order
+                    galleryItems.sort((a, b) => a.sort_order - b.sort_order);
+                    // Patch the DOM inputs in-place
+                    galleryItems.forEach(item => {
+                        const input = gEl.list.querySelector(`input.gallery-sort-input[data-gallery-id="${item.id}"]`);
+                        if (input) input.value = item.sort_order;
+                    });
+                } catch (_) { /* best-effort */ }
+            }
+
             // ----- Inline Sort-Order Save -----
             async function saveSortOrder(input) {
                 const id = input.getAttribute('data-gallery-id');
@@ -2769,15 +2817,10 @@
 
                 input.disabled = true;
                 try {
-                    const { data, error } = await db.rpc('admin_edit_gallery_item', {
+                    const { data, error } = await db.rpc('admin_reorder_gallery_item', {
                         p_admin_code: adminCode,
                         p_item_id: parseInt(id, 10),
-                        p_img_url: item.img_url,
-                        p_title: item.title,
-                        p_medium: item.medium || null,
-                        p_year_created: item.year_created || null,
-                        p_sort_order: newVal,
-                        p_is_active: item.is_active
+                        p_new_sort_order: newVal
                     });
                     if (error) throw new Error(error.message);
                     if (!data || !data.success) { showGalleryMsg(data?.error || 'Sort update failed', true); return; }
@@ -2838,6 +2881,45 @@
                 dragDropTarget.position = isBefore ? 'before' : 'after';
             }
 
+            /** Optimistically reorder the DOM immediately, then sync server */
+            function optimisticReorder(srcId, tgtId, position) {
+                const srcEl = gEl.list.querySelector(`[data-gallery-id="${srcId}"]`);
+                const tgtEl = gEl.list.querySelector(`[data-gallery-id="${tgtId}"]`);
+                if (!srcEl || !tgtEl) return;
+
+                // Move the DOM node directly (no re-render, no scroll jump)
+                if (position === 'before') {
+                    tgtEl.parentNode.insertBefore(srcEl, tgtEl);
+                } else {
+                    tgtEl.parentNode.insertBefore(srcEl, tgtEl.nextSibling);
+                }
+
+                // Brief "just landed" class to suppress transition flicker
+                srcEl.classList.add('dropped');
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => srcEl.classList.remove('dropped'));
+                });
+
+                // Update local galleryItems array to match new order
+                const srcIdx = galleryItems.findIndex(i => String(i.id) === String(srcId));
+                const tgtIdx = galleryItems.findIndex(i => String(i.id) === String(tgtId));
+                if (srcIdx !== -1 && tgtIdx !== -1) {
+                    const [moved] = galleryItems.splice(srcIdx, 1);
+                    const newTgtIdx = galleryItems.findIndex(i => String(i.id) === String(tgtId));
+                    if (newTgtIdx !== -1) {
+                        const insertAt = position === 'before' ? newTgtIdx : newTgtIdx + 1;
+                        galleryItems.splice(insertAt, 0, moved);
+                    }
+                    // Renumber sort_order locally
+                    galleryItems.forEach((item, i) => { item.sort_order = i + 1; });
+                    // Update sort-order inputs in-place
+                    galleryItems.forEach(item => {
+                        const input = gEl.list.querySelector(`input.gallery-sort-input[data-gallery-id="${item.id}"]`);
+                        if (input) input.value = item.sort_order;
+                    });
+                }
+            }
+
             /** Shared helper: execute the move/swap RPC after a drop */
             async function performDrop() {
                 const targetId = dragDropTarget.id;
@@ -2846,6 +2928,10 @@
 
                 if (!dragSrcId || !targetId || dragSrcId === targetId) return;
 
+                // Optimistic: move the DOM node instantly (no flicker, no scroll jump)
+                optimisticReorder(dragSrcId, targetId, targetPosition);
+
+                // Sync to server in background
                 try {
                     const { data, error } = await db.rpc('admin_move_gallery_item', {
                         p_admin_code: adminCode,
@@ -2855,23 +2941,23 @@
                     });
                     if (error) throw new Error(error.message);
                     if (!data || !data.success) {
-                        showGalleryMsg(data?.error || 'Move failed', true);
+                        showGalleryMsg(data?.error || 'Move failed — reverting', true);
+                        loadGalleryItems(); // revert on failure
                         return;
                     }
-                    lastMovedId = dragSrcId;
-                    showGalleryMsg('Item moved!', false);
-                    loadGalleryItems();
+                    // Quietly sync sort_order numbers from server
+                    syncSortOrders();
                 } catch (err) {
                     const msg = String(err?.message || err || 'Move failed');
                     const missingRpc = /admin_move_gallery_item|function.*does not exist|not exist/i.test(msg);
 
                     if (!missingRpc) {
-                        showGalleryMsg('Error: ' + msg, true);
+                        showGalleryMsg('Error: ' + msg + ' — reverting', true);
+                        loadGalleryItems(); // revert on failure
                         return;
                     }
 
                     // Fallback to swap if move RPC is unavailable
-                    showGalleryMsg('Move RPC missing. Using swap fallback.', true);
                     try {
                         const { data, error } = await db.rpc('admin_swap_gallery_order', {
                             p_admin_code: adminCode,
@@ -2880,14 +2966,15 @@
                         });
                         if (error) throw new Error(error.message);
                         if (!data || !data.success) {
-                            showGalleryMsg(data?.error || 'Swap failed', true);
+                            showGalleryMsg(data?.error || 'Swap failed — reverting', true);
+                            loadGalleryItems();
                             return;
                         }
-                        lastMovedId = dragSrcId;
-                        showGalleryMsg('Item swapped (fallback).', false);
+                        // Swap succeeded — DOM may be slightly off, do a quiet refresh
                         loadGalleryItems();
                     } catch (swapErr) {
-                        showGalleryMsg('Swap error: ' + (swapErr?.message || swapErr), true);
+                        showGalleryMsg('Swap error: ' + (swapErr?.message || swapErr) + ' — reverting', true);
+                        loadGalleryItems();
                     }
                 }
             }
@@ -2901,6 +2988,10 @@
 
             /** Start a drag from a pointer (mouse or touch) */
             function startDrag(row, clientX, clientY) {
+                // Clear any existing text selection immediately
+                const sel = window.getSelection();
+                if (sel) sel.removeAllRanges();
+
                 dragSrcId = row.getAttribute('data-gallery-id');
                 dragSourceRow = row;
                 row.classList.add('dragging');
