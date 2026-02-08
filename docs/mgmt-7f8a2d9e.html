@@ -22,13 +22,11 @@
             --text-muted-soft: #999;
             --text-muted-strong: #555;
 
-            --color-muted: var(--text-muted);
-            --color-muted-2: var(--text-muted-soft);
-            --color-muted-3: var(--text-muted-strong);
             --color-border: #ddd;
             --color-border-soft: #eee;
-            --color-border-strong: #ddd;
+            --color-border-strong: #ccc;
 
+            --color-surface: #ffffff;
             --color-surface-2: #f9f9f9;
             --color-surface-3: #f5f5f5;
 
@@ -137,9 +135,9 @@
         }
         
         select:focus {
-            outline: none;
+            outline: 2px solid var(--color-primary);
+            outline-offset: -1px;
             border-color: var(--color-primary);
-            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
         }
         
         button { 
@@ -499,6 +497,16 @@
             background: var(--color-danger);
             color: white;
         }
+
+        .mini-btn.confirm-armed {
+            background: var(--color-danger);
+            color: white;
+            border-color: var(--color-danger);
+        }
+
+        .mini-btn.confirm-armed:hover {
+            background: var(--color-danger-hover);
+        }
         
         .source-name {
             background: transparent;
@@ -586,6 +594,33 @@
             background: var(--color-border-soft);
             margin: 1.5rem 0;
             border: none;
+        }
+
+        .section-summary {
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--color-text);
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.25rem 0;
+        }
+
+        .section-summary::-webkit-details-marker { display: none; }
+
+        .section-summary .chevron {
+            font-size: 0.8rem;
+            opacity: 0.4;
+        }
+
+        .btn-warning {
+            background: var(--color-warning) !important;
+        }
+
+        .btn-warning:hover:not(:disabled) {
+            background: var(--color-warning-dark) !important;
         }
 
         /* ====== GALLERY MANAGER ====== */
@@ -764,37 +799,15 @@
             font-size: 0.85rem; color: var(--text-muted); font-style: italic;
             margin-top: 0.25rem;
         }
-        .gallery-edit-toggle-container {
+        .gallery-edit-visibility {
             display: flex; align-items: center; gap: 0.75rem;
             padding: 0.75rem; margin: 0.5rem 0;
             background: var(--color-surface-2);
             border-radius: var(--radius-md);
             border: 1px solid var(--color-border-soft);
         }
-        .gallery-edit-toggle-container label {
+        .gallery-edit-visibility label {
             margin: 0; flex: 1; font-weight: 500;
-        }
-        .gallery-edit-toggle-btn {
-            padding: 0.5rem 0.85rem;
-            font-size: 1.1rem;
-            background: var(--color-success);
-            color: white;
-            border: none;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            font-weight: 600;
-            transition: background 0.2s;
-            min-width: 80px;
-            flex-shrink: 0;
-        }
-        .gallery-edit-toggle-btn:hover {
-            background: var(--color-success-hover);
-        }
-        .gallery-edit-toggle-btn.inactive {
-            background: var(--color-danger);
-        }
-        .gallery-edit-toggle-btn.inactive:hover {
-            background: var(--color-danger-hover);
         }
         .gallery-edit-message {
             padding: 0.75rem; border-radius: var(--radius-md);
@@ -978,9 +991,9 @@
         </div>
 
         <details class="recent-links" open>
-            <summary style="cursor:pointer; font-weight:600; font-size:0.95rem; color:var(--color-text); list-style:none; display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0; margin-bottom:0.75rem;">
+            <summary class="section-summary" style="padding-bottom:0.5rem; margin-bottom:0.75rem;">
                 <span>📧 Review Link Generator</span>
-                <span style="font-size:0.8rem; opacity:0.4;">▼</span>
+                <span class="chevron">▼</span>
             </summary>
 
         <form id="generatorForm">
@@ -1043,28 +1056,30 @@
         <hr class="divider" id="settingsDivider">
 
         <details class="recent-links" id="settingsSection">
-            <summary style="cursor:pointer; font-weight:600; font-size:0.95rem; color:var(--color-text); list-style:none; display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0;">
+            <summary class="section-summary">
                 <span>⚙️ Settings</span>
-                <span style="font-size:0.8rem; opacity:0.4;">▼</span>
+                <span class="chevron">▼</span>
             </summary>
-            <div style="margin-top:1rem;">
-                <label for="currentCodeInput" style="font-size:0.85rem;">Current Admin Code</label>
-                <input type="password" id="currentCodeInput" placeholder="Current code" autocomplete="current-password" style="width:100%; padding:0.6rem 0.75rem; margin-bottom:0.75rem; border:1px solid var(--color-border-strong); border-radius:var(--radius-md); font-size:0.9rem;">
-                <label for="newCodeInput" style="font-size:0.85rem;">New Admin Code</label>
-                <input type="password" id="newCodeInput" placeholder="New code (min 4 characters)" autocomplete="new-password" style="width:100%; padding:0.6rem 0.75rem; margin-bottom:0.75rem; border:1px solid var(--color-border-strong); border-radius:var(--radius-md); font-size:0.9rem;">
-                <label for="confirmCodeInput" style="font-size:0.85rem;">Confirm New Code</label>
-                <input type="password" id="confirmCodeInput" placeholder="Re-enter new code" autocomplete="new-password" style="width:100%; padding:0.6rem 0.75rem; margin-bottom:1rem; border:1px solid var(--color-border-strong); border-radius:var(--radius-md); font-size:0.9rem;">
-                <button type="button" id="changeCodeBtn" style="background:var(--color-warning); width:100%;">Change Admin Code</button>
-                <div id="changeCodeMessage" class="is-hidden" style="margin-top:0.75rem; padding:0.75rem; border-radius:var(--radius-md); font-size:0.85rem; font-weight:500;"></div>
+            <div class="gallery-section-content">
+                <form class="gallery-form" onsubmit="return false;">
+                    <label for="currentCodeInput">Current Admin Code</label>
+                    <input type="password" id="currentCodeInput" placeholder="Current code" autocomplete="current-password">
+                    <label for="newCodeInput">New Admin Code</label>
+                    <input type="password" id="newCodeInput" placeholder="New code (min 4 characters)" autocomplete="new-password">
+                    <label for="confirmCodeInput">Confirm New Code</label>
+                    <input type="password" id="confirmCodeInput" placeholder="Re-enter new code" autocomplete="new-password">
+                    <button type="button" id="changeCodeBtn" class="btn-warning">Change Admin Code</button>
+                </form>
+                <div id="changeCodeMessage" class="is-hidden gallery-msg" style="margin-top:0.75rem;"></div>
             </div>
         </details>
 
         <hr class="divider" id="galleryDivider">
 
         <details class="recent-links" id="gallerySection">
-            <summary style="cursor:pointer; font-weight:600; font-size:0.95rem; color:var(--color-text); list-style:none; display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0;">
+            <summary class="section-summary">
                 <span>🖼️ Gallery Manager</span>
-                <span style="font-size:0.8rem; opacity:0.4;">▼</span>
+                <span class="chevron">▼</span>
             </summary>
 
             <div class="gallery-section-content">
@@ -2096,9 +2111,7 @@
 
             function showChangeMsg(text, isError) {
                 changeMsg.textContent = text;
-                changeMsg.style.background = isError ? 'var(--color-danger-bg)' : 'var(--color-success-bg)';
-                changeMsg.style.color = isError ? 'var(--color-danger-text)' : 'var(--color-success-dark)';
-                changeMsg.style.border = `1px solid ${isError ? 'var(--color-danger)' : 'var(--color-success)'}`;
+                changeMsg.className = 'gallery-msg ' + (isError ? 'error' : 'success');
                 setHidden(changeMsg, false);
             }
 
@@ -2224,7 +2237,7 @@
                     gEl.urlStatus.className = 'gallery-url-status valid';
                     setHidden(gEl.urlStatus, false);
                     // Show preview
-                    gEl.preview.innerHTML = `<img src="${convertedUrl}" alt="Preview" onerror="this.parentElement.innerHTML='<span style=padding:0.5rem;font-size:0.7rem;color:var(--text-muted)>Could not load preview</span>'">`;
+                    gEl.preview.innerHTML = `<img src="${convertedUrl}" alt="Preview" onerror="this.parentElement.innerHTML='<span style=&quot;padding:0.5rem;font-size:0.7rem;color:#999&quot;>Could not load preview</span>'">`;
                     setHidden(gEl.preview, false);
                 } else {
                     convertedUrl = null;
@@ -2415,14 +2428,14 @@
                 if (!galleryDeletePending.has(id)) {
                     galleryDeletePending.set(id, true);
                     btn.textContent = '⚠️ Sure?';
-                    btn.style.background = 'var(--color-danger)';
-                    btn.style.color = '#fff';
+                    btn.classList.remove('danger');
+                    btn.classList.add('confirm-armed');
                     setTimeout(() => {
                         if (galleryDeletePending.has(id)) {
                             galleryDeletePending.delete(id);
                             btn.textContent = '🗑️';
-                            btn.style.background = '';
-                            btn.style.color = '';
+                            btn.classList.remove('confirm-armed');
+                            btn.classList.add('danger');
                         }
                     }, GALLERY_DELETE_MS);
                     return;
@@ -2450,8 +2463,8 @@
                 } finally {
                     btn.disabled = false;
                     btn.textContent = '🗑️';
-                    btn.style.background = '';
-                    btn.style.color = '';
+                    btn.classList.remove('confirm-armed');
+                    btn.classList.add('danger');
                 }
             }
 
@@ -2484,7 +2497,7 @@
                         </div>
                         <form class="gallery-form" id="galleryEditForm">
                             <label for="editUrl">Image URL</label>
-                            <input type="url" id="editUrl" value="${sanitizeAttr(item.img_url)}" placeholder="Paste Google Drive share link or direct image URL" required>
+                            <input type="text" id="editUrl" value="${sanitizeAttr(item.img_url)}" placeholder="Paste Google Drive share link or direct image URL" required>
                             <div id="editUrlStatus" class="gallery-url-status is-hidden"></div>
                             
                             <label for="editTitle">Title</label>
@@ -2496,11 +2509,9 @@
                             <label for="editSortOrder">Position (1 = first, higher numbers shown later)</label>
                             <input type="number" id="editSortOrder" min="1" max="9999" value="${Math.max(1, item.sort_order)}" placeholder="e.g. 1">
                             
-                            <div class="gallery-edit-toggle-container">
+                            <div class="gallery-edit-visibility">
                                 <label>Visibility Status</label>
-                                <button type="button" id="editActiveToggle" class="gallery-edit-toggle-btn ${item.is_active ? '' : 'inactive'}" data-active="${item.is_active}">
-                                    ${item.is_active ? '👁️ Visible' : '🚫 Hidden'}
-                                </button>
+                                <button type="button" id="editActiveToggle" class="mini-btn gallery-item-badge ${item.is_active ? 'active' : 'hidden'}" role="switch" aria-checked="${item.is_active}" data-active="${item.is_active}" title="Click to ${item.is_active ? 'hide' : 'show'}">${item.is_active ? '👁️' : '🚫'}</button>
                             </div>
                             
                             <div class="gallery-edit-actions">
@@ -2528,9 +2539,11 @@
                 activeToggle.addEventListener('click', () => {
                     const isActive = activeToggle.dataset.active === 'true';
                     const newActive = !isActive;
-                    activeToggle.dataset.active = newActive;
-                    activeToggle.className = newActive ? 'gallery-edit-toggle-btn' : 'gallery-edit-toggle-btn inactive';
-                    activeToggle.textContent = newActive ? '👁️ Visible' : '🚫 Hidden';
+                    activeToggle.dataset.active = String(newActive);
+                    activeToggle.setAttribute('aria-checked', String(newActive));
+                    activeToggle.className = 'mini-btn gallery-item-badge ' + (newActive ? 'active' : 'hidden');
+                    activeToggle.title = 'Click to ' + (newActive ? 'hide' : 'show');
+                    activeToggle.textContent = newActive ? '👁️' : '🚫';
                     previewSubtext.textContent = newActive ? '✅ Visible on site' : '🚫 Hidden from site';
                 });
 
