@@ -727,8 +727,9 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .gallery-edit-modal {
             background: var(--color-surface); border-radius: var(--radius-lg);
-            padding: 1.5rem; width: 100%; max-width: 400px;
+            padding: 1.5rem; width: 100%; max-width: 500px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+            max-height: 90vh; overflow-y: auto;
         }
         .gallery-edit-modal h3 {
             margin: 0 0 1rem; font-size: 1rem; color: var(--color-text);
@@ -742,6 +743,68 @@
             background: var(--color-bg) !important;
             color: var(--color-text) !important;
             border: 1px solid var(--color-border-strong) !important;
+        }
+        .gallery-edit-preview {
+            display: flex; gap: 1rem; align-items: flex-start;
+            padding: 0.75rem; background: var(--color-surface-2);
+            border-radius: var(--radius-md); margin-bottom: 0.75rem;
+        }
+        .gallery-edit-preview-img {
+            width: 100px; height: 100px; border-radius: var(--radius-md);
+            overflow: hidden; border: 2px solid var(--color-border-soft);
+            background: var(--color-bg); flex-shrink: 0;
+        }
+        .gallery-edit-preview-img img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .gallery-edit-preview-text {
+            flex: 1; min-width: 0;
+        }
+        .gallery-edit-preview-caption {
+            font-size: 0.85rem; color: var(--text-muted); font-style: italic;
+            margin-top: 0.25rem;
+        }
+        .gallery-edit-toggle-container {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.5rem 0; margin: 0.5rem 0;
+        }
+        .gallery-edit-toggle-container label {
+            margin: 0; flex: 1; font-weight: 500;
+        }
+        .gallery-edit-toggle {
+            position: relative; display: inline-block;
+            width: 44px; height: 24px;
+        }
+        .gallery-edit-toggle input {
+            opacity: 0; width: 0; height: 0;
+        }
+        .gallery-edit-toggle-slider {
+            position: absolute; cursor: pointer; inset: 0;
+            background: var(--color-border-strong); border-radius: 24px;
+            transition: 0.2s;
+        }
+        .gallery-edit-toggle-slider:before {
+            position: absolute; content: ''; height: 18px; width: 18px;
+            left: 3px; bottom: 3px; background: white;
+            border-radius: 50%; transition: 0.2s;
+        }
+        .gallery-edit-toggle input:checked + .gallery-edit-toggle-slider {
+            background: var(--color-success);
+        }
+        .gallery-edit-toggle input:checked + .gallery-edit-toggle-slider:before {
+            transform: translateX(20px);
+        }
+        .gallery-edit-message {
+            padding: 0.75rem; border-radius: var(--radius-md);
+            font-size: 0.85rem; font-weight: 500; margin-bottom: 0.75rem;
+        }
+        .gallery-edit-message.success {
+            background: var(--color-success-bg); color: var(--color-success-dark);
+            border: 1px solid var(--color-success);
+        }
+        .gallery-edit-message.error {
+            background: var(--color-danger-bg); color: var(--color-danger-text);
+            border: 1px solid var(--color-danger);
         }
 
         .gallery-count {
@@ -2385,6 +2448,7 @@
 
             // ----- Edit Gallery Item (modal) -----
             let editOverlay = null;
+            let editConvertedUrl = null;
 
             function openEditModal(id) {
                 const item = galleryItems.find(i => String(i.id) === String(id));
@@ -2392,13 +2456,28 @@
 
                 // Remove existing overlay if any
                 if (editOverlay) editOverlay.remove();
+                editConvertedUrl = null;
 
                 editOverlay = document.createElement('div');
                 editOverlay.className = 'gallery-edit-overlay';
                 editOverlay.innerHTML = `
                     <div class="gallery-edit-modal">
                         <h3>✏️ Edit Artwork</h3>
+                        <div id="editMessage" class="gallery-edit-message is-hidden"></div>
+                        <div class="gallery-edit-preview">
+                            <div class="gallery-edit-preview-img" id="editPreviewImg">
+                                ${item.img_url ? `<img src="${sanitizeAttr(item.img_url)}" alt="Current artwork" onerror="this.style.display='none'">` : '<span style="display:flex;align-items:center;justify-content:center;height:100%;font-size:2rem;">🖼️</span>'}
+                            </div>
+                            <div class="gallery-edit-preview-text">
+                                <div style="font-weight:600;font-size:0.9rem;color:var(--color-text);" id="editPreviewCaption">${sanitizeText(buildCaption(item.title, item.medium, item.year_created))}</div>
+                                <div class="gallery-edit-preview-caption" id="editPreviewSubtext">${item.is_active ? '✅ Visible on site' : '🚫 Hidden from site'}</div>
+                            </div>
+                        </div>
                         <form class="gallery-form" id="galleryEditForm">
+                            <label for="editUrl">Image URL</label>
+                            <input type="url" id="editUrl" value="${sanitizeAttr(item.img_url)}" placeholder="Paste Google Drive share link or direct image URL" required>
+                            <div id="editUrlStatus" class="gallery-url-status is-hidden"></div>
+                            
                             <label for="editTitle">Title</label>
                             <input type="text" id="editTitle" value="${sanitizeAttr(item.title)}" required>
                             <label for="editMedium">Medium</label>
@@ -2407,9 +2486,18 @@
                             <input type="number" id="editYear" min="1900" max="2100" value="${item.year_created || ''}" placeholder="e.g. 2024">
                             <label for="editSortOrder">Position (lower = shown earlier)</label>
                             <input type="number" id="editSortOrder" min="0" max="9999" value="${item.sort_order}" placeholder="e.g. 1">
+                            
+                            <div class="gallery-edit-toggle-container">
+                                <label for="editActiveToggle">Show on website</label>
+                                <label class="gallery-edit-toggle">
+                                    <input type="checkbox" id="editActiveToggle" ${item.is_active ? 'checked' : ''}>
+                                    <span class="gallery-edit-toggle-slider"></span>
+                                </label>
+                            </div>
+                            
                             <div class="gallery-edit-actions">
                                 <button type="button" class="gallery-edit-cancel" id="editCancelBtn">Cancel</button>
-                                <button type="submit" class="gallery-add-btn" id="editSaveBtn">Save</button>
+                                <button type="submit" class="gallery-add-btn" id="editSaveBtn">Save Changes</button>
                             </div>
                         </form>
                     </div>
@@ -2417,8 +2505,68 @@
 
                 document.body.appendChild(editOverlay);
 
-                // Focus title input
+                const urlInput = editOverlay.querySelector('#editUrl');
+                const urlStatus = editOverlay.querySelector('#editUrlStatus');
+                const previewImg = editOverlay.querySelector('#editPreviewImg');
                 const titleInput = editOverlay.querySelector('#editTitle');
+                const mediumInput = editOverlay.querySelector('#editMedium');
+                const yearInput = editOverlay.querySelector('#editYear');
+                const activeToggle = editOverlay.querySelector('#editActiveToggle');
+                const previewCaption = editOverlay.querySelector('#editPreviewCaption');
+                const previewSubtext = editOverlay.querySelector('#editPreviewSubtext');
+                const editMessage = editOverlay.querySelector('#editMessage');
+
+                // URL input handler with Google Drive converter
+                function handleEditUrlInput() {
+                    const raw = urlInput.value.trim();
+                    if (!raw) {
+                        urlStatus.classList.add('is-hidden');
+                        editConvertedUrl = null;
+                        return;
+                    }
+
+                    const fileId = extractDriveFileId(raw);
+                    if (fileId) {
+                        const embedUrl = toEmbedUrl(fileId);
+                        editConvertedUrl = embedUrl;
+                        urlStatus.textContent = '✅ Google Drive link converted';
+                        urlStatus.className = 'gallery-url-status valid';
+                        previewImg.innerHTML = `<img src="${sanitizeAttr(embedUrl)}" alt="Preview" onerror="this.style.display='none'">`;
+                    } else {
+                        editConvertedUrl = null;
+                        if (raw.startsWith('http')) {
+                            urlStatus.textContent = '✅ Direct URL detected';
+                            urlStatus.className = 'gallery-url-status valid';
+                            previewImg.innerHTML = `<img src="${sanitizeAttr(raw)}" alt="Preview" onerror="this.style.display='none'">`;
+                        } else {
+                            urlStatus.textContent = '⚠️ Invalid URL format';
+                            urlStatus.className = 'gallery-url-status invalid';
+                        }
+                    }
+                }
+
+                // Live caption preview update
+                function updateEditCaptionPreview() {
+                    const title = titleInput.value.trim() || 'Untitled';
+                    const medium = mediumInput.value.trim();
+                    const year = yearInput.value;
+                    previewCaption.textContent = buildCaption(title, medium, year);
+                }
+
+                // Active toggle preview
+                function updateEditActivePreview() {
+                    previewSubtext.textContent = activeToggle.checked ? '✅ Visible on site' : '🚫 Hidden from site';
+                }
+
+                // Attach live preview handlers
+                urlInput.addEventListener('input', handleEditUrlInput);
+                urlInput.addEventListener('paste', () => setTimeout(handleEditUrlInput, 50));
+                titleInput.addEventListener('input', updateEditCaptionPreview);
+                mediumInput.addEventListener('input', updateEditCaptionPreview);
+                yearInput.addEventListener('input', updateEditCaptionPreview);
+                activeToggle.addEventListener('change', updateEditActivePreview);
+
+                // Focus title input
                 titleInput.focus();
                 titleInput.select();
 
@@ -2453,15 +2601,27 @@
                 const escHandler = (ev) => { if (ev.key === 'Escape') { closeEditModal(); document.removeEventListener('keydown', escHandler); } };
                 document.addEventListener('keydown', escHandler);
 
+                // Helper to show inline message
+                function showEditMessage(text, isError) {
+                    editMessage.textContent = text;
+                    editMessage.className = isError ? 'gallery-edit-message error' : 'gallery-edit-message success';
+                    editMessage.classList.remove('is-hidden');
+                    setTimeout(() => editMessage.classList.add('is-hidden'), 4000);
+                }
+
                 // Save
                 editOverlay.querySelector('#galleryEditForm').addEventListener('submit', async (ev) => {
                     ev.preventDefault();
-                    const newTitle = editOverlay.querySelector('#editTitle').value.trim();
-                    const newMedium = editOverlay.querySelector('#editMedium').value.trim() || null;
-                    const newYear = editOverlay.querySelector('#editYear').value ? parseInt(editOverlay.querySelector('#editYear').value, 10) : null;
+                    
+                    const newUrl = editConvertedUrl || urlInput.value.trim();
+                    const newTitle = titleInput.value.trim();
+                    const newMedium = mediumInput.value.trim() || null;
+                    const newYear = yearInput.value ? parseInt(yearInput.value, 10) : null;
                     const newSort = editOverlay.querySelector('#editSortOrder').value !== '' ? parseInt(editOverlay.querySelector('#editSortOrder').value, 10) : null;
+                    const newActive = activeToggle.checked;
 
-                    if (!newTitle) { showGalleryMsg('Title is required.', true); return; }
+                    if (!newUrl) { showEditMessage('Image URL is required.', true); return; }
+                    if (!newTitle) { showEditMessage('Title is required.', true); return; }
 
                     const saveBtn = editOverlay.querySelector('#editSaveBtn');
                     saveBtn.disabled = true;
@@ -2471,24 +2631,29 @@
                         const { data, error } = await db.rpc('admin_edit_gallery_item', {
                             p_admin_code: adminCode,
                             p_item_id: parseInt(id, 10),
+                            p_img_url: newUrl,
                             p_title: newTitle,
                             p_medium: newMedium,
                             p_year_created: newYear,
-                            p_sort_order: newSort
+                            p_sort_order: newSort,
+                            p_is_active: newActive
                         });
                         if (error) throw new Error(error.message);
                         if (!data || !data.success) {
-                            showGalleryMsg(data?.error || 'Edit failed', true);
+                            showEditMessage(data?.error || 'Update failed', true);
+                            saveBtn.disabled = false;
+                            saveBtn.textContent = 'Save Changes';
                             return;
                         }
-                        showGalleryMsg('Artwork updated!', false);
-                        closeEditModal();
-                        loadGalleryItems();
+                        showEditMessage('✅ Artwork updated successfully!', false);
+                        setTimeout(() => {
+                            closeEditModal();
+                            loadGalleryItems();
+                        }, 1000);
                     } catch (err) {
-                        showGalleryMsg('Error: ' + err.message, true);
-                    } finally {
+                        showEditMessage('Error: ' + err.message, true);
                         saveBtn.disabled = false;
-                        saveBtn.textContent = 'Save';
+                        saveBtn.textContent = 'Save Changes';
                     }
                 });
             }
