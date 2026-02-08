@@ -693,7 +693,7 @@
             border: 1px solid var(--color-border-soft);
             margin-bottom: 0.5rem; background: var(--color-surface);
             transition: border-color 0.15s, opacity 0.15s, transform 0.15s;
-            cursor: grab;
+            cursor: grab; position: relative;
         }
         .gallery-item:hover { border-color: var(--color-border-strong); }
         .gallery-item.inactive { opacity: 0.5; }
@@ -704,12 +704,46 @@
             border-color: var(--color-primary);
             box-shadow: 0 0 0 2px rgba(99,102,241,0.3);
         }
+
+        .gallery-item.drop-before::before,
+        .gallery-item.drop-after::after {
+            content: '';
+            position: absolute;
+            left: 6px;
+            right: 6px;
+            height: 2px;
+            background: var(--color-info);
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+            border-radius: 2px;
+        }
+
+        .gallery-item.drop-before::before { top: -2px; }
+        .gallery-item.drop-after::after { bottom: -2px; }
+
+        .gallery-item.flash {
+            animation: galleryFlash 0.9s ease;
+        }
+
+        @keyframes galleryFlash {
+            0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.5); }
+            100% { box-shadow: 0 0 0 10px rgba(16,185,129,0); }
+        }
         .gallery-item .drag-handle {
             flex: 0 0 auto; cursor: grab; font-size: 1rem;
             color: var(--text-muted); user-select: none;
-            padding: 0 0.15rem; line-height: 1;
+            padding: 0.25rem 0.35rem; line-height: 1;
+            touch-action: none;           /* prevent scroll on touch */
+            -webkit-touch-callout: none;  /* prevent iOS callout */
         }
         .gallery-item .drag-handle:active { cursor: grabbing; }
+        /* While dragging, show grabbing cursor everywhere */
+        body.is-dragging,
+        body.is-dragging * {
+            cursor: grabbing !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            user-select: none !important;
+        }
 
         .gallery-item-thumb {
             width: 40px; height: 40px; border-radius: var(--radius-sm);
@@ -1083,7 +1117,7 @@
             </summary>
 
             <div class="gallery-section-content">
-                <p class="description" style="margin-bottom:1rem;">Add artwork to the website gallery. Paste a Google Drive share link and it will be auto-converted.</p>
+                <p class="description" style="margin-bottom:1rem;">Add artwork to the website gallery. Paste a Google Drive share link and it will be auto-converted. <em>Drag items to cut in line and reorder.</em></p>
 
                 <form id="galleryForm" class="gallery-form">
                     <label for="galleryUrl">Google Drive Image URL</label>
@@ -2190,8 +2224,10 @@
 
             let galleryLoaded = false;
             let galleryItems = [];
+            let lastMovedId = null;
             const galleryDeletePending = new Map();
             const GALLERY_DELETE_MS = 3000;
+            const dragDropTarget = { id: null, position: 'before' };
 
             // ----- Google Drive URL Converter -----
             function extractDriveFileId(url) {
@@ -2385,9 +2421,10 @@
                     const safeId = sanitizeAttr(item.id);
                     const safeSortOrder = sanitizeAttr(item.sort_order);
                     const thumbUrl = item.img_url.startsWith('http') ? sanitizeAttr(item.img_url) : '';
+                    const flashClass = String(item.id) === String(lastMovedId) ? ' flash' : '';
 
                     return `
-                        <div class="gallery-item ${isActive ? '' : 'inactive'}" data-gallery-id="${safeId}" draggable="true">
+                        <div class="gallery-item ${isActive ? '' : 'inactive'}${flashClass}" data-gallery-id="${safeId}">
                             <span class="drag-handle" title="Drag to reorder">⠿</span>
                             <div class="gallery-item-thumb">
                                 ${thumbUrl ? `<img src="${thumbUrl}" alt="${sanitizeText(item.title)}" loading="lazy" onerror="this.style.display='none'">` : '<span style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.2rem;">🖼️</span>'}
@@ -2405,6 +2442,10 @@
                         </div>
                     `;
                 }).join('');
+
+                if (lastMovedId !== null) {
+                    setTimeout(() => { lastMovedId = null; }, 0);
+                }
             }
 
             // ----- Toggle Gallery Item -----
@@ -2759,68 +2800,207 @@
                 }
             });
 
-            // ----- Drag & Drop Reorder -----
+            // ----- Drag & Drop Reorder (Desktop + Touch) -----
             let dragSrcId = null;
+            let currentDropTarget = null;
 
-            gEl.list.addEventListener('dragstart', (e) => {
-                const row = e.target.closest('.gallery-item');
-                if (!row) return;
-                dragSrcId = row.getAttribute('data-gallery-id');
-                row.classList.add('dragging');
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', dragSrcId);
-            });
+            function clearDropIndicators() {
+                if (!gEl.list) return;
+                gEl.list.querySelectorAll('.drag-over, .drop-before, .drop-after').forEach(el => {
+                    el.classList.remove('drag-over', 'drop-before', 'drop-after');
+                });
+                currentDropTarget = null;
+            }
 
-            gEl.list.addEventListener('dragend', (e) => {
-                const row = e.target.closest('.gallery-item');
-                if (row) row.classList.remove('dragging');
-                gEl.list.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-                dragSrcId = null;
-            });
-
-            gEl.list.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                const row = e.target.closest('.gallery-item');
-                if (!row || row.getAttribute('data-gallery-id') === dragSrcId) return;
-                // Only update DOM if target actually changed
-                if (!row.classList.contains('drag-over')) {
-                    gEl.list.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-                    row.classList.add('drag-over');
+            /** Shared helper: update the drop-indicator on a target row */
+            function updateDropIndicator(row, clientY) {
+                if (!row || row.getAttribute('data-gallery-id') === dragSrcId) {
+                    // Hovering over source or outside — clear stale indicators
+                    if (currentDropTarget) {
+                        currentDropTarget.classList.remove('drag-over', 'drop-before', 'drop-after');
+                        currentDropTarget = null;
+                    }
+                    dragDropTarget.id = null;
+                    return;
                 }
-            });
+                const rect = row.getBoundingClientRect();
+                const isBefore = (clientY - rect.top) < rect.height / 2;
 
-            gEl.list.addEventListener('dragleave', (e) => {
-                const row = e.target.closest('.gallery-item');
-                if (row) row.classList.remove('drag-over');
-            });
+                // Switch highlight to new row (avoid clearing everything each frame)
+                if (currentDropTarget && currentDropTarget !== row) {
+                    currentDropTarget.classList.remove('drag-over', 'drop-before', 'drop-after');
+                }
+                currentDropTarget = row;
+                row.classList.remove('drop-before', 'drop-after');
+                row.classList.add('drag-over', isBefore ? 'drop-before' : 'drop-after');
 
-            gEl.list.addEventListener('drop', async (e) => {
-                e.preventDefault();
-                const targetRow = e.target.closest('.gallery-item');
-                if (!targetRow) return;
-                const targetId = targetRow.getAttribute('data-gallery-id');
-                targetRow.classList.remove('drag-over');
+                dragDropTarget.id = row.getAttribute('data-gallery-id');
+                dragDropTarget.position = isBefore ? 'before' : 'after';
+            }
 
-                if (!dragSrcId || dragSrcId === targetId) return;
+            /** Shared helper: execute the move/swap RPC after a drop */
+            async function performDrop() {
+                const targetId = dragDropTarget.id;
+                const targetPosition = dragDropTarget.position || 'before';
+                clearDropIndicators();
 
-                // Swap via RPC
+                if (!dragSrcId || !targetId || dragSrcId === targetId) return;
+
                 try {
-                    const { data, error } = await db.rpc('admin_swap_gallery_order', {
+                    const { data, error } = await db.rpc('admin_move_gallery_item', {
                         p_admin_code: adminCode,
-                        p_item_a: parseInt(dragSrcId, 10),
-                        p_item_b: parseInt(targetId, 10)
+                        p_item_id: parseInt(dragSrcId, 10),
+                        p_target_id: parseInt(targetId, 10),
+                        p_position: targetPosition
                     });
                     if (error) throw new Error(error.message);
                     if (!data || !data.success) {
-                        showGalleryMsg(data?.error || 'Swap failed', true);
+                        showGalleryMsg(data?.error || 'Move failed', true);
                         return;
                     }
-                    showGalleryMsg('Order swapped!', false);
+                    lastMovedId = dragSrcId;
+                    showGalleryMsg('Item moved!', false);
                     loadGalleryItems();
                 } catch (err) {
-                    showGalleryMsg('Error: ' + err.message, true);
+                    const msg = String(err?.message || err || 'Move failed');
+                    const missingRpc = /admin_move_gallery_item|function.*does not exist|not exist/i.test(msg);
+
+                    if (!missingRpc) {
+                        showGalleryMsg('Error: ' + msg, true);
+                        return;
+                    }
+
+                    // Fallback to swap if move RPC is unavailable
+                    showGalleryMsg('Move RPC missing. Using swap fallback.', true);
+                    try {
+                        const { data, error } = await db.rpc('admin_swap_gallery_order', {
+                            p_admin_code: adminCode,
+                            p_item_a: parseInt(dragSrcId, 10),
+                            p_item_b: parseInt(targetId, 10)
+                        });
+                        if (error) throw new Error(error.message);
+                        if (!data || !data.success) {
+                            showGalleryMsg(data?.error || 'Swap failed', true);
+                            return;
+                        }
+                        lastMovedId = dragSrcId;
+                        showGalleryMsg('Item swapped (fallback).', false);
+                        loadGalleryItems();
+                    } catch (swapErr) {
+                        showGalleryMsg('Swap error: ' + (swapErr?.message || swapErr), true);
+                    }
                 }
+            }
+
+            // ——— Shared pointer drag (mouse + touch) ———
+            // Uses manual clone instead of HTML5 drag — no ghost, no snap-back.
+
+            let dragClone = null;
+            let dragSourceRow = null;
+            let dragOffsetY = 0;
+
+            /** Start a drag from a pointer (mouse or touch) */
+            function startDrag(row, clientX, clientY) {
+                dragSrcId = row.getAttribute('data-gallery-id');
+                dragSourceRow = row;
+                row.classList.add('dragging');
+                document.body.classList.add('is-dragging');
+
+                // Build a floating clone that follows the pointer
+                const rect = row.getBoundingClientRect();
+                dragOffsetY = clientY - rect.top;
+                dragClone = row.cloneNode(true);
+                dragClone.style.cssText =
+                    'position:fixed;pointer-events:none;z-index:10000;transition:none;' +
+                    'transform:scale(0.97);opacity:0.88;' +
+                    'box-shadow:0 8px 25px rgba(0,0,0,0.18);border-radius:8px;' +
+                    'width:' + rect.width + 'px;' +
+                    'left:' + rect.left + 'px;' +
+                    'top:' + rect.top + 'px;';
+                document.body.appendChild(dragClone);
+            }
+
+            /** Move the clone + update indicator */
+            function moveDrag(clientX, clientY) {
+                if (dragClone) {
+                    dragClone.style.top = (clientY - dragOffsetY) + 'px';
+                }
+                // Temporarily hide the source row from hit-testing so
+                // elementFromPoint finds the row *underneath* instead
+                if (dragSourceRow) dragSourceRow.style.pointerEvents = 'none';
+                const elBelow = document.elementFromPoint(clientX, clientY);
+                if (dragSourceRow) dragSourceRow.style.pointerEvents = '';
+                const row = elBelow ? elBelow.closest('.gallery-item') : null;
+                updateDropIndicator(row, clientY);
+            }
+
+            /** End drag, perform drop, clean up */
+            async function endDrag() {
+                if (dragSourceRow) dragSourceRow.classList.remove('dragging');
+                if (dragClone) { dragClone.remove(); dragClone = null; }
+                document.body.classList.remove('is-dragging');
+
+                await performDrop();
+
+                dragSourceRow = null;
+                dragSrcId = null;
+                dragDropTarget.id = null;
+                dragDropTarget.position = 'before';
+            }
+
+            // ——— Mouse events (desktop) ———
+
+            gEl.list.addEventListener('mousedown', (e) => {
+                const handle = e.target.closest('.drag-handle');
+                if (!handle) return;
+                const row = handle.closest('.gallery-item');
+                if (!row) return;
+                e.preventDefault(); // prevent text selection
+
+                startDrag(row, e.clientX, e.clientY);
+
+                function onMouseMove(ev) {
+                    ev.preventDefault();
+                    moveDrag(ev.clientX, ev.clientY);
+                }
+
+                async function onMouseUp() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    await endDrag();
+                }
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            // Prevent native HTML5 drag on gallery items entirely
+            gEl.list.addEventListener('dragstart', (e) => {
+                e.preventDefault();
+            });
+
+            // ——— Touch events (mobile / tablet) ———
+
+            gEl.list.addEventListener('touchstart', (e) => {
+                const handle = e.target.closest('.drag-handle');
+                if (!handle) return;
+                const row = handle.closest('.gallery-item');
+                if (!row) return;
+
+                const touch = e.touches[0];
+                startDrag(row, touch.clientX, touch.clientY);
+            }, { passive: true });
+
+            gEl.list.addEventListener('touchmove', (e) => {
+                if (!dragSourceRow) return;
+                e.preventDefault(); // prevent scrolling while dragging
+                const touch = e.touches[0];
+                moveDrag(touch.clientX, touch.clientY);
+            }, { passive: false });
+
+            gEl.list.addEventListener('touchend', async () => {
+                if (!dragSourceRow) return;
+                await endDrag();
             });
 
             // ----- Load on section open -----
