@@ -31,19 +31,20 @@ class MasonryGallery {
     this.boundHandleResize = () => this.handleResize();
   }
   
-  init(items) {
+  async init(items) {
     this.items = items;
-    this.imagesReady = false;
+    
+  // Preload images/videos and capture natural dimensions
+  await this.preloadMedia(items);
+    this.imagesReady = true;
 
-    // STEP 1: Immediate render with default 1:1 aspect ratios (Optimistic UI)
-    // This gives users instant visual feedback instead of a blank screen
-    console.log('🚀 Fast render: Initializing with default aspect ratios');
+    // Merge natural dimensions onto items and compute aspect ratios
     this.items = this.items.map(i => {
       const src = i.video || i.img;
-      // Use provided dimensions or default to square (1:1)
-      const naturalWidth = i.width || 1000;
-      const naturalHeight = i.height || 1000;
-      const ratio = naturalHeight / naturalWidth;
+      const meta = this.imageMeta[src] || {};
+      const naturalWidth = meta.naturalWidth || i.width || 1000;
+      const naturalHeight = meta.naturalHeight || i.height || 1000;
+      const ratio = naturalHeight / naturalWidth; // h/w
       return { ...i, naturalWidth, naturalHeight, ratio };
     });
     
@@ -53,56 +54,13 @@ class MasonryGallery {
     // Set up resize observer
     this.setupResizeObserver();
     
-    // Initial layout with default ratios
+    // Initial layout
     this.calculateGrid();
     this.render();
     this.animateIn();
     
     // Set up window resize
     window.addEventListener('resize', this.boundHandleResize);
-
-    // STEP 2: Background hydration (non-blocking)
-    // Load real media dimensions and snap to correct layout
-    this.hydrateLayout(items);
-  }
-
-  async hydrateLayout(items) {
-    const TIMEOUT_MS = 3000;
-    
-    // Safety timer to prevent infinite loading
-    const timeoutPromise = new Promise(resolve => 
-      setTimeout(() => {
-        console.warn(`⏱️ Media load timeout (${TIMEOUT_MS}ms) - rendering with available data`);
-        resolve('timeout');
-      }, TIMEOUT_MS)
-    );
-
-    // Race between actual loading and timeout
-    await Promise.race([
-      this.preloadMedia(items).catch(err => {
-        console.error('Media preload error:', err);
-        return 'error';
-      }),
-      timeoutPromise
-    ]);
-
-    // STEP 3: Progressive enhancement - snap to real dimensions
-    console.log('✨ Hydration complete: Updating to real dimensions');
-    this.imagesReady = true;
-
-    // Re-merge items with actual metadata (fallback to defaults if still missing)
-    this.items = this.items.map(i => {
-      const src = i.video || i.img;
-      const meta = this.imageMeta[src] || {};
-      const naturalWidth = meta.naturalWidth || i.naturalWidth || i.width || 1000;
-      const naturalHeight = meta.naturalHeight || i.naturalHeight || i.height || 1000;
-      const ratio = naturalHeight / naturalWidth;
-      return { ...i, naturalWidth, naturalHeight, ratio };
-    });
-
-    // Recalculate and smoothly transition to correct layout
-    this.calculateGrid();
-    this.updateLayout();
   }
   
   async preloadMedia(items) {
@@ -426,7 +384,6 @@ class MasonryGallery {
       const element = this.container.querySelector(`[data-key="${item.id}"]`);
       if (!element) return;
       
-      // Smooth transition for progressive enhancement
       element.style.transition = `all ${this.options.duration}s cubic-bezier(0.22, 1, 0.36, 1)`;
       element.style.transform = `translate(${item.x}px, ${item.y}px)`;
       element.style.width = `${item.w}px`;
@@ -438,7 +395,6 @@ class MasonryGallery {
     });
     
     const maxHeight = Math.max(...this.grid.map(item => item.y + item.h));
-    this.container.style.transition = `height ${this.options.duration}s cubic-bezier(0.22, 1, 0.36, 1)`;
     this.container.style.height = `${maxHeight}px`;
   }
   
