@@ -908,9 +908,15 @@
 <body>
     <main class="card">
         <div class="card-header">
-            <h1>Review Invite Generator</h1>
-            <p class="description">Create secure, one-time review links for customers</p>
+            <h1>🎨 JossDraws Admin Dashboard</h1>
+            <p class="description">Manage review links, gallery content, and site settings</p>
         </div>
+
+        <details class="recent-links" open>
+            <summary style="cursor:pointer; font-weight:600; font-size:0.95rem; color:var(--color-text); list-style:none; display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0; margin-bottom:0.75rem;">
+                <span>📧 Review Link Generator</span>
+                <span style="font-size:0.8rem; opacity:0.4;">▼</span>
+            </summary>
 
         <form id="generatorForm">
             <label for="sourceSelect">Select Source Type</label>
@@ -943,6 +949,7 @@
             </div>
             <div class="source-tag" id="sourceTag"></div>
         </div>
+        </details>
 
         <!-- Performance Stats Removed (Redundant) -->
 
@@ -951,7 +958,7 @@
         <div class="recent-links is-hidden" id="recentLinksContainer">
             <div class="recent-links-title-row">
                 <button type="button" class="recent-links-title" id="recentLinksToggle" aria-expanded="false" aria-controls="recentLinks">
-                    <span id="recentLinksTitle">Generated Links</span>
+                    <span id="recentLinksTitle">📋 Recent Review Links</span>
                     <span class="expand-arrow collapsed" id="expandArrow">▼</span>
                 </button>
                 <button type="button" class="filter-badge clear-filter is-hidden" id="clearFilterBtn" title="Clear filter">✖ Clear</button>
