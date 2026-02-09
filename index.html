@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Joslynn Losee | Artist Gallery & Shop</title>
+  <meta name="description" content="Official gallery and shop for Joslynn Losee. View artwork, custom pet portraits, coloring books, and more.">
+  
+  <!-- DNS prefetch & preconnect for external image/CDN hosts -->
+  <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://i.etsystatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="dns-prefetch" href="https://lh3.googleusercontent.com">
+  <link rel="dns-prefetch" href="https://i.etsystatic.com">
+  <link rel="dns-prefetch" href="https://v.etsystatic.com">
+  <link rel="dns-prefetch" href="https://pciubbwphwpnptgawgok.supabase.co">
+  
+  <!-- Defer Supabase — not needed until reviews tab is opened -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <link rel="stylesheet" href="css/Styles.css">
+  
+  <!-- Open Graph / Social Media -->
+  <meta property="og:title" content="Joslynn Losee | Artist Gallery">
+  <meta property="og:description" content="View artwork and shop custom creations">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw">
+  <link rel="canonical" href="https://orangedrewce.github.io/JossDraws/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Joslynn Losee | Artist Gallery">
+  <meta name="twitter:description" content="View artwork and shop custom creations">
+  <meta name="twitter:image" content="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw">
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  
+  <!-- JSON-LD Structured Data for SEO -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Joslynn Losee",
+    "jobTitle": Graphic designer"                                                                                                                                                                                                                                                                                                                                                                                               Artist",
+    "description": "Artist specializing in illustration and graphic design, custom pet portraits, and digital art",
+    "url": "https://orangedrewce.github.io/JossDraws/",
+    "image": "https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Salt Lake City",
+      "addressRegion": "UT",
+      "postalCode": "84107"
+    },
+    "sameAs": [
+      "https://www.etsy.com/shop/JossDrawsLLC",
+      "https://www.instagram.com/joss.draws/",
+      "https://www.facebook.com/Timeless.Artss"
+    ]
+  }
+  </script>
+</head>
+<body>
+  <!-- Skip link for accessibility -->
+  <a href="#main" class="skip-link">Skip to main content</a>
+
+  <!-- Tab radio inputs - must come before header for CSS sibling selector -->
+  <input type="radio" name="tabs" id="tab-home" checked aria-label="Home tab" hidden aria-hidden="true">
+  <input type="radio" name="tabs" id="tab-gallery" aria-label="Gallery tab" hidden aria-hidden="true">
+  <input type="radio" name="tabs" id="tab-about" aria-label="About tab" hidden aria-hidden="true">
+  <input type="radio" name="tabs" id="tab-shop" aria-label="Shop tab" hidden aria-hidden="true">
+  <input type="radio" name="tabs" id="tab-contact" aria-label="Contact tab" hidden aria-hidden="true">
+  <input type="radio" name="tabs" id="tab-reviews" aria-label="Reviews tab" hidden aria-hidden="true">
+
+  <script src="js/page-inline.js"></script>
+
+  <!-- Header -->
+  <header role="banner">
+    <canvas id="shaderCanvas" class="header-background" aria-hidden="true"></canvas>
+    <div class="header-container">
+      <h1 class="logo"><img src="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw" width="250" height="250" alt="JossDraws Home" fetchpriority="high" decoding="async"></h1>
+      
+      <nav aria-label="Main navigation">
+        <ul>
+          <li><label for="tab-home" tabindex="0"><strong>Home</strong></label></li>
+          <li><label for="tab-gallery" tabindex="0"><strong>Gallery</strong></label></li>
+          <li><label for="tab-about" tabindex="0"><strong>About</strong></label></li>
+          <li><label for="tab-shop" tabindex="0"><strong>Shop</strong></label></li>
+          <li><label for="tab-contact" tabindex="0"><strong>Contact</strong></label></li>
+          <li><label for="tab-reviews" tabindex="0"><strong>Reviews</strong></label></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main id="main" role="main">
+    
+    <!-- Home Tab -->
+    <section class="tab-home hero" aria-labelledby="hero-heading">
+      <h2 id="hero-heading" class="sr-only">Welcome</h2>
+      <a href="#contact-heading" class="hero-image-link" data-tab-target="contact" aria-label="Contact for commissions">
+        <div class="hero-slideshow">
+          <!-- Random image will be injected here by JavaScript -->
+        </div>
+        <div class="hero-overlay-text">
+          <p>Want something created? Tap here.</p>
+        </div>
+      </a>
+    </section>
+
+    <!-- Gallery Tab -->
+    <section class="tab-gallery" aria-labelledby="gallery-title">
+      <div class="hero">
+        <h2 id="gallery-heading">Joslynn Losee</h2>
+      </div>
+
+      <div class="container">
+        <h3 id="gallery-title" class="sr-only">Gallery</h3>
+        <div id="gallery-filters" class="gallery-filters" hidden>
+          <select id="filterMedium" aria-label="Filter by medium">
+            <option value="">All Mediums</option>
+          </select>
+          <select id="filterYear" aria-label="Filter by year">
+            <option value="">All Years</option>
+          </select>
+          <select id="sortDate" aria-label="Sort by date">
+            <option value="default">Default Order</option>
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+          </select>
+        </div>
+        <div id="masonry-gallery">
+          <p class="muted-center loading-message">Loading artwork...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- About Tab -->
+    <section class="tab-about container" aria-labelledby="about-heading">
+      <h2 id="about-heading">About</h2>
+      
+      <div class="grid grid-2">
+        <img src="https://lh3.googleusercontent.com/d/1t-dOjZJLTpkC2UdUmhvdRNWlfm8wM1pG" loading="lazy" decoding="async" width="800" height="800" alt="Joslynn Losee - The artist behind the work">
+        <div>
+          <p>My name is <strong>Joslynn Losee</strong> I am a 25 year old multidisciplinary artist who specializes in illustration and graphic design.
+          <br><br></p>
+          <h3>A <em>bit</em> about me</h3>
+<p>I'm a local Salt Lake City artist whose creative career began in 2019 with the launch of my Etsy shop. After graduating from MTECH in 2021 with a degree in graphic design, one of my earliest listings unexpectedly went viral, propelling me into the world of professional art.
+<br><br>Through experimentation, learning from mistakes, and persistent dedication, I've honed my techniques and refined my artistic process. I'm deeply grateful to the friends and family who have supported me along the way.
+<br><br>I look forward to continuing to create art that brings joy to everyone who encounters it.</p>
+        </div>
+      </div>
+    </section>
+    <!-- Hidden resume section
+       <h3>Resume</h3>
+      <div class="resume-container">
+        <a href="https://drive.google.com/file/d/1u0ET_C9DZ1yEbNUBjpei4SajegM2gkfw/view?usp=sharing" class="btn" target="_blank" rel="noopener noreferrer">
+          View or Download Resume (PDF)
+        </a>
+      </div>
+    </section> -->
+
+    <!-- Shop Tab -->
+    <section class="tab-shop container" aria-labelledby="shop-heading">
+      <h2 id="shop-heading">Shop</h2>
+      
+      <div class="shop-grid-wrapper">
+        <div class="grid grid-3" id="shop-grid">
+          <!-- Best Sellers Section -->
+
+                    <article class="card" data-section="Best sellers">
+            <div class="image-carousel" role="region" aria-label="Product images for Custom Pet Portrait">
+              <button class="arrow left" aria-label="Previous image">‹</button>
+              <div class="media-container">
+                <img src="https://i.etsystatic.com/25958263/r/il/015511/5965017745/il_794xN.5965017745_b06b.jpg" 
+                     loading="lazy"
+                     width="794"
+                     height="794"
+                     alt="Custom pet portrait example" 
+                     data-media='["https://i.etsystatic.com/25958263/r/il/015511/5965017745/il_794xN.5965017745_b06b.jpg","https://i.etsystatic.com/25958263/r/il/113a9c/5970375331/il_794xN.5970375331_e4vt.jpg","https://i.etsystatic.com/25958263/r/il/422260/5922290370/il_794xN.5922290370_4j19.jpg","https://i.etsystatic.com/25958263/r/il/02b227/5762088387/il_1140xN.5762088387_lsw8.jpg","https://i.etsystatic.com/25958263/r/il/cc43cf/5714027494/il_1140xN.5714027494_cwah.jpg","https://i.etsystatic.com/25958263/r/il/dfac4d/5970378481/il_1140xN.5970378481_lmrg.jpg","https://i.etsystatic.com/25958263/r/il/098190/5714027910/il_1140xN.5714027910_4y00.jpg","https://i.etsystatic.com/25958263/r/il/b6be33/5970377781/il_1140xN.5970377781_scf1.jpg","https://i.etsystatic.com/25958263/r/il/c58d78/5762088139/il_1140xN.5762088139_e2zr.jpg"]'>
+              </div>
+              <button class="arrow right" aria-label="Next image">›</button>
+            </div>
+            <div class="card-content">
+              <h3>Custom Pet Portrait</h3>
+              <p><strong>$80.00+</strong></p>
+              <a href="https://www.etsy.com/listing/1517173888/custom-pet-portrait" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
+            </div>
+          </article>
+
+          <article class="card" data-section="Best sellers">
+            <div class="image-carousel" role="region" aria-label="Product images for Bugs & Blossoms Coloring Book">
+              <button class="arrow left" aria-label="Previous image">‹</button>
+              <div class="media-container">
+                <img src="https://i.etsystatic.com/25958263/r/il/b95b4f/7362253835/il_1140xN.7362253835_4a4u.jpg" 
+                     loading="lazy"
+                     width="1140"
+                     height="1140"
+                     alt="Bugs & Blossoms Coloring Book cover" 
+                     data-media='["https://i.etsystatic.com/25958263/r/il/b95b4f/7362253835/il_1140xN.7362253835_4a4u.jpg","https://v.etsystatic.com/video/upload/ac_none,du_15,q_auto:good/file_uapxzl.mp4","https://i.etsystatic.com/25958263/r/il/5a2cd7/7362252905/il_794xN.7362252905_7f97.jpg","https://i.etsystatic.com/25958263/r/il/5548ce/7314294768/il_1140xN.7314294768_8z7l.jpg","https://i.etsystatic.com/25958263/r/il/de0543/7362252909/il_1140xN.7362252909_tqib.jpg"]'>
+              </div>
+              <button class="arrow right" aria-label="Next image">›</button>
+            </div>
+            <div class="card-content">
+              <h3>Bugs & Blossoms - Coloring Book</h3>
+              <p><strong>$23.50</strong></p>
+              <a href="https://www.etsy.com/listing/4391097322/bugs-blossoms-coloring-book" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
+            </div>
+          </article>
+
+          <article class="card" data-section="Best sellers">
+            <div class="image-carousel" role="region" aria-label="Product images for faceless-portraits">
+              <button class="arrow left" aria-label="Previous image">‹</button>
+              <div class="media-container">
+                <img src="https://lh3.googleusercontent.com/d/16euNg2ICjjUo9f_3dCspbOeqGbhtHVel"
+                     loading="lazy"
+                     width="800"
+                     height="800"
+                     alt="Faceless portrait artwork example" 
+                     data-media='["https://lh3.googleusercontent.com/d/16euNg2ICjjUo9f_3dCspbOeqGbhtHVel","https://lh3.googleusercontent.com/d/17ZzvUNf14RbIc73L6nyI5tHMWihVQEtQ" , "https://lh3.googleusercontent.com/d/1psLbjms-CQRyLp0TVi5IHPbdoUerxja6" , "https://lh3.googleusercontent.com/d/1iksM3-0qlCySUIK7R2E9RlfIkdKEmjIq" , "https://lh3.googleusercontent.com/d/1Qe10C5JpGft_hqXbIZpUigLJjJKsHrq1" , "https://lh3.googleusercontent.com/d/1YAXeJ6BsspIEusB5IsdNsEEMVP_4bb4O" , "https://lh3.googleusercontent.com/d/1EjTWxEtG_5s6vSNTcynGUpakSN9msXeU"]'>
+              </div>
+              <button class="arrow right" aria-label="Next image">›</button>
+            </div>
+            <div class="card-content">
+              <h3>Faceless portraits</h3>
+              <p><strong>$79.00+</strong></p>
+              <a href="https://www.etsy.com/listing/1517686781/faceless-portrait-printed-on-canvas" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
+            </div>
+          </article>
+
+          <article class="card" data-section="page 2">
+            <div class="image-carousel" role="region" aria-label="Product images for The Art Prints ">
+              <button class="arrow left" aria-label="Previous image">‹</button>
+              <div class="media-container">
+                <img src="https://i.etsystatic.com/25958263/r/il/f6853e/5174654859/il_1140xN.5174654859_1vh1.jpg"
+                     loading="lazy"
+                     width="1140"
+                     height="1140"
+                     alt="Lost in space art print" 
+                     data-media='["https://i.etsystatic.com/25958263/r/il/f6853e/5174654859/il_1140xN.5174654859_1vh1.jpg","https://i.etsystatic.com/25958263/r/il/3d5a55/3285883702/il_1140xN.3285883702_qj40.jpg" , "https://i.etsystatic.com/25958263/r/il/e30bd6/3420988914/il_1140xN.3420988914_1r8e.jpg" , "https://i.etsystatic.com/25958263/r/il/50c61b/2953794688/il_1140xN.2953794688_ooj1.jpg"]'>
+              </div>
+              <button class="arrow right" aria-label="Next image">›</button>
+            </div>
+            <div class="card-content">
+              <h3>Art Prints</h3>
+              <p><strong>$18.00</strong></p>
+              <a href="https://www.etsy.com/shop/JossDrawsLLC?section_id=32688825" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
+            </div>
+          </article>
+
+          <article class="card" data-section="Page 2">
+            <div class="image-carousel" role="region" aria-label="Product images for Sticker">
+              <button class="arrow left" aria-label="Previous image">‹</button>
+              <div class="media-container">
+                <img src="https://i.etsystatic.com/25958263/r/il/232611/6104053343/il_1140xN.6104053343_7ady.jpg"
+                     loading="lazy"
+                     width="1140"
+                     height="1140"
+                     alt="Silly Goose Holographic Sticker" 
+                     data-media='["https://i.etsystatic.com/25958263/r/il/232611/6104053343/il_1140xN.6104053343_7ady.jpg","https://i.etsystatic.com/25958263/r/il/962517/6055085414/il_1140xN.6055085414_3dtq.jpg" , "https://i.etsystatic.com/25958263/r/il/3d154b/6055085550/il_1140xN.6055085550_tewj.jpg" , "https://i.etsystatic.com/25958263/r/il/4cf967/6104042909/il_1140xN.6104042909_6vqy.jpg" , "https://i.etsystatic.com/25958263/r/il/399dd6/6459740696/il_1140xN.6459740696_j19g.jpg" , "https://i.etsystatic.com/25958263/r/il/8ca627/6103142173/il_1140xN.6103142173_fgqa.jpg" , "https://i.etsystatic.com/25958263/r/il/49d43b/6104046985/il_1140xN.6104046985_q64a.jpg" , "https://i.etsystatic.com/25958263/r/il/dc1728/6055821626/il_1140xN.6055821626_70lf.jpg" , "https://i.etsystatic.com/25958263/r/il/729698/6055819612/il_1140xN.6055819612_e53f.jpg" , "https://i.etsystatic.com/25958263/r/il/41d541/6055993106/il_1140xN.6055993106_dxta.jpg" , "https://i.etsystatic.com/25958263/r/il/e320af/6105024551/il_1140xN.6105024551_kt31.jpg" , "https://i.etsystatic.com/25958263/r/il/71ac50/6104052719/il_1140xN.6104052719_a31o.jpg"]'>
+              </div>
+              <button class="arrow right" aria-label="Next image">›</button>
+            </div>
+            <div class="card-content">
+              <h3>Stickers</h3>
+              <p><strong>$2.75+</strong></p>
+              <a href="https://www.etsy.com/shop/JossDrawsLLC?section_id=32672192" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
+            </div>
+          </article>
+
+          <article class="card" data-section="Pinned">
+            <div class="image-carousel" role="region" aria-label="Product images for Bookmarks">
+              <button class="arrow left" aria-label="Previous image">‹</button>
+              <div class="media-container">
+                <img src="https://i.etsystatic.com/25958263/r/il/39da5a/5914582142/il_1140xN.5914582142_o6dx.jpg"
+                     loading="lazy"
+                     width="1140"
+                     height="1140"
+                     alt="Bookmark product images" 
+                     data-media='["https://i.etsystatic.com/25958263/r/il/39da5a/5914582142/il_1140xN.5914582142_o6dx.jpg","https://i.etsystatic.com/25958263/r/il/ee1668/5914577438/il_1140xN.5914577438_ntqp.jpg" ,"https://i.etsystatic.com/25958263/r/il/5f631a/6122024532/il_1140xN.6122024532_8xwr.jpg"]'>
+              </div>
+              <button class="arrow right" aria-label="Next image">›</button>
+            </div>
+            <div class="card-content">
+              <h3>Bookmarks</h3>
+              <p><strong>$8.00</strong></p>
+              <a href="https://www.etsy.com/shop/JossDrawsLLC?section_id=34093055" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
+            </div>
+          </article>
+
+          <!-- Extra 2 Section (disabled) -->
+          <!--
+          <article class="card" data-section="Extra 2">
+            <div class="image-carousel" role="region" aria-label="Product images for Extra 2">
+              <button class="arrow left" aria-label="Previous image">&#8592;</button>
+              <div class="media-container">
+                <img src="https://loremipsum.imgix.net/CZhWYZJ3UEpUrYOwBqZZ3/846c9c7fdc261fe79205833c6787f3fc/lorem-ipsum-magazine-layout_copy.jpg?w=192&q=60&auto=format,compress" alt="Blank product image" 
+                     data-media='["https://loremipsum.imgix.net/CZhWYZJ3UEpUrYOwBqZZ3/846c9c7fdc261fe79205833c6787f3fc/lorem-ipsum-magazine-layout_copy.jpg?w=192&q=60&auto=format,compress","https://loremipsum.imgix.net/5vCfGucT8waG1ErycNnTOo/c3277113e4a0bbe6e522813001653cf6/lorem-ipsum-generator-cicero-engraving.png?w=192&q=60&auto=format,compress"]'>
+              </div>
+              <button class="arrow right" aria-label="Next image">&#8594;</button>
+            </div>
+            <div class="card-content">
+              <h3>Extra item 5</h3>
+              <p><strong>$39.99</strong></p>
+              <a href="https://www.etsy.com/shop/JossDrawsLLC" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
+            </div>
+          </article>
+
+          <article class="card" data-section="Extra 2">
+            <div class="image-carousel" role="region" aria-label="Product images for Extra 2">
+              <button class="arrow left" aria-label="Previous image">&#8592;</button>
+              <div class="media-container">
+                <img src="https://loremipsum.imgix.net/CZhWYZJ3UEpUrYOwBqZZ3/846c9c7fdc261fe79205833c6787f3fc/lorem-ipsum-magazine-layout_copy.jpg?w=192&q=60&auto=format,compress" alt="Blank product image" 
+                     data-media='["https://loremipsum.imgix.net/CZhWYZJ3UEpUrYOwBqZZ3/846c9c7fdc261fe79205833c6787f3fc/lorem-ipsum-magazine-layout_copy.jpg?w=192&q=60&auto=format,compress","https://loremipsum.imgix.net/5vCfGucT8waG1ErycNnTOo/c3277113e4a0bbe6e522813001653cf6/lorem-ipsum-generator-cicero-engraving.png?w=192&q=60&auto=format,compress"]'>
+              </div>
+              <button class="arrow right" aria-label="Next image">&#8594;</button>
+            </div>
+            <div class="card-content">
+              <h3>Extra item 6</h3>
+              <p><strong>$44.99</strong></p>
+              <a href="https://www.etsy.com/shop/JossDrawsLLC" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
+            </div>
+          </article>
+
+          <article class="card" data-section="Extra 2">
+            <div class="image-carousel" role="region" aria-label="Product images for Extra 2">
+              <button class="arrow left" aria-label="Previous image">&#8592;</button>
+              <div class="media-container">
+                <img src="https://loremipsum.imgix.net/CZhWYZJ3UEpUrYOwBqZZ3/846c9c7fdc261fe79205833c6787f3fc/lorem-ipsum-magazine-layout_copy.jpg?w=192&q=60&auto=format,compress" alt="Blank product image" 
+                     data-media='["https://loremipsum.imgix.net/CZhWYZJ3UEpUrYOwBqZZ3/846c9c7fdc261fe79205833c6787f3fc/lorem-ipsum-magazine-layout_copy.jpg?w=192&q=60&auto=format,compress","https://loremipsum.imgix.net/5vCfGucT8waG1ErycNnTOo/c3277113e4a0bbe6e522813001653cf6/lorem-ipsum-generator-cicero-engraving.png?w=192&q=60&auto=format,compress"]'>
+              </div>
+              <button class="arrow right" aria-label="Next image">&#8594;</button>
+            </div>
+            <div class="card-content">
+              <h3>Extra item 7</h3>
+              <p><strong>$49.99</strong></p>
+              <a href="https://www.etsy.com/shop/JossDrawsLLC" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
+            </div>
+          </article>
+          -->
+        </div> <!-- end #shop-grid -->
+
+        <!-- Section labels shown above current page -->
+      </div>
+
+      <!-- Pagination - Fixed to bottom -->
+      <nav aria-label="Shop pagination" class="shop-pagination-nav">
+        <ul class="pagination">
+          <li><a href="#" class="shop-prev" aria-label="Previous page" aria-disabled="true">‹</a></li>
+          <li><a href="#" class="shop-page-num" aria-current="page">1</a></li>
+          <li><a href="#" class="shop-page-num">2</a></li>
+          <li><a href="#" class="shop-page-num">3</a></li>
+          <li><a href="#" class="shop-next" aria-label="Next page">›</a></li>
+        </ul>
+      </nav>
+    </section>
+
+    <!-- Reviews Tab -->
+    <section class="tab-reviews container" aria-labelledby="reviews-heading">
+      <h2 id="reviews-heading">Client Love</h2>
+      <p class="muted-center section-subtitle">Kind words from happy customers.</p>
+      
+      <div id="review-carousel-container" class="carousel-wrapper">
+        <div class="carousel-track" id="track">
+          <div class="review-placeholder">Loading reviews...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact Tab -->
+    <section class="tab-contact container" aria-labelledby="contact-heading">
+      <h2 id="contact-heading">Contact</h2>
+      
+      <div class="grid grid-2">
+        <form id="contact-form" action="https://formspree.io/f/xeopkjyk" method="POST">
+          <div id="form-message" role="alert" aria-live="polite"></div>
+          
+          <div>
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required>
+          </div>
+          
+          <div>
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+          </div>
+          
+          <div>
+            <label for="message">Message</label>
+            <textarea id="message" name="message" rows="5" required></textarea>
+          </div>
+          
+          <button type="submit" class="btn">Send Message</button>
+        </form>
+
+    <div class="contact-info">
+      <h3>I'd love to make you something!</h3>
+      <p>Let's bring your idea to life.</p>
+
+      </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer role="contentinfo">
+    <svg class="footer-background" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 100" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0,50 Q300,100 600,50 T1200,50 L1200,0 L0,0 Z" fill="#f0f0f0"/>
+    </svg>
+  
+    
+    <nav aria-label="Social media">
+      <ul>
+        <li><a href="https://www.etsy.com/shop/JossDrawsLLC" target="_blank" rel="noopener noreferrer">Etsy</a></li>
+        <li><a href="https://www.instagram.com/joss.draws/" target="_blank" rel="noopener noreferrer">Instagram</a></li>
+        <li><a href="https://www.facebook.com/Timeless.Artss" target="_blank" rel="noopener noreferrer">Facebook</a></li>
+      </ul>
+    </nav>
+
+    <p>&copy; 2026 JossDrawsLLC.</p>
+    <p class="ai-notice"><strong>None</strong> of this work is authorized to be used in AI-generated content or training.</p>
+  </footer>
+
+<script src="js/hero-slideshow.js"></script>
+<script src="js/click-spark.js"></script>
+<script src="js/tabs-router.js"></script>
+<script src="js/masonry-gallery.js"></script>
+<script async src="js/FormSubmission.js"></script>
+<script async src="js/webgl.js"></script>
+
+</body>
+</html>
