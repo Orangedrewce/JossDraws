@@ -1,0 +1,3143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Admin | Review Link Generator</title>
+    <link rel="preconnect" href="https://pciubbwphwpnptgawgok.supabase.co">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; }
+
+        .is-hidden { display: none !important; }
+
+        :root {
+            --color-bg: #f9f9f9;
+            --color-card: #ffffff;
+            --color-white: #ffffff;
+            --color-black: #000000;
+            --color-text: #333;
+            --text-muted: #666;
+            --text-muted-soft: #999;
+            --text-muted-strong: #555;
+
+            --color-border: #ddd;
+            --color-border-soft: #eee;
+            --color-border-strong: #ccc;
+
+            --color-surface: #ffffff;
+            --color-surface-2: #f9f9f9;
+            --color-surface-3: #f5f5f5;
+
+            --color-primary: #000000;
+            --color-primary-hover: #333;
+            --color-primary-light: #f5f5f5;
+
+            --color-success: #10b981;
+            --color-success-hover: #059669;
+            --color-success-dark: #065f46;
+            --color-success-bg: #ecfdf5;
+
+            --color-info: #3b82f6;
+            --color-info-hover: #2563eb;
+
+            --color-danger: #ef4444;
+            --color-danger-bg: #fef2f2;
+            --color-danger-text: #991b1b;
+            --color-danger-hover: #dc2626;
+
+            --color-warning: #f59e0b;
+            --color-warning-dark: #b45309;
+            --color-warning-bg: #fffbeb;
+
+            --radius-sm: 4px;
+            --radius-md: 6px;
+            --radius-lg: 12px;
+            --radius-pill: 100px;
+
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
+            --shadow-lg: 0 4px 15px rgba(0,0,0,0.05);
+            --shadow-xl: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        body { 
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 2rem; 
+            max-width: 620px; 
+            margin: 0 auto; 
+            background: var(--color-bg);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .card { 
+            background: var(--color-card); 
+            padding: 2.5rem; 
+            border-radius: var(--radius-lg); 
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--color-border-soft);
+        }
+        
+        h1 { 
+            margin: 0 0 0.25rem 0;
+            font-size: 1.5rem;
+            letter-spacing: -0.02em;
+            color: var(--color-text);
+        }
+        
+        .description {
+            text-align: center;
+            color: var(--text-muted);
+            margin: 0;
+            font-size: 0.95rem;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--color-text);
+            font-size: 0.9rem;
+            letter-spacing: 0.01em;
+        }
+        
+        select, button { 
+            width: 100%; 
+            font-size: 1rem;
+        }
+        
+        select { 
+            padding: 0.75rem; 
+            margin-bottom: 1.25rem; 
+            border: 1px solid var(--color-border-strong); 
+            border-radius: var(--radius-md);
+            background: var(--color-white);
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            color: var(--color-text);
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            padding-right: 2.5rem;
+        }
+        
+        select:hover {
+            border-color: var(--color-primary);
+        }
+        
+        select:focus {
+            outline: 2px solid var(--color-primary);
+            outline-offset: -1px;
+            border-color: var(--color-primary);
+        }
+        
+        button { 
+            background: var(--color-primary); 
+            color: var(--color-white); 
+            border: none; 
+            padding: 0.9rem 2rem; 
+            font-size: 1rem; 
+            font-weight: 600;
+            cursor: pointer; 
+            border-radius: var(--radius-md); 
+            transition: background 0.2s, box-shadow 0.2s;
+            letter-spacing: 0.01em;
+        }
+        
+        button:hover:not(:disabled) { 
+            background: var(--color-primary-hover);
+            box-shadow: var(--shadow-md);
+        }
+        
+        button:active:not(:disabled) {
+            box-shadow: none;
+        }
+        
+        button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+        
+        #resultArea { 
+            margin-top: 1.5rem; 
+            padding: 1.5rem; 
+            background: var(--color-success-bg); 
+            border: 1px solid var(--color-success); 
+            border-radius: var(--radius-md);
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .result-label {
+            font-weight: 600;
+            color: var(--color-success-dark);
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+        
+        .link-container {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+        
+        input.link-box { 
+            flex: 1;
+            padding: 0.7rem 0.85rem; 
+            font-size: 0.9rem; 
+            border: 1px solid var(--color-success); 
+            background: var(--color-white); 
+            border-radius: var(--radius-md);
+            font-family: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+            color: var(--color-text);
+        }
+
+        input.link-box:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+        }
+        
+        .copy-btn {
+            padding: 0.7rem 1.4rem;
+            background: var(--color-success);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+            white-space: nowrap;
+            font-size: 0.9rem;
+        }
+        
+        .copy-btn:hover {
+            background: var(--color-success-hover);
+        }
+        
+        .copy-btn.copied {
+            background: var(--color-success-dark);
+        }
+        
+        .info-text { 
+            font-size: 0.85rem; 
+            color: var(--text-muted-strong); 
+            margin-top: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .source-tag {
+            display: inline-block;
+            background: var(--color-white);
+            border: 1px solid var(--color-success);
+            padding: 0.3rem 0.85rem;
+            border-radius: var(--radius-pill);
+            font-size: 0.8rem;
+            margin-top: 0.75rem;
+            font-weight: 600;
+            color: var(--color-success-dark);
+        }
+        
+        .error-message {
+            background: var(--color-danger-bg);
+            border: 1px solid var(--color-danger);
+            color: var(--color-danger-text);
+            padding: 1rem 1.25rem;
+            border-radius: var(--radius-md);
+            margin-top: 1rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-pill);
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 1rem;
+        }
+        
+        .status-badge.healthy {
+            background: var(--color-success-bg);
+            color: var(--color-success-dark);
+        }
+        
+        .status-badge.warning {
+            background: var(--color-warning-bg);
+            color: var(--color-warning-dark);
+        }
+        
+        .expiration-info {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+        
+        .recent-links {
+            margin-top: 2rem;
+            padding: 1.25rem;
+            background: var(--color-surface-2);
+            border-radius: var(--radius-md);
+        }
+
+        .links-sentinel {
+            padding: 0.75rem 0;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-muted-soft);
+        }
+
+        .links-sentinel strong {
+            color: var(--color-text);
+        }
+        
+        .recent-links-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .recent-links-title {
+            font-weight: 600;
+            color: var(--color-text);
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.2s;
+            background: transparent;
+            border: none;
+            padding: 0.25rem 0;
+            text-align: left;
+            flex: 1;
+        }
+        
+        .recent-links-title:hover {
+            color: var(--color-text);
+        }
+
+        .recent-links-title:hover:not(:disabled),
+        .recent-links-title:active:not(:disabled) {
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .filter-hint {
+            font-size: 0.8rem;
+            color: var(--text-muted-soft);
+            font-style: italic;
+            margin-bottom: 1rem;
+            padding: 0;
+        }
+        
+        .expand-arrow {
+            transition: transform 0.3s;
+            font-size: 1rem;
+        }
+        
+        .expand-arrow.collapsed {
+            transform: rotate(-90deg);
+        }
+        
+        .link-item {
+            background: var(--color-white);
+            padding: 1rem 1.1rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 0.6rem;
+            border: 1px solid var(--color-border);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        
+        .link-item:hover {
+            border-color: var(--color-border-strong);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .link-item-header {
+            display: flex;
+            justify-content: flex-start;
+            align-items: baseline;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .link-item-header .link-item-date {
+            margin-left: auto;
+        }
+        
+        .link-item-source {
+            font-weight: 600;
+            color: var(--color-text);
+        }
+        
+        .link-item-date {
+            font-size: 0.72rem;
+            color: var(--text-muted-soft);
+        }
+        
+        .link-item-url {
+            font-family: 'SF Mono', SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted-soft);
+            background: var(--color-surface-3);
+            padding: 0.4rem 0.65rem;
+            border-radius: var(--radius-sm);
+            margin-bottom: 0.6rem;
+            line-height: 1.4;
+            overflow: visible;
+            text-overflow: clip;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+
+        .link-item-url-field {
+            width: 100%;
+            border: 1px solid var(--color-border-soft);
+            outline: none;
+            cursor: text;
+            user-select: text;
+        }
+
+        textarea.link-item-url-field {
+            display: block;
+            resize: vertical;
+            min-height: 2.4em;
+        }
+
+        .link-item-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .link-item-status {
+            font-size: 0.8rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-muted-soft);
+        }
+
+        .empty-state-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state-text {
+            font-size: 0.9rem;
+        }
+        
+        .link-item-actions {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+        }
+        
+        .mini-btn {
+            padding: 0.35rem 0.7rem;
+            font-size: 0.78rem;
+            background: var(--color-success);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .mini-btn:hover {
+            background: var(--color-success-hover);
+        }
+        
+        .mini-btn.secondary {
+            background: var(--color-info);
+        }
+        
+        .mini-btn.secondary:hover {
+            background: var(--color-info-hover);
+        }
+
+        .mini-btn.danger {
+            background: transparent;
+            color: var(--color-danger);
+            border: 1px solid var(--color-danger);
+        }
+
+        .mini-btn.danger:hover {
+            background: var(--color-danger);
+            color: white;
+        }
+
+        .mini-btn.confirm-armed {
+            background: var(--color-danger);
+            color: white;
+            border-color: var(--color-danger);
+        }
+
+        .mini-btn.confirm-armed:hover {
+            background: var(--color-danger-hover);
+        }
+        
+        .source-name {
+            background: transparent;
+            border: none;
+            padding: 0;
+            font: inherit;
+            line-height: inherit;
+            font-weight: 600;
+            color: var(--color-text);
+            cursor: pointer;
+            transition: color 0.2s;
+            text-decoration: none;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+        
+        .source-name:hover {
+            color: var(--color-info);
+        }
+        
+        .source-name::after {
+            content: ' ›';
+            font-size: 0.85rem;
+            opacity: 0.4;
+            font-weight: 400;
+        }
+        
+        .filter-badge {
+            display: inline-block;
+            background: var(--color-primary);
+            color: white;
+            padding: 0.2rem 0.65rem;
+            border-radius: var(--radius-pill);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .clear-filter {
+            background: var(--color-danger);
+            cursor: pointer;
+            margin-left: 0.5rem;
+            transition: background 0.2s;
+        }
+
+        .clear-filter:hover {
+            background: var(--color-danger-hover);
+        }
+
+        button:focus-visible,
+        select:focus-visible,
+        .source-name:focus-visible,
+        .mini-btn:focus-visible,
+        .recent-links-title:focus-visible {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+
+        .text-success { color: var(--color-success); }
+        .text-info { color: var(--color-info); }
+        .text-warning { color: var(--color-warning); }
+        .text-danger { color: var(--color-danger); }
+        .text-muted { color: var(--text-muted); }
+        .text-muted-2 { color: var(--text-muted-soft); }
+
+        .auth-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: system-ui;
+            color: var(--text-muted);
+            background: var(--color-bg);
+            flex-direction: column;
+            gap: 0.5rem;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .auth-screen.auth-screen--danger {
+            color: var(--color-danger-text);
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--color-border-soft);
+            margin: 1.5rem 0;
+            border: none;
+        }
+
+        .section-summary {
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--color-text);
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.25rem 0;
+        }
+
+        .section-summary::-webkit-details-marker { display: none; }
+
+        .section-summary .chevron {
+            font-size: 0.8rem;
+            opacity: 0.4;
+        }
+
+        .btn-warning {
+            background: var(--color-warning) !important;
+        }
+
+        .btn-warning:hover:not(:disabled) {
+            background: var(--color-warning-dark) !important;
+        }
+
+        /* ====== GALLERY MANAGER ====== */
+        .gallery-section-content { margin-top: 1rem; }
+
+        .gallery-form { display: flex; flex-direction: column; gap: 0.75rem; }
+        .gallery-form label { margin-bottom: -0.4rem; }
+        .gallery-form input, .gallery-form select {
+            width: 100%; padding: 0.6rem 0.75rem;
+            border: 1px solid var(--color-border-strong);
+            border-radius: var(--radius-md); font-size: 0.9rem;
+            background: var(--color-surface); color: var(--color-text);
+        }
+        .gallery-form input:focus, .gallery-form select:focus {
+            outline: 2px solid var(--color-primary); outline-offset: -1px;
+            border-color: var(--color-primary);
+        }
+
+        .gallery-url-status {
+            font-size: 0.8rem; padding: 0.35rem 0.5rem;
+            border-radius: var(--radius-sm); margin-top: -0.25rem;
+        }
+        .gallery-url-status.valid {
+            background: var(--color-success-bg); color: var(--color-success-dark);
+        }
+        .gallery-url-status.invalid {
+            background: var(--color-danger-bg); color: var(--color-danger-text);
+        }
+
+        .gallery-preview {
+            width: 80px; height: 80px; border-radius: var(--radius-md);
+            overflow: hidden; border: 2px solid var(--color-border-soft);
+            background: var(--color-bg);
+        }
+        .gallery-preview img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+
+        .gallery-caption-preview {
+            font-size: 0.82rem; color: var(--text-muted); font-style: italic;
+            padding: 0.25rem 0;
+        }
+
+        .gallery-add-btn {
+            background: var(--color-success) !important;
+            color: #fff !important;
+        }
+        .gallery-add-btn:hover:not(:disabled) {
+            background: var(--color-success-dark) !important;
+        }
+
+        .gallery-msg {
+            padding: 0.75rem; border-radius: var(--radius-md);
+            font-size: 0.85rem; font-weight: 500; margin-top: 0.5rem;
+        }
+        .gallery-msg.success {
+            background: var(--color-success-bg); color: var(--color-success-dark);
+            border: 1px solid var(--color-success);
+        }
+        .gallery-msg.error {
+            background: var(--color-danger-bg); color: var(--color-danger-text);
+            border: 1px solid var(--color-danger);
+        }
+
+        .gallery-items-list { margin-top: 1rem; }
+
+        .gallery-item {
+            display: flex; gap: 0.5rem; align-items: center;
+            padding: 0.75rem; border-radius: var(--radius-md);
+            border: 1px solid var(--color-border-soft);
+            margin-bottom: 0.5rem; background: var(--color-surface);
+            transition: border-color 0.15s, opacity 0.15s, transform 0.15s;
+            cursor: grab; position: relative;
+        }
+        .gallery-item:hover { border-color: var(--color-border-strong); }
+        .gallery-item.inactive { opacity: 0.5; }
+        .gallery-item.dragging {
+            opacity: 0.4; transform: scale(0.97); cursor: grabbing;
+            pointer-events: none;
+        }
+        .gallery-item.dropped {
+            transition: none;
+        }
+        .gallery-item.drag-over {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 2px rgba(99,102,241,0.3);
+        }
+
+        .gallery-item.drop-before::before,
+        .gallery-item.drop-after::after {
+            content: '';
+            position: absolute;
+            left: 6px;
+            right: 6px;
+            height: 2px;
+            background: var(--color-info);
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+            border-radius: 2px;
+        }
+
+        .gallery-item.drop-before::before { top: -2px; }
+        .gallery-item.drop-after::after { bottom: -2px; }
+
+        .gallery-item.flash {
+            animation: galleryFlash 0.9s ease;
+        }
+
+        @keyframes galleryFlash {
+            0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.5); }
+            100% { box-shadow: 0 0 0 10px rgba(16,185,129,0); }
+        }
+        .gallery-item .drag-handle {
+            flex: 0 0 auto; cursor: grab; font-size: 1rem;
+            color: var(--text-muted); user-select: none;
+            padding: 0.25rem 0.35rem; line-height: 1;
+            touch-action: none;           /* prevent scroll on touch */
+            -webkit-touch-callout: none;  /* prevent iOS callout */
+        }
+        .gallery-item .drag-handle:active { cursor: grabbing; }
+        /* While dragging, show grabbing cursor everywhere and kill ALL selection */
+        body.is-dragging,
+        body.is-dragging * {
+            cursor: grabbing !important;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            user-select: none !important;
+        }
+        body.is-dragging ::selection {
+            background: transparent !important;
+        }
+        body.is-dragging ::-moz-selection {
+            background: transparent !important;
+        }
+
+        .gallery-item-thumb {
+            width: 40px; height: 40px; border-radius: var(--radius-sm);
+            overflow: hidden; flex: 0 0 40px; background: var(--color-bg);
+        }
+        .gallery-item-thumb img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+
+        .gallery-item-info { flex: 1 1 0; min-width: 0; overflow: hidden; }
+
+        .gallery-sort-input {
+            width: 3.2rem; flex: 0 0 auto;
+            padding: 0.25rem 0.3rem; text-align: center;
+            border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm);
+            background: var(--color-bg); color: var(--color-text);
+            font-size: 0.75rem; font-family: inherit;
+            appearance: textfield;
+            -moz-appearance: textfield;
+        }
+        .gallery-sort-input::-webkit-inner-spin-button,
+        .gallery-sort-input::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
+        .gallery-sort-input:focus { outline: 2px solid var(--color-primary); border-color: var(--color-primary); }
+        .gallery-item-title {
+            font-weight: 600; font-size: 0.85rem; color: var(--color-text);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .gallery-item-meta {
+            font-size: 0.75rem; color: var(--text-muted);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        .gallery-item-actions { display: flex; gap: 0.3rem; flex: 0 0 auto; }
+        .gallery-item-actions .gallery-item-badge {
+            cursor: pointer; border: none;
+            transition: opacity 0.15s;
+            font-size: 1rem; line-height: 1;
+        }
+        .gallery-item-actions .gallery-item-badge:hover { opacity: 0.7; }
+        .gallery-item-actions .gallery-item-badge.active { color: var(--color-success-dark); }
+        .gallery-item-actions .gallery-item-badge.hidden { color: var(--color-danger-text); }
+
+        /* Edit Modal */
+        .gallery-edit-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,0.5); display: flex;
+            align-items: center; justify-content: center;
+            padding: 1rem; animation: fadeIn 0.15s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .gallery-edit-modal {
+            background: var(--color-surface); border-radius: var(--radius-lg);
+            padding: 1.5rem; width: 100%; max-width: 500px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+            max-height: 90vh; overflow-y: auto;
+        }
+        .gallery-edit-modal h3 {
+            margin: 0 0 1rem; font-size: 1rem; color: var(--color-text);
+        }
+        .gallery-edit-modal .gallery-form { gap: 0.6rem; }
+        .gallery-edit-actions {
+            display: flex; gap: 0.5rem; margin-top: 1rem;
+        }
+        .gallery-edit-actions button { flex: 1; }
+        .gallery-edit-cancel {
+            background: var(--color-bg) !important;
+            color: var(--color-text) !important;
+            border: 1px solid var(--color-border-strong) !important;
+        }
+        .gallery-edit-preview {
+            display: flex; gap: 1rem; align-items: flex-start;
+            padding: 0.75rem; background: var(--color-surface-2);
+            border-radius: var(--radius-md); margin-bottom: 0.75rem;
+        }
+        .gallery-edit-preview-img {
+            width: 100px; height: 100px; border-radius: var(--radius-md);
+            overflow: hidden; border: 2px solid var(--color-border-soft);
+            background: var(--color-bg); flex-shrink: 0;
+        }
+        .gallery-edit-preview-img img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
+        .gallery-edit-preview-text {
+            flex: 1; min-width: 0;
+        }
+        .gallery-edit-preview-caption {
+            font-size: 0.85rem; color: var(--text-muted); font-style: italic;
+            margin-top: 0.25rem;
+        }
+        .gallery-edit-visibility {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.75rem; margin: 0.5rem 0;
+            background: var(--color-surface-2);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--color-border-soft);
+        }
+        .gallery-edit-visibility label {
+            margin: 0; flex: 1; font-weight: 500;
+        }
+        .gallery-edit-message {
+            padding: 0.75rem; border-radius: var(--radius-md);
+            font-size: 0.85rem; font-weight: 500; margin-bottom: 0.75rem;
+        }
+        .gallery-edit-message.success {
+            background: var(--color-success-bg); color: var(--color-success-dark);
+            border: 1px solid var(--color-success);
+        }
+        .gallery-edit-message.error {
+            background: var(--color-danger-bg); color: var(--color-danger-text);
+            border: 1px solid var(--color-danger);
+        }
+
+        .gallery-count {
+            font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;
+        }
+
+        /* ====== RESPONSIVE / MOBILE ====== */
+        @media (max-width: 640px) {
+            body {
+                padding: 0.75rem;
+            }
+
+            .card {
+                padding: 1.25rem 1rem;
+                border-radius: var(--radius-md);
+            }
+
+            h1 {
+                font-size: 1.25rem;
+            }
+
+            .description {
+                font-size: 0.85rem;
+            }
+
+            select, button {
+                font-size: 1rem;
+                -webkit-appearance: none;
+                appearance: none;
+            }
+
+            select {
+                padding: 0.85rem 2.5rem 0.85rem 0.75rem;
+            }
+
+            button {
+                padding: 0.85rem 1.5rem;
+            }
+
+            .link-container {
+                flex-direction: column;
+            }
+
+            .copy-btn {
+                width: 100%;
+                padding: 0.75rem;
+                text-align: center;
+            }
+
+            input.link-box {
+                font-size: 0.8rem;
+                width: 100%;
+            }
+
+            #resultArea {
+                padding: 1rem;
+            }
+
+            .recent-links {
+                padding: 0.85rem;
+            }
+
+            .link-item {
+                padding: 0.85rem;
+            }
+
+            .link-item-header {
+                flex-wrap: wrap;
+                gap: 0.35rem;
+            }
+
+            .link-item-header .link-item-date {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .link-item-url {
+                font-size: 0.7rem;
+                word-break: break-all;
+            }
+
+            textarea.link-item-url-field {
+                min-height: 3em;
+                font-size: 0.72rem;
+            }
+
+            .link-item-footer {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .link-item-actions {
+                width: 100%;
+            }
+
+            .mini-btn {
+                flex: 1;
+                text-align: center;
+                padding: 0.45rem 0.5rem;
+                min-height: 36px;
+            }
+
+            .source-name {
+                font-size: 0.85rem;
+            }
+
+            .auth-screen {
+                padding: 1.5rem;
+            }
+
+            /* Settings inputs */
+            #settingsSection input[type="password"] {
+                font-size: 1rem;
+                padding: 0.7rem 0.75rem;
+            }
+
+            /* Gallery items mobile */
+            .gallery-item {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .gallery-item-thumb {
+                width: 40px; height: 40px;
+            }
+
+            .gallery-item-info {
+                flex: 1 1 calc(100% - 50px - 0.5rem);
+                min-width: 0;
+            }
+
+            .gallery-item-actions {
+                order: 3;
+                margin-left: auto;
+            }
+        }
+
+        @media (max-width: 380px) {
+            body {
+                padding: 0.5rem;
+            }
+
+            .card {
+                padding: 1rem 0.75rem;
+            }
+
+            h1 {
+                font-size: 1.1rem;
+            }
+
+            .mini-btn {
+                font-size: 0.72rem;
+                padding: 0.4rem 0.4rem;
+            }
+
+            .link-item-actions {
+                flex-wrap: wrap;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <main class="card">
+        <div class="card-header">
+            <h1>🎨 JossDraws Admin Dashboard</h1>
+            <p class="description">Manage review links, gallery content, and site settings</p>
+        </div>
+
+        <details class="recent-links" open>
+            <summary class="section-summary" style="padding-bottom:0.5rem; margin-bottom:0.75rem;">
+                <span>📧 Review Link Generator</span>
+                <span class="chevron">▼</span>
+            </summary>
+
+        <form id="generatorForm">
+            <label for="sourceSelect">Select Source Type</label>
+            <select id="sourceSelect" name="source">
+            </select>
+
+            <button id="generateBtn" type="submit">
+                Generate Link
+            </button>
+        </form>
+
+        <div id="errorMessage" class="error-message is-hidden" role="alert" aria-live="assertive"></div>
+
+        <div id="resultArea" class="is-hidden" role="status" aria-live="polite">
+            <div class="result-label">📧 Send this link to your customer:</div>
+            <div class="link-container">
+                <input 
+                    type="text" 
+                    id="linkOutput" 
+                    class="link-box" 
+                    readonly 
+                >
+                <button 
+                    id="copyBtn" 
+                    class="copy-btn" 
+                    type="button"
+                >
+                    Copy
+                </button>
+            </div>
+            <div class="source-tag" id="sourceTag"></div>
+        </div>
+        </details>
+
+        <!-- Performance Stats Removed (Redundant) -->
+
+        <hr class="divider is-hidden" id="linksDivider">
+
+        <div class="recent-links is-hidden" id="recentLinksContainer">
+            <div class="recent-links-title-row">
+                <button type="button" class="recent-links-title" id="recentLinksToggle" aria-expanded="false" aria-controls="recentLinks">
+                    <span id="recentLinksTitle">📋 Recent Review Links</span>
+                    <span class="expand-arrow collapsed" id="expandArrow">▼</span>
+                </button>
+                <button type="button" class="filter-badge clear-filter is-hidden" id="clearFilterBtn" title="Clear filter">✖ Clear</button>
+            </div>
+            <div id="recentLinks" class="is-hidden">
+                <p class="filter-hint">Tap a source name to filter by type</p>
+                <div id="recentLinksList"></div>
+                <div id="recentLinksSentinel" class="links-sentinel"></div>
+            </div>
+        </div>
+
+        <div class="empty-state is-hidden" id="emptyState">
+            <div class="empty-state-icon">📭</div>
+            <div class="empty-state-text">No links generated yet</div>
+        </div>
+
+        <hr class="divider" id="settingsDivider">
+
+        <details class="recent-links" id="settingsSection">
+            <summary class="section-summary">
+                <span>⚙️ Settings</span>
+                <span class="chevron">▼</span>
+            </summary>
+            <div class="gallery-section-content">
+                <form class="gallery-form" onsubmit="return false;">
+                    <label for="currentCodeInput">Current Admin Code</label>
+                    <input type="password" id="currentCodeInput" placeholder="Current code" autocomplete="current-password">
+                    <label for="newCodeInput">New Admin Code</label>
+                    <input type="password" id="newCodeInput" placeholder="New code (min 4 characters)" autocomplete="new-password">
+                    <label for="confirmCodeInput">Confirm New Code</label>
+                    <input type="password" id="confirmCodeInput" placeholder="Re-enter new code" autocomplete="new-password">
+                    <button type="button" id="changeCodeBtn" class="btn-warning">Change Admin Code</button>
+                </form>
+                <div id="changeCodeMessage" class="is-hidden gallery-msg" style="margin-top:0.75rem;"></div>
+            </div>
+        </details>
+
+        <hr class="divider" id="galleryDivider">
+
+        <details class="recent-links" id="gallerySection">
+            <summary class="section-summary">
+                <span>🖼️ Gallery Manager</span>
+                <span class="chevron">▼</span>
+            </summary>
+
+            <div class="gallery-section-content">
+                <p class="description" style="margin-bottom:1rem;">Add artwork to the website gallery. Paste a Google Drive share link and it will be auto-converted. <em>Drag items to cut in line and reorder.</em></p>
+
+                <form id="galleryForm" class="gallery-form">
+                    <label for="galleryUrl">Google Drive Image URL</label>
+                    <input type="text" id="galleryUrl" placeholder="Paste Google Drive share link here..." autocomplete="off">
+                    <div id="galleryUrlStatus" class="gallery-url-status is-hidden"></div>
+                    <div id="galleryPreview" class="gallery-preview is-hidden"></div>
+
+                    <label for="galleryTitle">Artwork Title <span class="text-danger">*</span></label>
+                    <input type="text" id="galleryTitle" placeholder="e.g. Rough Waters" required>
+
+                    <label for="galleryMedium">Medium (optional)</label>
+                    <input type="text" id="galleryMedium" list="mediumOptions" placeholder="e.g. Digital, Canvas, Physical">
+                    <datalist id="mediumOptions">
+                        <option value="Digital">
+                        <option value="Canvas">
+                        <option value="Physical">
+                        <option value="Mixed Media">
+                    </datalist>
+
+                    <label for="galleryYear">Year Created (optional)</label>
+                    <input type="number" id="galleryYear" min="1900" max="2100" placeholder="e.g. 2024">
+
+                    <div id="galleryCaptionPreview" class="gallery-caption-preview"></div>
+
+                    <button type="submit" id="galleryAddBtn" class="gallery-add-btn">Add to Gallery</button>
+                </form>
+
+                <div id="galleryMessage" class="gallery-msg is-hidden" role="status" aria-live="polite"></div>
+
+                <div class="gallery-items-list">
+                    <div id="galleryCount" class="gallery-count"></div>
+                    <div id="galleryList"><p class="text-muted-2" style="font-size:0.85rem;">Open this section to load gallery items...</p></div>
+                </div>
+            </div>
+        </details>
+    </main>
+
+    <script>
+        // ============================================
+        // DEMO TRACE LOGGER
+        // ============================================
+        const Trace = (() => {
+            let step = 0;
+
+            function time() {
+                return new Date().toISOString().split('T')[1].replace('Z', '');
+            }
+
+            function log(event, data = null) {
+                step += 1;
+                const id = String(step).padStart(2, '0');
+                const prefix = `[${id} | ${time()}] ${event}`;
+                if (data !== null && data !== undefined) {
+                    console.log(prefix, data);
+                } else {
+                    console.log(prefix);
+                }
+            }
+
+            function group(label) {
+                console.group(`▶ ${label}`);
+            }
+
+            function groupEnd() {
+                console.groupEnd();
+            }
+
+            return { log, group, groupEnd };
+        })();
+
+        Trace.log('APP_INIT');
+
+        // ============================================
+        // ACCESS GUARD (server-side verified)
+        // ============================================
+        // The admin code is sent to Postgres on every action and
+        // verified against a bcrypt hash. Even if someone reads this
+        // source code, they cannot do anything without the real code.
+        // ============================================
+        let adminCode = null;
+        {
+            Trace.group('ACCESS_GUARD');
+            const MAX_ATTEMPTS = 3;
+            for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+                const input = prompt('Enter admin code:');
+                if (input === null) break;
+                if (input && input.trim().length > 0) {
+                    adminCode = input.trim();
+                    break;
+                }
+            }
+
+            if (!adminCode) {
+                Trace.log('AUTH_NO_INPUT');
+                Trace.groupEnd();
+                document.body.innerHTML = '<div class="auth-screen auth-screen--danger"><h2>Access Denied</h2><p>No admin code provided.</p></div>';
+                throw new Error('Access denied');
+            }
+
+            Trace.log('AUTH_CODE_RECEIVED');
+            Trace.groupEnd();
+        }
+
+        Trace.log('PAGE_LOADED');
+
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const CONFIG = {
+            SUPABASE_URL: 'https://pciubbwphwpnptgawgok.supabase.co',
+            SUPABASE_KEY: 'sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv',
+            SITE_URL: 'https://orangedrewce.github.io/JossDraws/review.html',
+            MAX_RETRIES: 3,
+            RETRY_DELAY: 1000
+        };
+
+        const DEFAULT_SOURCE_KEY = 'general';
+        const SOURCES = {
+            commission: { emoji: '🎨', label: 'Commission' },
+            etsy: { emoji: '🛍️', label: 'Etsy Order' },
+            print: { emoji: '🖨️', label: 'Art Print' },
+            sticker: { emoji: '🏷️', label: 'Sticker' },
+            bookmark: { emoji: '🔖', label: 'Bookmark' },
+            pet_portrait: { emoji: '🐾', label: 'Pet Portrait' },
+            faceless_portrait: { emoji: '👤', label: 'Faceless Portrait' },
+            coloring_book: { emoji: '🖍️', label: 'Coloring Book' },
+            general: { emoji: '📋', label: 'General' }
+        };
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        // DOM Elements
+        const elements = {
+            form: document.getElementById('generatorForm'),
+            btn: document.getElementById('generateBtn'),
+            sourceSelect: document.getElementById('sourceSelect'),
+            resultArea: document.getElementById('resultArea'),
+            linkOutput: document.getElementById('linkOutput'),
+            sourceTag: document.getElementById('sourceTag'),
+            copyBtn: document.getElementById('copyBtn'),
+            errorMessage: document.getElementById('errorMessage'),
+            recentLinksContainer: document.getElementById('recentLinksContainer'),
+            linksDivider: document.getElementById('linksDivider'),
+            emptyState: document.getElementById('emptyState'),
+            recentLinksToggle: document.getElementById('recentLinksToggle'),
+            clearFilterBtn: document.getElementById('clearFilterBtn'),
+            recentLinks: document.getElementById('recentLinks'),
+            recentLinksList: document.getElementById('recentLinksList'),
+            recentLinksSentinel: document.getElementById('recentLinksSentinel'),
+            recentLinksTitle: document.getElementById('recentLinksTitle'),
+            expandArrow: document.getElementById('expandArrow')
+        };
+
+        let db;
+        try {
+            db = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+            Trace.log('DB_CONNECTED');
+        } catch (error) {
+            console.error('Failed to initialize Supabase client:', error);
+            Trace.log('DB_CONNECTION_FAILED', { message: error?.message || String(error) });
+            showError('Failed to connect to database. Please refresh the page.');
+            if (elements.btn) elements.btn.disabled = true;
+        }
+        
+        const state = {
+            filter: null,
+            links: {
+                expanded: false,
+                pageSize: 20,
+                offset: 0,
+                hasMore: true,
+                loading: false,
+                queryKey: 0,
+                observer: null
+            }
+        };
+
+        // Delete confirmation state
+        const DELETE_CONFIRM_MS = 3000;
+        const pendingDeletes = new Map();
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+
+        /**
+         * Validates that a source value is non-empty and safe
+         */
+        function validateSource(source) {
+            if (!source || typeof source !== 'string') {
+                return { valid: false, error: 'Please select a valid source type' };
+            }
+            
+            const trimmed = source.trim();
+            if (trimmed.length === 0) {
+                return { valid: false, error: 'Source cannot be empty' };
+            }
+
+            const key = trimmed.toLowerCase();
+            if (!/^[a-z0-9_]+$/.test(key)) {
+                return { valid: false, error: 'Invalid source type selected' };
+            }
+
+            if (!Object.prototype.hasOwnProperty.call(SOURCES, key)) {
+                return { valid: false, error: 'Invalid source type selected' };
+            }
+
+            return { valid: true, value: key };
+        }
+
+        /**
+         * Sanitizes text for display (prevents XSS)
+         */
+        function sanitizeText(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        /**
+         * Sanitizes a value for use inside HTML attributes (prevents attribute-breakout XSS)
+         */
+        function sanitizeAttr(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function setHidden(el, hidden) {
+            if (!el) return;
+            el.classList.toggle('is-hidden', Boolean(hidden));
+        }
+
+        /**
+         * Shows error message to user
+         */
+        let errorTimer = null;
+        function showError(message) {
+            if (errorTimer) clearTimeout(errorTimer);
+            elements.errorMessage.textContent = message;
+            setHidden(elements.errorMessage, false);
+
+            errorTimer = setTimeout(() => {
+                setHidden(elements.errorMessage, true);
+                errorTimer = null;
+            }, 5000);
+        }
+        /**
+         * Hides error message
+         */
+        function hideError() {
+            if (errorTimer) {
+                clearTimeout(errorTimer);
+                errorTimer = null;
+            }
+            setHidden(elements.errorMessage, true);
+        }
+
+        /**
+         * Updates button state
+         */
+        function setButtonState(isLoading) {
+            const LOADING_LABEL = '⏳ Generating...';
+            const DEFAULT_LABEL = 'Generate Link';
+            if (isLoading) {
+                elements.btn.disabled = true;
+                elements.btn.textContent = LOADING_LABEL;
+            } else {
+                elements.btn.disabled = false;
+                if (elements.btn.textContent === LOADING_LABEL) {
+                    elements.btn.textContent = DEFAULT_LABEL;
+                }
+            }
+        }
+
+        function normalizeSourceKey(source) {
+            const value = String(source ?? DEFAULT_SOURCE_KEY).trim().toLowerCase();
+            if (!/^[a-z0-9_]+$/.test(value)) return DEFAULT_SOURCE_KEY;
+            return Object.prototype.hasOwnProperty.call(SOURCES, value) ? value : DEFAULT_SOURCE_KEY;
+        }
+
+        function getSourceMeta(source) {
+            const key = normalizeSourceKey(source);
+            return SOURCES[key] || SOURCES[DEFAULT_SOURCE_KEY];
+        }
+
+        function populateSourceSelect() {
+            if (!elements.sourceSelect) return;
+
+            const previousRaw = elements.sourceSelect.value;
+            const previous = normalizeSourceKey(previousRaw);
+            const fragment = document.createDocumentFragment();
+            for (const [key, meta] of Object.entries(SOURCES)) {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = `${meta.emoji} ${meta.label}`;
+                fragment.appendChild(opt);
+            }
+            elements.sourceSelect.replaceChildren(fragment);
+
+            if (previousRaw && Object.prototype.hasOwnProperty.call(SOURCES, previous)) {
+                elements.sourceSelect.value = previous;
+            } else if (Object.prototype.hasOwnProperty.call(SOURCES, 'commission')) {
+                elements.sourceSelect.value = 'commission';
+            } else {
+                elements.sourceSelect.value = DEFAULT_SOURCE_KEY;
+            }
+        }
+
+        /**
+         * Returns a formatted display label with emoji for a source key
+         */
+        function formatSourceLabel(source) {
+            const meta = getSourceMeta(source);
+            return `${meta.emoji} ${meta.label}`;
+        }
+
+        /**
+         * Gets the display label for a select option
+         */
+        function getSelectedLabel() {
+            return formatSourceLabel(elements.sourceSelect.value);
+        }
+
+        /**
+         * Retry wrapper for database operations
+         */
+        async function withRetry(operation, retries = CONFIG.MAX_RETRIES) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    return await operation();
+                } catch (error) {
+                    if (i === retries - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, CONFIG.RETRY_DELAY * (i + 1)));
+                }
+            }
+        }
+
+        // ============================================
+        // CORE FUNCTIONALITY
+        // ============================================
+
+        /**
+         * Generates a new review link token
+         */
+        async function generateLink() {
+            Trace.group('GENERATE_LINK_FLOW');
+            Trace.log('GENERATE_CLICK', { source: elements.sourceSelect?.value || null });
+            hideError();
+
+            if (!db) {
+                Trace.log('GENERATE_ABORT_NO_DB');
+                showError('Database not connected. Please refresh the page.');
+                Trace.groupEnd();
+                return;
+            }
+            
+            // 1. Validate source selection
+            const sourceValidation = validateSource(elements.sourceSelect.value);
+            if (!sourceValidation.valid) {
+                Trace.log('VALIDATION_FAILED', { error: sourceValidation.error });
+                showError(sourceValidation.error);
+                Trace.groupEnd();
+                return;
+            }
+
+            const selectedSource = sourceValidation.value;
+            const selectedLabel = getSelectedLabel();
+
+            setButtonState(true);
+
+            try {
+                // 2. Create token via server-side admin function (bcrypt-verified)
+                Trace.log('RPC_CREATE_START', { source: selectedSource });
+
+                const { data: rpcResult, error } = await withRetry(async () => {
+                    return await db.rpc('admin_create_token', {
+                        p_admin_code: adminCode,
+                        p_source: selectedSource
+                    });
+                });
+
+                if (error) {
+                    Trace.log('RPC_CREATE_ERROR', { message: error.message || 'Failed to create token' });
+                    throw new Error(error.message || 'Failed to create token');
+                }
+
+                if (!rpcResult || !rpcResult.success) {
+                    const errMsg = rpcResult?.error || 'Failed to create token';
+                    Trace.log('RPC_CREATE_DENIED', { error: errMsg });
+                    if (errMsg === 'Unauthorized') {
+                        adminCode = null;
+                        document.body.innerHTML = '<div class="auth-screen auth-screen--danger"><h2>Access Denied</h2><p>Invalid admin code.</p></div>';
+                        return;
+                    }
+                    throw new Error(errMsg);
+                }
+
+                const data = rpcResult.token;
+                if (!data || !data.id) {
+                    Trace.log('RPC_CREATE_BAD_RESPONSE');
+                    throw new Error('Invalid response from server');
+                }
+
+                Trace.log('RPC_CREATE_SUCCESS', { tokenId: data.id });
+
+                // 3. Construct and validate URL
+                const fullLink = `${CONFIG.SITE_URL}?token=${encodeURIComponent(data.id)}`;
+                Trace.log('LINK_BUILT', { url: fullLink });
+                
+                // Verify URL is valid
+                try {
+                    new URL(fullLink);
+                } catch (e) {
+                    Trace.log('LINK_INVALID');
+                    throw new Error('Generated invalid URL');
+                }
+
+                // 4. Display result
+                elements.linkOutput.value = fullLink;
+                elements.sourceTag.textContent = `Source: ${selectedLabel}`;
+                setHidden(elements.resultArea, false);
+
+                Trace.log('UI_RENDER_RESULT');
+                
+
+                // Check if expiration info needs to be cleared (since we removed the feature)
+                const existingExpiration = elements.resultArea.querySelector('.expiration-info');
+                if (existingExpiration) {
+                    existingExpiration.remove();
+                }
+
+                
+                // Auto-select the link for easy copying
+                elements.linkOutput.select();
+                
+                // Update button text
+                elements.btn.textContent = 'Generate Another';
+
+                // Refresh page data after creating new link
+                // - clear filters so the new link is visible
+                // - reset infinite scroll paging so newest items load first
+                state.filter = null;
+                if (elements.clearFilterBtn) {
+                    setHidden(elements.clearFilterBtn, true);
+                }
+                resetRecentLinksPaging();
+                Trace.log('RECENT_LINKS_REFRESH');
+                await loadRecentLinks();
+
+                // Optionally expand links so the new item is visible
+                if (!state.links.expanded) {
+                    toggleLinksSection();
+                }
+
+                Trace.log('GENERATE_DONE', { tokenId: data.id, source: selectedSource });
+
+            } catch (error) {
+                console.error('Error generating link:', error);
+                Trace.log('GENERATE_FAILED', { message: error?.message || String(error) });
+                showError(`Failed to generate link: ${error.message}`);
+            } finally {
+                setButtonState(false);
+                Trace.groupEnd();
+            }
+        }
+
+        /**
+         * Copies link to clipboard
+         */
+        async function copyToClipboard() {
+            const link = elements.linkOutput.value;
+            
+            if (!link) {
+                showError('No link to copy');
+                return;
+            }
+
+            try {
+                Trace.log('COPY_TO_CLIPBOARD', { link });
+                // Modern clipboard API
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(link);
+                } else {
+                    // Fallback for older browsers
+                    elements.linkOutput.select();
+                    document.execCommand('copy');
+                }
+
+                // Visual feedback
+                const originalText = elements.copyBtn.textContent;
+                elements.copyBtn.textContent = '✓ Copied!';
+                elements.copyBtn.classList.add('copied');
+
+                Trace.log('COPY_SUCCESS');
+
+                setTimeout(() => {
+                    elements.copyBtn.textContent = originalText;
+                    elements.copyBtn.classList.remove('copied');
+                }, 2000);
+
+            } catch (error) {
+                console.error('Copy failed:', error);
+                Trace.log('COPY_FAILED', { message: error?.message || String(error) });
+                showError('Failed to copy link. Please select and copy manually.');
+            }
+        }
+
+
+        /**
+         * Loads and displays recent links
+         */
+        async function loadRecentLinks(filterSource = null) {
+            Trace.group('LOAD_RECENT_LINKS');
+            Trace.log('FETCH_START', {
+                filter: filterSource,
+                offset: state.links.offset,
+                pageSize: state.links.pageSize,
+                queryKey: state.links.queryKey
+            });
+            try {
+                if (!db) return;
+                if (state.links.loading) return;
+
+                state.links.loading = true;
+
+                const queryKey = state.links.queryKey;
+                const startOffset = state.links.offset;
+
+                if (elements.recentLinksSentinel) {
+                    elements.recentLinksSentinel.textContent = 'Loading…';
+                }
+
+                const { data: rpcResult, error } = await db.rpc('admin_list_tokens', {
+                    p_admin_code: adminCode,
+                    p_source: filterSource,
+                    p_offset: startOffset,
+                    p_limit: state.links.pageSize
+                });
+
+                const data = rpcResult?.items;
+
+                if (!error && rpcResult && rpcResult.success === false && rpcResult.error === 'Unauthorized') {
+                    adminCode = null;
+                    document.body.innerHTML = '<div class="auth-screen auth-screen--danger"><h2>Access Denied</h2><p>Invalid admin code.</p></div>';
+                    return;
+                }
+
+                // If filter/reset happened while awaiting, ignore this response
+                if (queryKey !== state.links.queryKey) {
+                    Trace.log('FETCH_IGNORED_STALE', { expected: state.links.queryKey, got: queryKey });
+                    return;
+                }
+
+                if (error) {
+                    console.error('Recent links error:', error);
+                    Trace.log('FETCH_ERROR', { message: error?.message || String(error) });
+                    return;
+                }
+
+                if (!rpcResult || rpcResult.success !== true || !Array.isArray(data)) {
+                    Trace.log('FETCH_ERROR', { message: rpcResult?.error || 'Invalid response from server' });
+                    return;
+                }
+
+                Trace.log('FETCH_SUCCESS', { count: data?.length || 0 });
+
+                const isFirstPage = startOffset === 0;
+                if (isFirstPage) {
+                    if (!data || data.length === 0) {
+                        setHidden(elements.recentLinksContainer, true);
+                        setHidden(elements.linksDivider, true);
+                        setHidden(elements.emptyState, false);
+                        if (elements.recentLinksSentinel) elements.recentLinksSentinel.textContent = '';
+                        state.links.hasMore = false;
+                        return;
+                    }
+                    setHidden(elements.recentLinksContainer, false);
+                    setHidden(elements.linksDivider, false);
+                    setHidden(elements.emptyState, true);
+                }
+
+                // Update title with filter if applicable
+                if (filterSource) {
+                    // Clear existing content and rebuild with filter badge
+                    elements.recentLinksTitle.textContent = `${formatSourceLabel(filterSource)} Links`;
+
+                    if (elements.clearFilterBtn) {
+                        setHidden(elements.clearFilterBtn, false);
+                    }
+                } else {
+                    if (elements.clearFilterBtn) {
+                        setHidden(elements.clearFilterBtn, true);
+                    }
+                    elements.recentLinksTitle.textContent = 'Generated Links';
+                }
+
+                // Build links display (DOM nodes, no innerHTML)
+                const now = new Date();
+                const fragment = document.createDocumentFragment();
+                for (const link of (data || [])) {
+                    fragment.appendChild(renderLinkItem(link, now));
+                }
+
+                if (elements.recentLinksList) {
+                    if (isFirstPage) {
+                        elements.recentLinksList.replaceChildren(fragment);
+                    } else {
+                        elements.recentLinksList.appendChild(fragment);
+                    }
+                }
+
+                // Update pagination state (offset-stable)
+                state.links.offset = startOffset + (data?.length || 0);
+                state.links.hasMore = (data?.length || 0) === state.links.pageSize;
+
+                Trace.log('FETCH_RENDERED', { offset: state.links.offset, hasMore: state.links.hasMore });
+
+                if (elements.recentLinksSentinel) {
+                    if (state.links.hasMore) {
+                        elements.recentLinksSentinel.textContent = 'Loading more…';
+                    } else {
+                        elements.recentLinksSentinel.textContent = 'End of list';
+                    }
+                }
+
+                ensureLinksObserver();
+
+            } catch (error) {
+                console.error('Failed to load recent links:', error);
+                Trace.log('FETCH_FAILED', { message: error?.message || String(error) });
+            } finally {
+                state.links.loading = false;
+                Trace.groupEnd();
+            }
+        }
+
+        function resetRecentLinksPaging() {
+            state.links.queryKey++;
+            state.links.offset = 0;
+            state.links.hasMore = true;
+            state.links.loading = false;
+            if (elements.recentLinksList) elements.recentLinksList.textContent = '';
+            if (elements.recentLinksSentinel) elements.recentLinksSentinel.textContent = '';
+
+            if (state.links.observer) {
+                try { state.links.observer.disconnect(); } catch { /* noop */ }
+                state.links.observer = null;
+            }
+        }
+
+        function ensureLinksObserver() {
+            if (!elements.recentLinksSentinel) return;
+            if (state.links.observer) return;
+
+            state.links.observer = new IntersectionObserver((entries) => {
+                const entry = entries[0];
+                if (!entry || !entry.isIntersecting) return;
+                if (!state.links.expanded) return;
+                if (!db) return;
+                if (!state.links.hasMore) return;
+
+                loadRecentLinks(state.filter).catch(() => {});
+            }, {
+                root: null,
+                rootMargin: '300px 0px',
+                threshold: 0
+            });
+
+            state.links.observer.observe(elements.recentLinksSentinel);
+        }
+
+        function computeStatusText(link, now) {
+            const expiresDate = new Date(link.expires_at);
+            const isExpired = expiresDate < now;
+
+            if (link.is_used) return '✅ Used';
+            if (isExpired) return '⚠️ Expired';
+
+            const msRemaining = expiresDate - now;
+            const daysRemaining = Math.ceil(msRemaining / (1000 * 60 * 60 * 24));
+            return `🔵 Active (${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} left)`;
+        }
+
+        function renderLinkItem(link, now) {
+            const fullLink = `${CONFIG.SITE_URL}?token=${encodeURIComponent(link.id)}`;
+            const createdDate = new Date(link.created_at);
+            const expiresDate = new Date(link.expires_at);
+            const isExpired = expiresDate < now;
+
+            const item = document.createElement('div');
+            item.className = 'link-item';
+
+            const header = document.createElement('div');
+            header.className = 'link-item-header';
+
+            const sourceBtn = document.createElement('button');
+            sourceBtn.className = 'source-name';
+            sourceBtn.type = 'button';
+            sourceBtn.dataset.action = 'filter';
+            sourceBtn.dataset.source = normalizeSourceKey(link.source);
+            sourceBtn.title = 'Filter by this source';
+            sourceBtn.textContent = formatSourceLabel(link.source);
+
+            const dateStr = createdDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const timeStr = createdDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const dateTimeStr = `${dateStr} at ${timeStr}`;
+
+            const dateSpan = document.createElement('span');
+            dateSpan.className = 'link-item-date';
+            dateSpan.title = dateTimeStr;
+            dateSpan.textContent = `${dateStr} • ${timeStr}`;
+
+            header.append(sourceBtn, dateSpan);
+
+            const urlRow = document.createElement('textarea');
+            urlRow.className = 'link-item-url link-item-url-field';
+            urlRow.readOnly = true;
+            urlRow.rows = 2;
+            urlRow.value = fullLink;
+            urlRow.spellcheck = false;
+
+            const footer = document.createElement('div');
+            footer.className = 'link-item-footer';
+
+            const status = document.createElement('span');
+            status.className = 'link-item-status text-muted';
+            status.textContent = computeStatusText(link, now);
+
+            const actions = document.createElement('div');
+            actions.className = 'link-item-actions';
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'mini-btn';
+            copyBtn.type = 'button';
+            copyBtn.dataset.action = 'copy';
+            copyBtn.dataset.link = fullLink;
+            copyBtn.textContent = 'Copy Link';
+            actions.appendChild(copyBtn);
+
+            if (!link.is_used && !isExpired) {
+                const testBtn = document.createElement('button');
+                testBtn.className = 'mini-btn secondary';
+                testBtn.type = 'button';
+                testBtn.dataset.action = 'test';
+                testBtn.dataset.link = fullLink;
+                testBtn.textContent = 'Test';
+                actions.appendChild(testBtn);
+            }
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'mini-btn danger';
+            delBtn.type = 'button';
+            delBtn.dataset.action = 'delete';
+            delBtn.dataset.id = link.id;
+            delBtn.textContent = 'Delete';
+            actions.appendChild(delBtn);
+
+            footer.append(status, actions);
+
+            item.append(header, urlRow, footer);
+            return item;
+        }
+
+        function armDeleteConfirmation(tokenId) {
+            const existingTimeout = pendingDeletes.get(tokenId);
+            if (existingTimeout) {
+                clearTimeout(existingTimeout);
+            }
+            const timeoutId = setTimeout(() => {
+                pendingDeletes.delete(tokenId);
+            }, DELETE_CONFIRM_MS);
+            pendingDeletes.set(tokenId, timeoutId);
+        }
+
+        async function deleteToken(tokenId, buttonEl) {
+            Trace.group('DELETE_FLOW');
+            Trace.log('DELETE_CLICK', { tokenId });
+            if (!db) {
+                Trace.log('DELETE_ABORT_NO_DB');
+                showError('Database not connected. Please refresh the page.');
+                Trace.groupEnd();
+                return;
+            }
+
+            // Two-click confirm (console-only)
+            if (!pendingDeletes.has(tokenId)) {
+                armDeleteConfirmation(tokenId);
+                Trace.log('DELETE_CONFIRM_ARMED', { ttlMs: DELETE_CONFIRM_MS });
+                Trace.groupEnd();
+                return;
+            }
+
+            // Confirmed
+            const timeoutId = pendingDeletes.get(tokenId);
+            if (timeoutId) clearTimeout(timeoutId);
+            pendingDeletes.delete(tokenId);
+
+            const originalText = buttonEl?.textContent;
+            if (buttonEl) {
+                buttonEl.disabled = true;
+                buttonEl.textContent = 'Deleting...';
+            }
+
+            try {
+                Trace.log('RPC_DELETE_START');
+                const { data: delResult, error } = await db.rpc('admin_delete_token', {
+                    p_admin_code: adminCode,
+                    p_token_id: String(tokenId)
+                });
+
+                if (error) {
+                    throw new Error(error.message || 'Delete failed');
+                }
+
+                if (!delResult || !delResult.success) {
+                    const errMsg = delResult?.error || 'Delete failed';
+                    if (errMsg === 'Unauthorized') {
+                        adminCode = null;
+                        document.body.innerHTML = '<div class="auth-screen auth-screen--danger"><h2>Access Denied</h2><p>Invalid admin code.</p></div>';
+                        return;
+                    }
+                    throw new Error(errMsg);
+                }
+
+                Trace.log('DELETE_SUCCESS');
+
+                // Interlock: Hide result area if the deleted token is currently displayed
+                // We check if the current link output contains the deleted token ID
+                if (elements.resultArea && !elements.resultArea.classList.contains('is-hidden')) {
+                    const currentLink = elements.linkOutput.value;
+                    if (currentLink && currentLink.includes(tokenId)) {
+                        setHidden(elements.resultArea, true);
+                        elements.linkOutput.value = '';
+                    }
+                }
+
+                // Refresh list and source performance to keep paging consistent
+                resetRecentLinksPaging();
+                await loadRecentLinks(state.filter);
+
+            } catch (err) {
+                console.error('Delete failed:', err);
+                Trace.log('DELETE_FAILED', { message: err?.message || String(err) });
+                showError(`Failed to delete link: ${err.message}`);
+            } finally {
+                if (buttonEl) {
+                    buttonEl.disabled = false;
+                    buttonEl.textContent = originalText || 'Delete';
+                }
+
+                Trace.groupEnd();
+            }
+        }
+        
+        /**
+         * Copies a link to clipboard
+         */
+        async function copyLinkToClipboard(link) {
+            try {
+                Trace.log('COPY_RECENT_LINK', { link });
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(link);
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = link;
+                    textarea.style.position = 'fixed';
+                    textarea.style.left = '-9999px';
+                    textarea.setAttribute('aria-hidden', 'true');
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                }
+                Trace.log('COPY_RECENT_LINK_SUCCESS');
+            } catch (error) {
+                console.error('Copy failed:', error);
+                Trace.log('COPY_RECENT_LINK_FAILED', { message: error?.message || String(error) });
+            }
+        }
+        
+        /**
+         * Opens a link in new tab
+         */
+        function openLink(link) {
+            Trace.log('USER_OPEN_TEST_LINK', { link });
+            window.open(link, '_blank', 'noopener,noreferrer');
+        }
+        
+        /**
+         * Filters links by source
+         */
+        function filterBySource(source) {
+            const normalized = normalizeSourceKey(source);
+            state.filter = normalized;
+            Trace.log('FILTER_APPLIED', { source: normalized });
+            resetRecentLinksPaging();
+            loadRecentLinks(normalized);
+
+            // Unify filtering UX: expand the Recent Links panel when filtering
+            if (!state.links.expanded) {
+                state.links.expanded = true;
+                setHidden(elements.recentLinks, false);
+                elements.expandArrow.classList.toggle('collapsed', false);
+                if (elements.recentLinksToggle) {
+                    elements.recentLinksToggle.setAttribute('aria-expanded', 'true');
+                }
+            }
+        }
+        
+        /**
+         * Clears the source filter
+         */
+        function clearFilter() {
+            state.filter = null;
+            Trace.log('FILTER_CLEARED');
+            resetRecentLinksPaging();
+            loadRecentLinks();
+        }
+        
+        /**
+         * Toggles the links section visibility
+         */
+        function toggleLinksSection() {
+            state.links.expanded = !state.links.expanded;
+            Trace.log('LINKS_TOGGLED', { expanded: state.links.expanded });
+            setHidden(elements.recentLinks, !state.links.expanded);
+            elements.expandArrow.classList.toggle('collapsed', !state.links.expanded);
+
+            if (elements.recentLinksToggle) {
+                elements.recentLinksToggle.setAttribute('aria-expanded', String(state.links.expanded));
+            }
+
+            if (state.links.expanded) {
+                ensureLinksObserver();
+            }
+        }
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+
+        populateSourceSelect();
+
+        if (elements.form) {
+            elements.form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                generateLink();
+            });
+        } else {
+            elements.btn.addEventListener('click', generateLink);
+        }
+        elements.copyBtn.addEventListener('click', copyToClipboard);
+
+        if (elements.recentLinksToggle) {
+            elements.recentLinksToggle.addEventListener('click', () => {
+                Trace.log('USER_TOGGLE_SECTION_CLICK');
+                toggleLinksSection();
+            });
+        }
+
+        if (elements.clearFilterBtn) {
+            elements.clearFilterBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                Trace.log('USER_CLEAR_FILTER_CLICK');
+                clearFilter();
+            });
+        }
+
+        // Allow Enter key on select to generate
+        elements.sourceSelect.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                generateLink();
+            }
+        });
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+
+        Trace.log('UI_READY');
+
+        // Verify admin code server-side, then load data
+        if (db) {
+            (async () => {
+                try {
+                    Trace.log('AUTH_SERVER_VERIFY_START');
+                    const { data, error } = await db.rpc('verify_admin', { p_admin_code: adminCode });
+                    if (error || !data || !data.success) {
+                        Trace.log('AUTH_SERVER_DENIED');
+                        adminCode = null;
+                        document.body.innerHTML = '<div class="auth-screen auth-screen--danger"><h2>Access Denied</h2><p>Invalid admin code.</p></div>';
+                        return;
+                    }
+                    Trace.log('AUTH_SERVER_VERIFIED');
+                } catch (e) {
+                    // Network error — allow proceeding, individual RPCs will catch invalid codes
+                    console.warn('Admin verification network error:', e);
+                }
+                resetRecentLinksPaging();
+                loadRecentLinks();
+            })();
+        }
+
+        // Handle page visibility changes (refresh when page becomes visible)
+        // Cooldown prevents redundant fetches on rapid tab switching
+        let lastVisibilityRefresh = 0;
+        const VISIBILITY_COOLDOWN_MS = 60_000; // 1 minute
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && db) {
+                const now = Date.now();
+                if (now - lastVisibilityRefresh < VISIBILITY_COOLDOWN_MS) return;
+                lastVisibilityRefresh = now;
+                resetRecentLinksPaging();
+                loadRecentLinks(state.filter);
+            }
+        });
+
+        // ============================================
+        // CHANGE ADMIN CODE
+        // ============================================
+        {
+            const changeBtn = document.getElementById('changeCodeBtn');
+            const currentInput = document.getElementById('currentCodeInput');
+            const newInput = document.getElementById('newCodeInput');
+            const confirmInput = document.getElementById('confirmCodeInput');
+            const changeMsg = document.getElementById('changeCodeMessage');
+
+            function showChangeMsg(text, isError) {
+                changeMsg.textContent = text;
+                changeMsg.className = 'gallery-msg ' + (isError ? 'error' : 'success');
+                setHidden(changeMsg, false);
+            }
+
+            if (changeBtn) {
+                changeBtn.addEventListener('click', async () => {
+                    setHidden(changeMsg, true);
+                    const currentVal = currentInput.value.trim();
+                    const newVal = newInput.value.trim();
+                    const confirmVal = confirmInput.value.trim();
+
+                    if (!currentVal) { showChangeMsg('Enter your current admin code.', true); return; }
+                    if (newVal.length < 4) { showChangeMsg('New code must be at least 4 characters.', true); return; }
+                    if (newVal !== confirmVal) { showChangeMsg('New codes do not match.', true); return; }
+                    if (newVal === currentVal) { showChangeMsg('New code must be different from current code.', true); return; }
+
+                    changeBtn.disabled = true;
+                    changeBtn.textContent = 'Changing...';
+
+                    try {
+                        const { data, error } = await db.rpc('admin_change_code', {
+                            p_current_code: currentVal,
+                            p_new_code: newVal
+                        });
+
+                        if (error) throw new Error(error.message);
+                        if (!data || !data.success) {
+                            const errMsg = data?.error || 'Change failed';
+                            showChangeMsg(errMsg, true);
+                            return;
+                        }
+
+                        // Update in-memory admin code so subsequent actions use the new one
+                        adminCode = newVal;
+                        currentInput.value = '';
+                        newInput.value = '';
+                        confirmInput.value = '';
+                        showChangeMsg('Admin code changed successfully!', false);
+                        Trace.log('ADMIN_CODE_CHANGED');
+                    } catch (err) {
+                        showChangeMsg('Failed: ' + err.message, true);
+                    } finally {
+                        changeBtn.disabled = false;
+                        changeBtn.textContent = 'Change Admin Code';
+                    }
+                });
+            }
+        }
+
+        // ============================================
+        // GALLERY MANAGER
+        // ============================================
+        {
+            const gEl = {
+                section: document.getElementById('gallerySection'),
+                form: document.getElementById('galleryForm'),
+                urlInput: document.getElementById('galleryUrl'),
+                urlStatus: document.getElementById('galleryUrlStatus'),
+                preview: document.getElementById('galleryPreview'),
+                titleInput: document.getElementById('galleryTitle'),
+                mediumInput: document.getElementById('galleryMedium'),
+                yearInput: document.getElementById('galleryYear'),
+                captionPreview: document.getElementById('galleryCaptionPreview'),
+                addBtn: document.getElementById('galleryAddBtn'),
+                message: document.getElementById('galleryMessage'),
+                list: document.getElementById('galleryList'),
+                count: document.getElementById('galleryCount')
+            };
+
+            let galleryLoaded = false;
+            let galleryItems = [];
+            let lastMovedId = null;
+            const galleryDeletePending = new Map();
+            const GALLERY_DELETE_MS = 3000;
+            const dragDropTarget = { id: null, position: 'before' };
+
+            // ----- Google Drive URL Converter -----
+            function extractDriveFileId(url) {
+                if (!url || typeof url !== 'string') return null;
+                url = url.trim();
+                // lh3.googleusercontent.com/d/{ID}
+                let m = url.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/);
+                if (m) return m[1];
+                // drive.google.com/file/d/{ID}/...
+                m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+                if (m) return m[1];
+                // drive.google.com/open?id={ID} or /uc?id= or /thumbnail?id=
+                m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                if (m) return m[1];
+                // Bare ID (25+ chars, letters/numbers/dashes/underscores)
+                if (/^[a-zA-Z0-9_-]{25,}$/.test(url)) return url;
+                return null;
+            }
+
+            function toEmbedUrl(fileId) {
+                return `https://lh3.googleusercontent.com/d/${fileId}`;
+            }
+
+            function buildCaption(title, medium, year) {
+                let c = title || '';
+                if (medium || year) {
+                    c += ' - ';
+                    if (medium) c += medium;
+                    if (medium && year) c += ' ';
+                    if (year) c += year;
+                }
+                return c;
+            }
+
+            // ----- URL Input Handler -----
+            let convertedUrl = null;
+
+            function handleUrlInput() {
+                const raw = gEl.urlInput.value.trim();
+                if (!raw) {
+                    setHidden(gEl.urlStatus, true);
+                    setHidden(gEl.preview, true);
+                    convertedUrl = null;
+                    return;
+                }
+
+                const fileId = extractDriveFileId(raw);
+                if (fileId) {
+                    convertedUrl = toEmbedUrl(fileId);
+                    gEl.urlStatus.textContent = '✅ Valid Google Drive URL detected';
+                    gEl.urlStatus.className = 'gallery-url-status valid';
+                    setHidden(gEl.urlStatus, false);
+                    // Show preview
+                    gEl.preview.innerHTML = `<img src="${convertedUrl}" alt="Preview" onerror="this.parentElement.innerHTML='<span style=&quot;padding:0.5rem;font-size:0.7rem;color:#999&quot;>Could not load preview</span>'">`;
+                    setHidden(gEl.preview, false);
+                } else {
+                    convertedUrl = null;
+                    gEl.urlStatus.textContent = '⚠️ Could not detect a Google Drive file ID';
+                    gEl.urlStatus.className = 'gallery-url-status invalid';
+                    setHidden(gEl.urlStatus, false);
+                    setHidden(gEl.preview, true);
+                }
+            }
+
+            gEl.urlInput.addEventListener('input', handleUrlInput);
+            gEl.urlInput.addEventListener('paste', () => setTimeout(handleUrlInput, 50));
+
+            // ----- Caption Preview -----
+            function updateCaptionPreview() {
+                const t = gEl.titleInput.value.trim();
+                const m = gEl.mediumInput.value.trim();
+                const y = gEl.yearInput.value.trim();
+                if (t) {
+                    gEl.captionPreview.textContent = 'Caption: "' + buildCaption(t, m, y) + '"';
+                } else {
+                    gEl.captionPreview.textContent = '';
+                }
+            }
+
+            gEl.titleInput.addEventListener('input', updateCaptionPreview);
+            gEl.mediumInput.addEventListener('input', updateCaptionPreview);
+            gEl.yearInput.addEventListener('input', updateCaptionPreview);
+
+            // ----- Show Gallery Message -----
+            function showGalleryMsg(text, isError) {
+                gEl.message.textContent = text;
+                gEl.message.className = 'gallery-msg ' + (isError ? 'error' : 'success');
+                setHidden(gEl.message, false);
+                setTimeout(() => setHidden(gEl.message, true), 5000);
+            }
+
+            // ----- Add Gallery Item -----
+            gEl.form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!db || !adminCode) return;
+
+                const imgUrl = convertedUrl;
+                const title = gEl.titleInput.value.trim();
+                const medium = gEl.mediumInput.value.trim() || null;
+                const year = gEl.yearInput.value ? parseInt(gEl.yearInput.value, 10) : null;
+
+                if (!imgUrl) {
+                    showGalleryMsg('Please paste a valid Google Drive image URL.', true);
+                    return;
+                }
+                if (!title) {
+                    showGalleryMsg('Please enter an artwork title.', true);
+                    return;
+                }
+
+                gEl.addBtn.disabled = true;
+                gEl.addBtn.textContent = 'Adding...';
+
+                try {
+                    // Calculate next sort order (find max and add 1, starting from 1)
+                    const maxSort = galleryItems.length > 0 
+                        ? Math.max(...galleryItems.map(i => i.sort_order || 0))
+                        : 0;
+                    const nextSort = Math.max(1, maxSort + 1);
+
+                    const { data, error } = await db.rpc('admin_add_gallery_item', {
+                        p_admin_code: adminCode,
+                        p_img_url: imgUrl,
+                        p_title: title,
+                        p_medium: medium,
+                        p_year_created: year,
+                        p_sort_order: nextSort
+                    });
+
+                    if (error) throw new Error(error.message);
+                    if (!data || !data.success) {
+                        showGalleryMsg(data?.error || 'Failed to add item', true);
+                        return;
+                    }
+
+                    showGalleryMsg('Artwork added to gallery! Visitors will see it on page refresh.', false);
+                    // Reset form
+                    gEl.form.reset();
+                    convertedUrl = null;
+                    setHidden(gEl.urlStatus, true);
+                    setHidden(gEl.preview, true);
+                    gEl.captionPreview.textContent = '';
+                    // Reload list
+                    loadGalleryItems();
+                } catch (err) {
+                    showGalleryMsg('Error: ' + err.message, true);
+                } finally {
+                    gEl.addBtn.disabled = false;
+                    gEl.addBtn.textContent = 'Add to Gallery';
+                }
+            });
+
+            // ----- Load Gallery Items -----
+            async function loadGalleryItems() {
+                if (!db || !adminCode) return;
+
+                try {
+                    const { data, error } = await db.rpc('admin_list_gallery', {
+                        p_admin_code: adminCode
+                    });
+
+                    if (error) throw new Error(error.message);
+                    if (!data || !data.success) {
+                        gEl.list.innerHTML = '<p class="text-danger" style="font-size:0.85rem;">' + (data?.error || 'Failed to load') + '</p>';
+                        return;
+                    }
+
+                    galleryItems = data.items || [];
+                    renderGalleryItems();
+                    galleryLoaded = true;
+                } catch (err) {
+                    gEl.list.innerHTML = '<p class="text-danger" style="font-size:0.85rem;">Error: ' + sanitizeText(err.message) + '</p>';
+                }
+            }
+
+            // ----- Render Gallery Items -----
+            function renderGalleryItems() {
+                const active = galleryItems.filter(i => i.is_active).length;
+                const total = galleryItems.length;
+                gEl.count.textContent = `${active} active / ${total} total items`;
+
+                if (total === 0) {
+                    gEl.list.innerHTML = '<p class="text-muted-2" style="font-size:0.85rem;">No gallery items yet. Add your first artwork above!</p>';
+                    return;
+                }
+
+                gEl.list.innerHTML = galleryItems.map(item => {
+                    const caption = buildCaption(item.title, item.medium, item.year_created);
+                    const isActive = item.is_active;
+                    const date = new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    const safeId = sanitizeAttr(item.id);
+                    const safeSortOrder = sanitizeAttr(item.sort_order);
+                    const thumbUrl = item.img_url.startsWith('http') ? sanitizeAttr(item.img_url) : '';
+                    const flashClass = String(item.id) === String(lastMovedId) ? ' flash' : '';
+
+                    return `
+                        <div class="gallery-item ${isActive ? '' : 'inactive'}${flashClass}" data-gallery-id="${safeId}">
+                            <span class="drag-handle" title="Drag to reorder">⠿</span>
+                            <div class="gallery-item-thumb">
+                                ${thumbUrl ? `<img src="${thumbUrl}" alt="${sanitizeText(item.title)}" loading="lazy" onerror="this.style.display='none'">` : '<span style="display:flex;align-items:center;justify-content:center;height:100%;font-size:1.2rem;">🖼️</span>'}
+                            </div>
+                            <div class="gallery-item-info">
+                                <div class="gallery-item-title">${sanitizeText(caption)}</div>
+                                <div class="gallery-item-meta">Added ${date}</div>
+                            </div>
+                            <input type="number" class="gallery-sort-input" value="${Math.max(1, safeSortOrder)}" min="1" max="9999" title="Position (1 = first)" data-gallery-action="sort" data-gallery-id="${safeId}" aria-label="Sort order for ${sanitizeText(item.title)}">
+                            <div class="gallery-item-actions">
+                                <button class="mini-btn gallery-item-badge ${isActive ? 'active' : 'hidden'}" role="switch" aria-checked="${isActive}" data-gallery-action="toggle" data-gallery-id="${safeId}" title="Click to ${isActive ? 'hide' : 'show'}">${isActive ? '👁️' : '🚫'}</button>
+                                <button class="mini-btn secondary" data-gallery-action="edit" data-gallery-id="${safeId}" title="Edit details">✏️</button>
+                                <button class="mini-btn danger" data-gallery-action="delete" data-gallery-id="${safeId}" title="Delete permanently">🗑️</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                if (lastMovedId !== null) {
+                    setTimeout(() => { lastMovedId = null; }, 0);
+                }
+            }
+
+            // ----- Toggle Gallery Item -----
+            async function toggleGalleryItem(id, btn) {
+                if (!db || !adminCode) return;
+                btn.disabled = true;
+                try {
+                    const { data, error } = await db.rpc('admin_toggle_gallery_item', {
+                        p_admin_code: adminCode,
+                        p_item_id: parseInt(id, 10)
+                    });
+                    if (error) throw new Error(error.message);
+                    if (!data || !data.success) {
+                        showGalleryMsg(data?.error || 'Toggle failed', true);
+                        return;
+                    }
+                    showGalleryMsg(data.is_active ? 'Item is now visible in gallery' : 'Item hidden from gallery', false);
+                    loadGalleryItems();
+                } catch (err) {
+                    showGalleryMsg('Error: ' + err.message, true);
+                } finally {
+                    btn.disabled = false;
+                }
+            }
+
+            // ----- Delete Gallery Item (double-click to confirm) -----
+            async function deleteGalleryItem(id, btn) {
+                // First click = arm confirmation
+                if (!galleryDeletePending.has(id)) {
+                    galleryDeletePending.set(id, true);
+                    btn.textContent = '⚠️ Sure?';
+                    btn.classList.remove('danger');
+                    btn.classList.add('confirm-armed');
+                    setTimeout(() => {
+                        if (galleryDeletePending.has(id)) {
+                            galleryDeletePending.delete(id);
+                            btn.textContent = '🗑️';
+                            btn.classList.remove('confirm-armed');
+                            btn.classList.add('danger');
+                        }
+                    }, GALLERY_DELETE_MS);
+                    return;
+                }
+
+                // Second click = confirmed
+                galleryDeletePending.delete(id);
+                btn.disabled = true;
+                btn.textContent = '...';
+
+                try {
+                    const { data, error } = await db.rpc('admin_delete_gallery_item', {
+                        p_admin_code: adminCode,
+                        p_item_id: parseInt(id, 10)
+                    });
+                    if (error) throw new Error(error.message);
+                    if (!data || !data.success) {
+                        showGalleryMsg(data?.error || 'Delete failed', true);
+                        return;
+                    }
+                    showGalleryMsg('Item deleted permanently', false);
+                    loadGalleryItems();
+                } catch (err) {
+                    showGalleryMsg('Error: ' + err.message, true);
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = '🗑️';
+                    btn.classList.remove('confirm-armed');
+                    btn.classList.add('danger');
+                }
+            }
+
+            // ----- Edit Gallery Item (modal) -----
+            let editOverlay = null;
+            let editConvertedUrl = null;
+
+            function openEditModal(id) {
+                const item = galleryItems.find(i => String(i.id) === String(id));
+                if (!item) return;
+
+                // Remove existing overlay if any
+                if (editOverlay) editOverlay.remove();
+                editConvertedUrl = null;
+
+                editOverlay = document.createElement('div');
+                editOverlay.className = 'gallery-edit-overlay';
+                editOverlay.innerHTML = `
+                    <div class="gallery-edit-modal">
+                        <h3>✏️ Edit Artwork</h3>
+                        <div id="editMessage" class="gallery-edit-message is-hidden"></div>
+                        <div class="gallery-edit-preview">
+                            <div class="gallery-edit-preview-img" id="editPreviewImg">
+                                ${item.img_url ? `<img src="${sanitizeAttr(item.img_url)}" alt="Current artwork" onerror="this.style.display='none'">` : '<span style="display:flex;align-items:center;justify-content:center;height:100%;font-size:2rem;">🖼️</span>'}
+                            </div>
+                            <div class="gallery-edit-preview-text">
+                                <div style="font-weight:600;font-size:0.9rem;color:var(--color-text);" id="editPreviewCaption">${sanitizeText(buildCaption(item.title, item.medium, item.year_created))}</div>
+                                <div class="gallery-edit-preview-caption" id="editPreviewSubtext">${item.is_active ? '✅ Visible on site' : '🚫 Hidden from site'}</div>
+                            </div>
+                        </div>
+                        <form class="gallery-form" id="galleryEditForm">
+                            <label for="editUrl">Image URL</label>
+                            <input type="text" id="editUrl" value="${sanitizeAttr(item.img_url)}" placeholder="Paste Google Drive share link or direct image URL" required>
+                            <div id="editUrlStatus" class="gallery-url-status is-hidden"></div>
+                            
+                            <label for="editTitle">Title</label>
+                            <input type="text" id="editTitle" value="${sanitizeAttr(item.title)}" required>
+                            <label for="editMedium">Medium</label>
+                            <input type="text" id="editMedium" value="${sanitizeAttr(item.medium || '')}" list="mediumOptions" placeholder="e.g. Digital, Canvas, Physical">
+                            <label for="editYear">Year</label>
+                            <input type="number" id="editYear" min="1900" max="2100" value="${item.year_created || ''}" placeholder="e.g. 2024">
+                            <label for="editSortOrder">Position (1 = first, higher numbers shown later)</label>
+                            <input type="number" id="editSortOrder" min="1" max="9999" value="${Math.max(1, item.sort_order)}" placeholder="e.g. 1">
+                            
+                            <div class="gallery-edit-visibility">
+                                <label>Visibility Status</label>
+                                <button type="button" id="editActiveToggle" class="mini-btn gallery-item-badge ${item.is_active ? 'active' : 'hidden'}" role="switch" aria-checked="${item.is_active}" data-active="${item.is_active}" title="Click to ${item.is_active ? 'hide' : 'show'}">${item.is_active ? '👁️' : '🚫'}</button>
+                            </div>
+                            
+                            <div class="gallery-edit-actions">
+                                <button type="button" class="gallery-edit-cancel" id="editCancelBtn">Cancel</button>
+                                <button type="submit" class="gallery-add-btn" id="editSaveBtn">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                `;
+
+                document.body.appendChild(editOverlay);
+
+                const urlInput = editOverlay.querySelector('#editUrl');
+                const urlStatus = editOverlay.querySelector('#editUrlStatus');
+                const previewImg = editOverlay.querySelector('#editPreviewImg');
+                const titleInput = editOverlay.querySelector('#editTitle');
+                const mediumInput = editOverlay.querySelector('#editMedium');
+                const yearInput = editOverlay.querySelector('#editYear');
+                const activeToggle = editOverlay.querySelector('#editActiveToggle');
+                const previewCaption = editOverlay.querySelector('#editPreviewCaption');
+                const previewSubtext = editOverlay.querySelector('#editPreviewSubtext');
+                const editMessage = editOverlay.querySelector('#editMessage');
+
+                // Active toggle button handler
+                activeToggle.addEventListener('click', () => {
+                    const isActive = activeToggle.dataset.active === 'true';
+                    const newActive = !isActive;
+                    activeToggle.dataset.active = String(newActive);
+                    activeToggle.setAttribute('aria-checked', String(newActive));
+                    activeToggle.className = 'mini-btn gallery-item-badge ' + (newActive ? 'active' : 'hidden');
+                    activeToggle.title = 'Click to ' + (newActive ? 'hide' : 'show');
+                    activeToggle.textContent = newActive ? '👁️' : '🚫';
+                    previewSubtext.textContent = newActive ? '✅ Visible on site' : '🚫 Hidden from site';
+                });
+
+                // URL input handler with Google Drive converter
+                function handleEditUrlInput() {
+                    const raw = urlInput.value.trim();
+                    if (!raw) {
+                        urlStatus.classList.add('is-hidden');
+                        editConvertedUrl = null;
+                        return;
+                    }
+
+                    const fileId = extractDriveFileId(raw);
+                    if (fileId) {
+                        const embedUrl = toEmbedUrl(fileId);
+                        editConvertedUrl = embedUrl;
+                        urlStatus.textContent = '✅ Google Drive link converted';
+                        urlStatus.className = 'gallery-url-status valid';
+                        previewImg.innerHTML = `<img src="${sanitizeAttr(embedUrl)}" alt="Preview" onerror="this.style.display='none'">`;
+                    } else {
+                        editConvertedUrl = null;
+                        if (raw.startsWith('http')) {
+                            urlStatus.textContent = '✅ Direct URL detected';
+                            urlStatus.className = 'gallery-url-status valid';
+                            previewImg.innerHTML = `<img src="${sanitizeAttr(raw)}" alt="Preview" onerror="this.style.display='none'">`;
+                        } else {
+                            urlStatus.textContent = '⚠️ Invalid URL format';
+                            urlStatus.className = 'gallery-url-status invalid';
+                        }
+                    }
+                }
+
+                // Live caption preview update
+                function updateEditCaptionPreview() {
+                    const title = titleInput.value.trim() || 'Untitled';
+                    const medium = mediumInput.value.trim();
+                    const year = yearInput.value;
+                    previewCaption.textContent = buildCaption(title, medium, year);
+                }
+
+                // Active toggle preview
+                function updateEditActivePreview() {
+                    const isActive = activeToggle.dataset.active === 'true';
+                    previewSubtext.textContent = isActive ? '✅ Visible on site' : '🚫 Hidden from site';
+                }
+
+                // Attach live preview handlers
+                urlInput.addEventListener('input', handleEditUrlInput);
+                urlInput.addEventListener('paste', () => setTimeout(handleEditUrlInput, 50));
+                titleInput.addEventListener('input', updateEditCaptionPreview);
+                mediumInput.addEventListener('input', updateEditCaptionPreview);
+                yearInput.addEventListener('input', updateEditCaptionPreview);
+
+                // Focus title input
+                titleInput.focus();
+                titleInput.select();
+
+                // Close on backdrop click
+                editOverlay.addEventListener('click', (ev) => {
+                    if (ev.target === editOverlay) closeEditModal();
+                });
+
+                // Cancel button
+                editOverlay.querySelector('#editCancelBtn').addEventListener('click', closeEditModal);
+
+                // Focus trap — keep Tab cycling inside the modal
+                const modal = editOverlay.querySelector('.gallery-edit-modal');
+                modal.addEventListener('keydown', (ev) => {
+                    if (ev.key !== 'Tab') return;
+                    const focusable = modal.querySelectorAll(
+                        'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+                    );
+                    if (!focusable.length) return;
+                    const first = focusable[0];
+                    const last = focusable[focusable.length - 1];
+                    if (ev.shiftKey && document.activeElement === first) {
+                        ev.preventDefault();
+                        last.focus();
+                    } else if (!ev.shiftKey && document.activeElement === last) {
+                        ev.preventDefault();
+                        first.focus();
+                    }
+                });
+
+                // Escape key
+                const escHandler = (ev) => { if (ev.key === 'Escape') { closeEditModal(); document.removeEventListener('keydown', escHandler); } };
+                document.addEventListener('keydown', escHandler);
+
+                // Helper to show inline message
+                function showEditMessage(text, isError) {
+                    editMessage.textContent = text;
+                    editMessage.className = isError ? 'gallery-edit-message error' : 'gallery-edit-message success';
+                    editMessage.classList.remove('is-hidden');
+                    setTimeout(() => editMessage.classList.add('is-hidden'), 4000);
+                }
+
+                // Save
+                editOverlay.querySelector('#galleryEditForm').addEventListener('submit', async (ev) => {
+                    ev.preventDefault();
+                    
+                    const newUrl = editConvertedUrl || urlInput.value.trim();
+                    const newTitle = titleInput.value.trim();
+                    const newMedium = mediumInput.value.trim() || null;
+                    const newYear = yearInput.value ? parseInt(yearInput.value, 10) : null;
+                    const newSort = editOverlay.querySelector('#editSortOrder').value !== '' ? Math.max(1, parseInt(editOverlay.querySelector('#editSortOrder').value, 10)) : 1;
+                    const newActive = activeToggle.dataset.active === 'true';
+
+                    if (!newUrl) { showEditMessage('Image URL is required.', true); return; }
+                    if (!newTitle) { showEditMessage('Title is required.', true); return; }
+
+                    const saveBtn = editOverlay.querySelector('#editSaveBtn');
+                    saveBtn.disabled = true;
+                    saveBtn.textContent = 'Saving...';
+
+                    try {
+                        const { data, error } = await db.rpc('admin_edit_gallery_item', {
+                            p_admin_code: adminCode,
+                            p_item_id: parseInt(id, 10),
+                            p_img_url: newUrl,
+                            p_title: newTitle,
+                            p_medium: newMedium,
+                            p_year_created: newYear,
+                            p_sort_order: newSort,
+                            p_is_active: newActive
+                        });
+                        if (error) throw new Error(error.message);
+                        if (!data || !data.success) {
+                            showEditMessage(data?.error || 'Update failed', true);
+                            saveBtn.disabled = false;
+                            saveBtn.textContent = 'Save Changes';
+                            return;
+                        }
+                        showEditMessage('✅ Artwork updated successfully!', false);
+
+                        // If sort_order changed, issue a reorder RPC
+                        if (newSort !== item.sort_order) {
+                            try {
+                                await db.rpc('admin_reorder_gallery_item', {
+                                    p_admin_code: adminCode,
+                                    p_item_id: parseInt(id, 10),
+                                    p_new_sort_order: newSort
+                                });
+                            } catch (_) { /* best-effort */ }
+                        }
+
+                        setTimeout(() => {
+                            closeEditModal();
+                            loadGalleryItems();
+                        }, 1000);
+                    } catch (err) {
+                        showEditMessage('Error: ' + err.message, true);
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = 'Save Changes';
+                    }
+                });
+            }
+
+            function closeEditModal() {
+                if (editOverlay) { editOverlay.remove(); editOverlay = null; }
+            }
+
+            // ----- Event Delegation for Gallery List -----
+            gEl.list.addEventListener('click', (e) => {
+                const btn = e.target.closest('button');
+                if (!btn) return;
+                const action = btn.getAttribute('data-gallery-action');
+                const id = btn.getAttribute('data-gallery-id');
+                if (!action || !id) return;
+
+                if (action === 'toggle') toggleGalleryItem(id, btn);
+                if (action === 'edit') openEditModal(id);
+                if (action === 'delete') deleteGalleryItem(id, btn);
+            });
+
+            // ----- Quiet Background Sync (updates local state + inputs, no DOM rebuild) -----
+            async function syncSortOrders() {
+                if (!db || !adminCode) return;
+                try {
+                    const { data, error } = await db.rpc('admin_list_gallery', {
+                        p_admin_code: adminCode
+                    });
+                    if (error || !data || !data.success) return;
+                    const serverItems = data.items || [];
+                    // Build a lookup from server
+                    const serverMap = new Map(serverItems.map(i => [String(i.id), i]));
+                    // Update local array with server sort_order values
+                    galleryItems.forEach(item => {
+                        const server = serverMap.get(String(item.id));
+                        if (server) item.sort_order = server.sort_order;
+                    });
+                    // Re-sort local array to match server order
+                    galleryItems.sort((a, b) => a.sort_order - b.sort_order);
+                    // Patch the DOM inputs in-place
+                    galleryItems.forEach(item => {
+                        const input = gEl.list.querySelector(`input.gallery-sort-input[data-gallery-id="${item.id}"]`);
+                        if (input) input.value = item.sort_order;
+                    });
+                } catch (_) { /* best-effort */ }
+            }
+
+            // ----- Inline Sort-Order Save -----
+            async function saveSortOrder(input) {
+                const id = input.getAttribute('data-gallery-id');
+                const item = galleryItems.find(i => String(i.id) === String(id));
+                if (!item) return;
+                let newVal = parseInt(input.value, 10);
+                if (isNaN(newVal) || newVal < 1) {
+                    input.value = Math.max(1, item.sort_order);
+                    return;
+                }
+                if (newVal === item.sort_order) return;
+
+                input.disabled = true;
+                try {
+                    const { data, error } = await db.rpc('admin_reorder_gallery_item', {
+                        p_admin_code: adminCode,
+                        p_item_id: parseInt(id, 10),
+                        p_new_sort_order: newVal
+                    });
+                    if (error) throw new Error(error.message);
+                    if (!data || !data.success) { showGalleryMsg(data?.error || 'Sort update failed', true); return; }
+                    showGalleryMsg(`Position updated to ${newVal}`, false);
+                    loadGalleryItems();
+                } catch (err) {
+                    showGalleryMsg('Error: ' + err.message, true);
+                } finally {
+                    input.disabled = false;
+                }
+            }
+
+            gEl.list.addEventListener('change', (e) => {
+                if (e.target.matches('.gallery-sort-input')) saveSortOrder(e.target);
+            });
+            gEl.list.addEventListener('keydown', (e) => {
+                if (e.target.matches('.gallery-sort-input') && e.key === 'Enter') {
+                    e.preventDefault();
+                    e.target.blur(); // triggers change event
+                }
+            });
+
+            // ----- Drag & Drop Reorder (Desktop + Touch) -----
+            let dragSrcId = null;
+            let currentDropTarget = null;
+
+            function clearDropIndicators() {
+                if (!gEl.list) return;
+                gEl.list.querySelectorAll('.drag-over, .drop-before, .drop-after').forEach(el => {
+                    el.classList.remove('drag-over', 'drop-before', 'drop-after');
+                });
+                currentDropTarget = null;
+            }
+
+            /** Shared helper: update the drop-indicator on a target row */
+            function updateDropIndicator(row, clientY) {
+                if (!row || row.getAttribute('data-gallery-id') === dragSrcId) {
+                    // Hovering over source or outside — clear stale indicators
+                    if (currentDropTarget) {
+                        currentDropTarget.classList.remove('drag-over', 'drop-before', 'drop-after');
+                        currentDropTarget = null;
+                    }
+                    dragDropTarget.id = null;
+                    return;
+                }
+                const rect = row.getBoundingClientRect();
+                const isBefore = (clientY - rect.top) < rect.height / 2;
+
+                // Switch highlight to new row (avoid clearing everything each frame)
+                if (currentDropTarget && currentDropTarget !== row) {
+                    currentDropTarget.classList.remove('drag-over', 'drop-before', 'drop-after');
+                }
+                currentDropTarget = row;
+                row.classList.remove('drop-before', 'drop-after');
+                row.classList.add('drag-over', isBefore ? 'drop-before' : 'drop-after');
+
+                dragDropTarget.id = row.getAttribute('data-gallery-id');
+                dragDropTarget.position = isBefore ? 'before' : 'after';
+            }
+
+            /** Optimistically reorder the DOM immediately, then sync server */
+            function optimisticReorder(srcId, tgtId, position) {
+                const srcEl = gEl.list.querySelector(`[data-gallery-id="${srcId}"]`);
+                const tgtEl = gEl.list.querySelector(`[data-gallery-id="${tgtId}"]`);
+                if (!srcEl || !tgtEl) return;
+
+                // Move the DOM node directly (no re-render, no scroll jump)
+                if (position === 'before') {
+                    tgtEl.parentNode.insertBefore(srcEl, tgtEl);
+                } else {
+                    tgtEl.parentNode.insertBefore(srcEl, tgtEl.nextSibling);
+                }
+
+                // Brief "just landed" class to suppress transition flicker
+                srcEl.classList.add('dropped');
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => srcEl.classList.remove('dropped'));
+                });
+
+                // Update local galleryItems array to match new order
+                const srcIdx = galleryItems.findIndex(i => String(i.id) === String(srcId));
+                const tgtIdx = galleryItems.findIndex(i => String(i.id) === String(tgtId));
+                if (srcIdx !== -1 && tgtIdx !== -1) {
+                    const [moved] = galleryItems.splice(srcIdx, 1);
+                    const newTgtIdx = galleryItems.findIndex(i => String(i.id) === String(tgtId));
+                    if (newTgtIdx !== -1) {
+                        const insertAt = position === 'before' ? newTgtIdx : newTgtIdx + 1;
+                        galleryItems.splice(insertAt, 0, moved);
+                    }
+                    // Renumber sort_order locally
+                    galleryItems.forEach((item, i) => { item.sort_order = i + 1; });
+                    // Update sort-order inputs in-place
+                    galleryItems.forEach(item => {
+                        const input = gEl.list.querySelector(`input.gallery-sort-input[data-gallery-id="${item.id}"]`);
+                        if (input) input.value = item.sort_order;
+                    });
+                }
+            }
+
+            /** Shared helper: execute the move/swap RPC after a drop */
+            async function performDrop() {
+                const targetId = dragDropTarget.id;
+                const targetPosition = dragDropTarget.position || 'before';
+                clearDropIndicators();
+
+                if (!dragSrcId || !targetId || dragSrcId === targetId) return;
+
+                // Optimistic: move the DOM node instantly (no flicker, no scroll jump)
+                optimisticReorder(dragSrcId, targetId, targetPosition);
+
+                // Sync to server in background
+                try {
+                    const { data, error } = await db.rpc('admin_move_gallery_item', {
+                        p_admin_code: adminCode,
+                        p_item_id: parseInt(dragSrcId, 10),
+                        p_target_id: parseInt(targetId, 10),
+                        p_position: targetPosition
+                    });
+                    if (error) throw new Error(error.message);
+                    if (!data || !data.success) {
+                        showGalleryMsg(data?.error || 'Move failed — reverting', true);
+                        loadGalleryItems(); // revert on failure
+                        return;
+                    }
+                    // Quietly sync sort_order numbers from server
+                    syncSortOrders();
+                } catch (err) {
+                    const msg = String(err?.message || err || 'Move failed');
+                    const missingRpc = /admin_move_gallery_item|function.*does not exist|not exist/i.test(msg);
+
+                    if (!missingRpc) {
+                        showGalleryMsg('Error: ' + msg + ' — reverting', true);
+                        loadGalleryItems(); // revert on failure
+                        return;
+                    }
+
+                    // Fallback to swap if move RPC is unavailable
+                    try {
+                        const { data, error } = await db.rpc('admin_swap_gallery_order', {
+                            p_admin_code: adminCode,
+                            p_item_a: parseInt(dragSrcId, 10),
+                            p_item_b: parseInt(targetId, 10)
+                        });
+                        if (error) throw new Error(error.message);
+                        if (!data || !data.success) {
+                            showGalleryMsg(data?.error || 'Swap failed — reverting', true);
+                            loadGalleryItems();
+                            return;
+                        }
+                        // Swap succeeded — DOM may be slightly off, do a quiet refresh
+                        loadGalleryItems();
+                    } catch (swapErr) {
+                        showGalleryMsg('Swap error: ' + (swapErr?.message || swapErr) + ' — reverting', true);
+                        loadGalleryItems();
+                    }
+                }
+            }
+
+            // ——— Shared pointer drag (mouse + touch) ———
+            // Uses manual clone instead of HTML5 drag — no ghost, no snap-back.
+
+            let dragClone = null;
+            let dragSourceRow = null;
+            let dragOffsetY = 0;
+
+            /** Start a drag from a pointer (mouse or touch) */
+            function startDrag(row, clientX, clientY) {
+                // Clear any existing text selection immediately
+                const sel = window.getSelection();
+                if (sel) sel.removeAllRanges();
+
+                dragSrcId = row.getAttribute('data-gallery-id');
+                dragSourceRow = row;
+                row.classList.add('dragging');
+                document.body.classList.add('is-dragging');
+
+                // Build a floating clone that follows the pointer
+                const rect = row.getBoundingClientRect();
+                dragOffsetY = clientY - rect.top;
+                dragClone = row.cloneNode(true);
+                dragClone.style.cssText =
+                    'position:fixed;pointer-events:none;z-index:10000;transition:none;' +
+                    'transform:scale(0.97);opacity:0.88;' +
+                    'box-shadow:0 8px 25px rgba(0,0,0,0.18);border-radius:8px;' +
+                    'width:' + rect.width + 'px;' +
+                    'left:' + rect.left + 'px;' +
+                    'top:' + rect.top + 'px;';
+                document.body.appendChild(dragClone);
+            }
+
+            /** Move the clone + update indicator */
+            function moveDrag(clientX, clientY) {
+                if (dragClone) {
+                    dragClone.style.top = (clientY - dragOffsetY) + 'px';
+                }
+                // Temporarily hide the source row from hit-testing so
+                // elementFromPoint finds the row *underneath* instead
+                if (dragSourceRow) dragSourceRow.style.pointerEvents = 'none';
+                const elBelow = document.elementFromPoint(clientX, clientY);
+                if (dragSourceRow) dragSourceRow.style.pointerEvents = '';
+                const row = elBelow ? elBelow.closest('.gallery-item') : null;
+                updateDropIndicator(row, clientY);
+            }
+
+            /** End drag, perform drop, clean up */
+            async function endDrag() {
+                if (dragSourceRow) dragSourceRow.classList.remove('dragging');
+                if (dragClone) { dragClone.remove(); dragClone = null; }
+                document.body.classList.remove('is-dragging');
+
+                await performDrop();
+
+                dragSourceRow = null;
+                dragSrcId = null;
+                dragDropTarget.id = null;
+                dragDropTarget.position = 'before';
+            }
+
+            // ——— Mouse events (desktop) ———
+
+            gEl.list.addEventListener('mousedown', (e) => {
+                const handle = e.target.closest('.drag-handle');
+                if (!handle) return;
+                const row = handle.closest('.gallery-item');
+                if (!row) return;
+                e.preventDefault(); // prevent text selection
+
+                startDrag(row, e.clientX, e.clientY);
+
+                function onMouseMove(ev) {
+                    ev.preventDefault();
+                    moveDrag(ev.clientX, ev.clientY);
+                }
+
+                async function onMouseUp() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    await endDrag();
+                }
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            // Prevent native HTML5 drag on gallery items entirely
+            gEl.list.addEventListener('dragstart', (e) => {
+                e.preventDefault();
+            });
+
+            // ——— Touch events (mobile / tablet) ———
+
+            gEl.list.addEventListener('touchstart', (e) => {
+                const handle = e.target.closest('.drag-handle');
+                if (!handle) return;
+                const row = handle.closest('.gallery-item');
+                if (!row) return;
+
+                const touch = e.touches[0];
+                startDrag(row, touch.clientX, touch.clientY);
+            }, { passive: true });
+
+            gEl.list.addEventListener('touchmove', (e) => {
+                if (!dragSourceRow) return;
+                e.preventDefault(); // prevent scrolling while dragging
+                const touch = e.touches[0];
+                moveDrag(touch.clientX, touch.clientY);
+            }, { passive: false });
+
+            gEl.list.addEventListener('touchend', async () => {
+                if (!dragSourceRow) return;
+                await endDrag();
+            });
+
+            // ----- Load on section open -----
+            gEl.section.addEventListener('toggle', () => {
+                if (gEl.section.open && !galleryLoaded && db && adminCode) {
+                    loadGalleryItems();
+                }
+            });
+        }
+
+        // Event Delegation for generated links
+        if (elements.recentLinksList) {
+            elements.recentLinksList.addEventListener('click', (e) => {
+                const btn = e.target.closest('button');
+                if (!btn) return;
+
+                const action = btn.getAttribute('data-action');
+                if (!action) return;
+
+                if (action === 'copy') {
+                    const link = btn.getAttribute('data-link');
+                    if (link) copyLinkToClipboard(link);
+                } else if (action === 'test') {
+                    const link = btn.getAttribute('data-link');
+                    Trace.log('USER_TEST_CLICK', { link });
+                    if (link) openLink(link);
+                } else if (action === 'delete') {
+                    const id = btn.getAttribute('data-id');
+                    if (id) deleteToken(id, btn);
+                } else if (action === 'filter') {
+                    const source = btn.getAttribute('data-source');
+                    Trace.log('USER_FILTER_CLICK', { source });
+                    if (source) filterBySource(source);
+                }
+            });
+
+            elements.recentLinksList.addEventListener('dblclick', (e) => {
+                const field = e.target.closest('.link-item-url-field');
+                if (!field) return;
+                field.focus();
+                field.select();
+                Trace.log('USER_URL_DBLCLICK', { url: field.value });
+            });
+        }
+
+
+    </script>
+</body>
+</html>

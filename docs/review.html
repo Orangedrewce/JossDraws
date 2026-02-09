@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="robots" content="noindex, nofollow">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self';
+               script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+               style-src 'self' 'unsafe-inline';
+               connect-src https://pciubbwphwpnptgawgok.supabase.co;
+               img-src 'self' data:;
+               font-src 'self';
+               object-src 'none';
+               base-uri 'self';
+               form-action 'self';
+               frame-ancestors 'none';">
+  <title>Leave a Review | JossDraws</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.3/dist/umd/supabase.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    :root {
+      --color-bg: #f9f9f9;
+      --color-card: #ffffff;
+      --color-white: #ffffff;
+      --color-black: #000000;
+      --color-text: #333;
+      --color-muted: #666;
+      --color-muted-2: #999;
+      --color-border: #ddd;
+      --color-border-soft: #eee;
+
+      --color-primary: #000000;
+      --color-primary-hover: #333;
+
+      --color-success: #10b981;
+      --color-success-dark: #065f46;
+      --color-success-bg: #ecfdf5;
+
+      --color-danger: #ef4444;
+      --color-danger-bg: #fef2f2;
+      --color-danger-text: #991b1b;
+
+      --color-toast-bg: #1e293b;
+
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 12px;
+
+      --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-lg: 0 4px 15px rgba(0,0,0,0.05);
+      --shadow-xl: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--color-bg);
+      color: var(--color-text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 1rem;
+      line-height: 1.6;
+    }
+
+    .review-container {
+      background: var(--color-card);
+      padding: 2.5rem;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      width: 100%;
+      max-width: 500px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--color-text);
+      font-size: 0.9rem;
+      letter-spacing: 0.01em;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      margin-bottom: 0.5rem;
+      max-width: 100%;
+      font-size: 1rem;
+      color: var(--color-text);
+      background: var(--color-white);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:hover, select:hover, textarea:hover {
+      border-color: var(--color-primary);
+    }
+
+    select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      padding-right: 2.5rem;
+    }
+
+    textarea { resize: vertical; min-height: 120px; max-height: 300px; }
+
+    /* Countdown Style */
+    #charCounter {
+      text-align: right;
+      font-size: 0.85rem;
+      color: var(--color-muted);
+      margin-bottom: 1.5rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .btn {
+      background: var(--color-primary);
+      color: var(--color-white);
+      padding: 0.9rem 2rem;
+      border: none;
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s, box-shadow 0.2s;
+      letter-spacing: 0.01em;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: var(--color-primary-hover);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn:active:not(:disabled) {
+      box-shadow: none;
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .hidden { display: none; }
+
+    .loader {
+      text-align: center;
+      color: var(--color-muted);
+    }
+
+    .error-screen {
+      text-align: center;
+      color: var(--color-danger-text);
+    }
+
+    .honeypot { position: absolute; left: -9999px; opacity: 0; pointer-events: none; }
+
+    .error-message {
+      background: var(--color-danger-bg);
+      border: 1px solid var(--color-danger);
+      color: var(--color-danger-text);
+      padding: 0.85rem 1rem;
+      border-radius: var(--radius-md);
+      margin-bottom: 1rem;
+      display: none;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+
+    .success-screen {
+      text-align: center;
+      color: var(--color-success-dark);
+    }
+
+    .success-screen h2 { color: var(--color-success-dark); }
+
+    .success-screen p { color: var(--color-muted); }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--color-toast-bg);
+      color: white;
+      padding: 0.85rem 1.4rem;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-xl);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.3s, transform 0.3s;
+      z-index: 1000;
+      pointer-events: none;
+      font-size: 0.9rem;
+      backdrop-filter: blur(8px);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    .btn:focus-visible {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 0.5rem; }
+      .review-container { padding: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <main class="review-container">
+
+    <div id="loadingState" class="loader">
+      <h3>Validating Link...</h3>
+    </div>
+
+    <div id="invalidState" class="hidden error-screen">
+      <h2>Link Invalid or Expired</h2>
+      <p>This review link has already been used or has expired.</p>
+      <p style="font-size: 0.9rem; margin-top: 1rem;">If you'd still like to leave feedback, please reach out directly 💛</p>
+    </div>
+
+    <div id="formState" class="hidden">
+      <h2>Share Your Experience</h2>
+      <p style="text-align: center; color: var(--color-muted); margin-bottom: 2rem;">I'd love to hear what you think!</p>
+
+      <div id="formError" class="error-message" role="alert"></div>
+
+      <form id="reviewForm" novalidate>
+        <!-- Honeypot field for bot prevention -->
+        <input type="text" name="website" class="honeypot" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+        <label for="clientName">Name</label>
+        <input type="text" id="clientName" placeholder="e.g. Jane D." maxlength="60" pattern="^[a-zA-Z\s\-\.]+$" title="Please enter a valid name (letters, spaces, hyphens, and periods only)" autocomplete="name" required>
+
+        <label for="ratingScore">Rating</label>
+        <select id="ratingScore" aria-label="Rating selection" required>
+            <option value="5">⭐⭐⭐⭐⭐ (5 Stars)</option>
+            <option value="4">⭐⭐⭐⭐ (4 Stars)</option>
+            <option value="3">⭐⭐⭐ (3 Stars)</option>
+            <option value="2">⭐⭐ (2 Stars)</option>
+            <option value="1">⭐ (1 Star)</option>
+        </select>
+
+        <label for="reviewText">Review</label>
+        <textarea id="reviewText" rows="5" maxlength="280" placeholder="Loved the print..." spellcheck="true" required></textarea>
+
+        <div id="charCounter">280 remaining</div>
+
+        <button type="submit" class="btn" id="submitBtn">Submit Review</button>
+      </form>
+    </div>
+
+    <div id="successState" class="hidden success-screen">
+      <h2>Thank You!</h2>
+      <p>Your review has been submitted.</p>
+    </div>
+
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+<script>
+    // ============================================
+    // CONFIGURATION
+    // ============================================
+    const CONFIG = {
+      SUPABASE_URL: 'https://pciubbwphwpnptgawgok.supabase.co',
+      SUPABASE_KEY: 'sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv',
+      MAX_RETRIES: 3,
+      RETRY_DELAY: 1000,
+      MAX_NAME_LENGTH: 60,
+      MAX_REVIEW_LENGTH: 280
+    };
+
+    const VALID_SOURCES = [
+      'commission', 'etsy', 'print', 'sticker',
+      'bookmark', 'pet_portrait', 'faceless_portrait',
+      'coloring_book', 'general'
+    ];
+
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    let db;
+    try {
+      db = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+    } catch (error) {
+      console.error('Failed to initialize Supabase client:', error);
+    }
+
+    // DOM Elements
+    const elements = {
+      loader: document.getElementById('loadingState'),
+      invalidScreen: document.getElementById('invalidState'),
+      formScreen: document.getElementById('formState'),
+      successScreen: document.getElementById('successState'),
+      form: document.getElementById('reviewForm'),
+      formError: document.getElementById('formError'),
+      clientName: document.getElementById('clientName'),
+      reviewText: document.getElementById('reviewText'),
+      ratingScore: document.getElementById('ratingScore'),
+      charCounter: document.getElementById('charCounter'),
+      submitBtn: document.getElementById('submitBtn'),
+      toast: document.getElementById('toast')
+    };
+
+    // ============================================
+    // UTILITY FUNCTIONS
+    // ============================================
+
+    /**
+     * Sanitizes text for safe display (prevents XSS)
+     */
+    function sanitizeText(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    /**
+     * Shows inline error message (replaces alert())
+     */
+    function showFormError(message) {
+      elements.formError.textContent = message;
+      elements.formError.style.display = 'block';
+
+      // Auto-hide after 5 seconds
+      setTimeout(() => {
+        elements.formError.style.display = 'none';
+      }, 5000);
+    }
+
+    /**
+     * Hides inline error message
+     */
+    function hideFormError() {
+      elements.formError.style.display = 'none';
+    }
+
+    /**
+     * Shows toast notification
+     */
+    let _toastTimer = null;
+    function showToast(message, duration = 2000) {
+      if (_toastTimer) clearTimeout(_toastTimer);
+      elements.toast.textContent = message;
+      elements.toast.classList.add('show');
+
+      _toastTimer = setTimeout(() => {
+        elements.toast.classList.remove('show');
+        _toastTimer = null;
+      }, duration);
+    }
+
+    /**
+     * Updates button state consistently
+     */
+    function setButtonState(isLoading) {
+      const LOADING_LABEL = '⏳ Processing...';
+      const DEFAULT_LABEL = 'Submit Review';
+      if (isLoading) {
+        elements.submitBtn.disabled = true;
+        elements.submitBtn.textContent = LOADING_LABEL;
+      } else {
+        elements.submitBtn.disabled = false;
+        if (elements.submitBtn.textContent === LOADING_LABEL) {
+          elements.submitBtn.textContent = DEFAULT_LABEL;
+        }
+      }
+    }
+
+    /**
+     * Validates that a source value matches the known allowlist
+     */
+    function validateSource(source) {
+      if (!source || typeof source !== 'string') return 'general';
+      const trimmed = source.trim();
+      return VALID_SOURCES.includes(trimmed) ? trimmed : 'general';
+    }
+
+    /**
+     * Retry wrapper for database operations
+     */
+    async function withRetry(operation, retries = CONFIG.MAX_RETRIES) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          return await operation();
+        } catch (error) {
+          if (i === retries - 1) throw error;
+          await new Promise(resolve => setTimeout(resolve, CONFIG.RETRY_DELAY * (i + 1)));
+        }
+      }
+    }
+
+    // ============================================
+    // CHARACTER COUNTER
+    // ============================================
+    if (elements.reviewText) {
+      elements.reviewText.addEventListener('input', () => {
+        const currentLength = elements.reviewText.value.length;
+        const remaining = CONFIG.MAX_REVIEW_LENGTH - currentLength;
+        elements.charCounter.textContent = `${remaining} remaining`;
+      });
+    }
+
+    // ============================================
+    // STATE
+    // ============================================
+    let globalSource = null;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenID = urlParams.get('token');
+
+    // ============================================
+    // TOKEN VALIDATION
+    // ============================================
+    async function validateToken() {
+      if (!db) {
+        showInvalidScreen();
+        console.error('Database not initialized');
+        return;
+      }
+
+      if (!tokenID) {
+        showInvalidScreen();
+        return;
+      }
+
+      try {
+        const { data: result, error } = await withRetry(async () => {
+          return await db.rpc('validate_review_token', { p_token_id: tokenID });
+        });
+
+        if (error || !result || !result.success || !result.token) {
+          showInvalidScreen();
+          return;
+        }
+
+        const token = result.token;
+
+        // Token is valid — capture source with validation
+        globalSource = token.source ? validateSource(token.source) : null;
+
+        elements.loader.classList.add('hidden');
+        elements.formScreen.classList.remove('hidden');
+
+      } catch (error) {
+        console.error('Token validation failed:', error);
+        showInvalidScreen();
+      }
+    }
+
+    function showInvalidScreen() {
+      elements.loader.classList.add('hidden');
+      elements.invalidScreen.classList.remove('hidden');
+    }
+
+    // ============================================
+    // FORM SUBMISSION
+    // ============================================
+    elements.form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideFormError();
+
+      // Check honeypot field (bot prevention)
+      const honeypot = elements.form.querySelector('[name="website"]');
+      if (honeypot && honeypot.value) {
+        // Silent fail — likely a bot
+        return;
+      }
+
+      if (!db) {
+        showFormError('Unable to connect to the database. Please try again later.');
+        return;
+      }
+
+      setButtonState(true);
+
+      // Sanitize inputs
+      const name = sanitizeText(elements.clientName.value.trim().substring(0, CONFIG.MAX_NAME_LENGTH));
+      const text = sanitizeText(elements.reviewText.value.trim().substring(0, CONFIG.MAX_REVIEW_LENGTH));
+      const rating = parseInt(elements.ratingScore.value, 10);
+
+      // Validate inputs aren't empty after trimming
+      if (!name || !text) {
+        showFormError('Please fill in all required fields.');
+        setButtonState(false);
+        return;
+      }
+
+      // Validate rating is in range
+      if (isNaN(rating) || rating < 1 || rating > 5) {
+        showFormError('Please select a valid rating.');
+        setButtonState(false);
+        return;
+      }
+
+      try {
+        // Submit review via atomic RPC function (prevents race conditions)
+        const { data: result, error: rpcError } = await withRetry(async () => {
+          return await db.rpc('submit_review', {
+            p_token_id: tokenID,
+            p_client_name: name,
+            p_review_text: text,
+            p_rating: rating
+          });
+        });
+
+        if (rpcError) {
+          throw new Error(rpcError.message || 'Failed to submit review');
+        }
+
+        if (result && !result.success) {
+          throw new Error(result.error || 'Review submission was rejected');
+        }
+
+        elements.formScreen.classList.add('hidden');
+        elements.successScreen.classList.remove('hidden');
+        showToast('✅ Review submitted!');
+
+      } catch (error) {
+        console.error('Review submission failed:', error);
+        showFormError(`Something went wrong: ${error.message}. Please try again.`);
+      } finally {
+        setButtonState(false);
+      }
+    });
+
+    // ============================================
+    // LAUNCH
+    // ============================================
+    validateToken();
+  </script>
+</body>
+</html>
