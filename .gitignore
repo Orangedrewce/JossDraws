@@ -1,10 +1,6 @@
-# Supabase setup files (contain sensitive webhook URLs and credentials)
-supabase-setup.sql
-docs/supabase-setup.sql
-
 # Environment files
 .env
 .env.local
 
-# Database credentials
+# Database credentials and SQL files
 *.sql
