@@ -498,6 +498,8 @@ class Carousel {
     const img = document.createElement('img');
     img.src = url;
     img.alt = 'Product image';
+    img.loading = 'lazy';
+    img.decoding = 'async';
     img.setAttribute('data-media', JSON.stringify(this.mediaItems));
     
     this.mediaContainer.appendChild(img);

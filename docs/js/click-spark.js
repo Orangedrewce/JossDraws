@@ -114,6 +114,11 @@ class ClickSpark {
     }));
     
     this.sparks.push(...newSparks);
+
+    // Restart animation loop if it was idle (no sparks before this click)
+    if (!this.animationId && !this._paused) {
+      this.animationId = requestAnimationFrame((ts) => this._animateLoop(ts));
+    }
   }
   
   easeFunc(t) {
@@ -164,15 +169,39 @@ class ClickSpark {
   }
   
   startAnimation() {
-    const animate = (timestamp) => {
+    this._paused = false;
+
+    // Shared loop reference so handleClick can restart it
+    this._animateLoop = (timestamp) => {
+      if (this._paused) { this.animationId = null; return; }
       this.draw(timestamp);
-      this.animationId = requestAnimationFrame(animate);
+      // Go idle when all sparks have expired — saves CPU between clicks
+      if (this.sparks.length === 0) { this.animationId = null; return; }
+      this.animationId = requestAnimationFrame(this._animateLoop);
     };
+
+    // Pause / resume with Page Visibility API
+    this._onVisChange = () => {
+      if (document.hidden) {
+        this._paused = true;
+        if (this.animationId) { cancelAnimationFrame(this.animationId); this.animationId = null; }
+      } else {
+        this._paused = false;
+        if (!this.animationId && this.sparks.length > 0) {
+          this.animationId = requestAnimationFrame(this._animateLoop);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', this._onVisChange);
     
-    this.animationId = requestAnimationFrame(animate);
+    // Don't start the loop until the first click (idle by default)
+    this.animationId = null;
   }
   
   destroy() {
+    if (this._onVisChange) {
+      document.removeEventListener('visibilitychange', this._onVisChange);
+    }
     if (this.cleanup) {
       this.cleanup();
     }

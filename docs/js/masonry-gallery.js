@@ -27,15 +27,26 @@ class MasonryGallery {
     this.focusedItemId = null;
     // Store natural media dimensions keyed by src
     this.imageMeta = {};
+    // Animation lock for spam prevention
+    this.isAnimating = false;
+    // Scroll position saved before focus (restored on unfocus)
+    this.savedScrollY = null;
+    // Track video elements for cleanup
+    this.activeVideos = [];
     // Bound event handler for cleanup
     this.boundHandleResize = () => this.handleResize();
+    // Bound click-outside handler for cleanup
+    this.boundClickOutside = null;
   }
   
   async init(items) {
     this.items = items;
     
-  // Preload images/videos and capture natural dimensions
-  await this.preloadMedia(items);
+    // Show loading state
+    this.showLoading();
+    
+    // Preload images/videos and capture natural dimensions
+    await this.preloadMedia(items);
     this.imagesReady = true;
 
     // Merge natural dimensions onto items and compute aspect ratios
@@ -56,6 +67,7 @@ class MasonryGallery {
     
     // Initial layout
     this.calculateGrid();
+    this.hideLoading();
     this.render();
     this.animateIn();
     
@@ -65,14 +77,17 @@ class MasonryGallery {
   
   async preloadMedia(items) {
     const meta = {};
+    const PRELOAD_TIMEOUT = 8000; // 8s max per asset to prevent infinite hang
     await Promise.all(
       items.map(item => new Promise(resolve => {
         const src = item.video || item.img;
+        const timer = setTimeout(resolve, PRELOAD_TIMEOUT);
         if (item.type === 'video' || item.video) {
           const video = document.createElement('video');
           video.preload = 'metadata';
           video.src = src;
           video.addEventListener('loadedmetadata', () => {
+            clearTimeout(timer);
             meta[src] = {
               naturalWidth: video.videoWidth || 1000,
               naturalHeight: video.videoHeight || 1000,
@@ -80,11 +95,12 @@ class MasonryGallery {
             };
             resolve();
           });
-          video.onerror = () => resolve();
+          video.onerror = () => { clearTimeout(timer); resolve(); };
         } else {
           const img = new Image();
           img.src = src;
           img.onload = () => {
+            clearTimeout(timer);
             meta[src] = {
               naturalWidth: img.naturalWidth || img.width,
               naturalHeight: img.naturalHeight || img.height,
@@ -92,7 +108,7 @@ class MasonryGallery {
             };
             resolve();
           };
-          img.onerror = () => resolve();
+          img.onerror = () => { clearTimeout(timer); resolve(); };
         }
       }))
     );
@@ -188,6 +204,14 @@ class MasonryGallery {
   }
   
   render() {
+    // Clean up old videos to prevent memory leaks
+    this.activeVideos.forEach(v => {
+      v.pause();
+      v.src = '';
+      v.load();
+    });
+    this.activeVideos = [];
+    
     this.container.innerHTML = '';
     this.container.style.position = 'relative';
     this.container.style.width = '100%';
@@ -205,8 +229,15 @@ class MasonryGallery {
         cursor: pointer;
         overflow: hidden;
         border-radius: 8px;
-        transition: transform 0.3s ease, z-index 0s;
+        transition: transform 0.3s ease,
+                    z-index 0s,
+                    width 0.3s ease,
+                    height 0.3s ease;
         z-index: 1;
+        will-change: transform;
+        transform: translate(${item.x}px, ${item.y}px);
+        width: ${item.w}px;
+        height: ${item.h}px;
       `;
       
       // Media rendering (image or video)
@@ -219,6 +250,8 @@ class MasonryGallery {
         // No poster by default (keeps layout simple)
   // if (item.poster) videoEl.poster = item.poster;
   videoEl.muted = true;
+        // Track for cleanup
+        this.activeVideos.push(videoEl);
         videoEl.playsInline = true;
         videoEl.setAttribute('playsinline', '');
         // Loop by default unless explicitly disabled on the item
@@ -321,6 +354,9 @@ class MasonryGallery {
       
       // Event listeners
       wrapper.addEventListener('click', (e) => {
+        // Prevent spam clicks during animation
+        if (this.isAnimating) return;
+        
         // Check if we're clicking an already focused card with a URL
         if (this.focusedCard === wrapper && item.url) {
           window.open(item.url, '_blank', 'noopener');
@@ -334,6 +370,10 @@ class MasonryGallery {
           e.preventDefault();
           this.toggleFocus(wrapper, item);
         }
+        if (e.key === 'Escape' && this.focusedCard === wrapper) {
+          e.preventDefault();
+          this.toggleFocus(wrapper, item);
+        }
       });
       
       wrapper.addEventListener('mouseenter', () => this.handleMouseEnter(wrapper, item));
@@ -342,9 +382,13 @@ class MasonryGallery {
       this.container.appendChild(wrapper);
     });
     
-    // Set container height
-    const maxHeight = Math.max(...this.grid.map(item => item.y + item.h));
-    this.container.style.height = `${maxHeight}px`;
+    // Set container height (safely handle empty grid)
+    if (this.grid.length > 0) {
+      const maxHeight = Math.max(...this.grid.map(item => item.y + item.h));
+      this.container.style.height = `${maxHeight}px`;
+    } else {
+      this.container.style.height = 'auto';
+    }
   }
   
   animateIn() {
@@ -394,11 +438,17 @@ class MasonryGallery {
       }
     });
     
-    const maxHeight = Math.max(...this.grid.map(item => item.y + item.h));
-    this.container.style.height = `${maxHeight}px`;
+    // Safely handle empty grid
+    if (this.grid.length > 0) {
+      const maxHeight = Math.max(...this.grid.map(item => item.y + item.h));
+      this.container.style.height = `${maxHeight}px`;
+    }
   }
   
   toggleFocus(element, item) {
+    // Animation lock
+    this.isAnimating = true;
+    
     const wasFocused = this.focusedCard === element;
     
     // Remove focus from previously focused card
@@ -411,14 +461,22 @@ class MasonryGallery {
       this.unfocusCard(element);
       this.focusedCard = null;
     } else {
+      // Save scroll position BEFORE the grid reflows
+      this.savedScrollY = window.scrollY;
+      
       this.focusCard(element, item);
       this.focusedCard = element;
       
-      // Smooth scroll to focused card
+      // Smooth scroll to focused card after expansion starts
       setTimeout(() => {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
+      }, 200);
     }
+    
+    // Release lock after transition completes
+    setTimeout(() => {
+      this.isAnimating = false;
+    }, this.options.duration * 1000 + 100);
   }
   
   focusCard(element, item) {
@@ -426,6 +484,7 @@ class MasonryGallery {
     this.focusedItemId = item.id;
     element.classList.add('card-focused');
     element.setAttribute('aria-pressed', 'true');
+    element.style.zIndex = '10'; // elevate above siblings during expansion
     this.calculateGrid();
     this.updateLayout();
     // Play videos when focused (muted, inline)
@@ -440,6 +499,7 @@ class MasonryGallery {
   unfocusCard(element) {
     element.classList.remove('card-focused');
     element.setAttribute('aria-pressed', 'false');
+    element.style.zIndex = '1'; // restore normal stacking
     const v = element.querySelector('video');
     if (v) {
       v.pause();
@@ -447,6 +507,16 @@ class MasonryGallery {
     this.focusedItemId = null;
     this.calculateGrid();
     this.updateLayout();
+    
+    // Restore scroll position to where user was before focusing
+    if (this.savedScrollY !== null) {
+      const targetY = this.savedScrollY;
+      this.savedScrollY = null;
+      // Wait for the grid reflow transition to start, then restore
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: targetY, behavior: 'smooth' });
+      });
+    }
   }
   
   handleMouseEnter(element, item) {
@@ -490,6 +560,11 @@ class MasonryGallery {
       this.updateColumns();
       
       if (oldColumns !== this.columns) {
+        // Clear focused state before re-render to prevent stale references
+        if (this.focusedCard) {
+          this.unfocusCard(this.focusedCard);
+          this.focusedCard = null;
+        }
         this.calculateGrid();
         this.render();
         this.updateLayout();
@@ -498,22 +573,68 @@ class MasonryGallery {
   }
   
   initClickOutside() {
-    document.addEventListener('click', (e) => {
+    // Remove previous listener if one exists (prevents leak on re-init)
+    if (this.boundClickOutside) {
+      document.removeEventListener('click', this.boundClickOutside);
+    }
+    this.boundClickOutside = (e) => {
       const insideCard = e.target.closest('.masonry-item-wrapper');
       if (this.focusedCard && !insideCard) {
         this.unfocusCard(this.focusedCard);
         this.focusedCard = null;
       }
-    });
+    };
+    document.addEventListener('click', this.boundClickOutside);
+
+    // Global Escape key to close any focused card
+    if (!this._boundEscHandler) {
+      this._boundEscHandler = (e) => {
+        if (e.key === 'Escape' && this.focusedCard) {
+          this.unfocusCard(this.focusedCard);
+          this.focusedCard = null;
+        }
+      };
+      document.addEventListener('keydown', this._boundEscHandler);
+    }
+  }
+  
+  showLoading() {
+    const loader = document.createElement('div');
+    loader.className = 'masonry-loader';
+    loader.innerHTML = '<div class="loader-spinner"></div>';
+    this.container.appendChild(loader);
+  }
+  
+  hideLoading() {
+    const loader = this.container.querySelector('.masonry-loader');
+    if (loader) loader.remove();
   }
   
   destroy() {
+    // Clean up videos
+    this.activeVideos.forEach(v => {
+      v.pause();
+      v.src = '';
+      v.load();
+    });
+    this.activeVideos = [];
+    
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }
     window.removeEventListener('resize', this.boundHandleResize);
+    // Remove click-outside and Escape listeners to prevent leaks
+    if (this.boundClickOutside) {
+      document.removeEventListener('click', this.boundClickOutside);
+      this.boundClickOutside = null;
+    }
+    if (this._boundEscHandler) {
+      document.removeEventListener('keydown', this._boundEscHandler);
+      this._boundEscHandler = null;
+    }
     this.container.innerHTML = '';
     this.focusedCard = null;
+    this.focusedItemId = null;
   }
 }
 
@@ -723,6 +844,5 @@ if (document.readyState === 'loading') {
     });
   }
 }
-
 
 
