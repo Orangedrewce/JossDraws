@@ -44,14 +44,12 @@ git checkout dev
 
 ### 2. Sync and Commit
 ```powershell
-# Option A: Copy to docs/ manually when ready to sync
-Copy-Item "src\*" "docs\" -Recurse -Force
-
-# Option B: Or use a sync script (could automate this)
+./scripts/sync-src-to-docs.ps1
 
 # Commit changes
 git add -A
-git commit -m "Your descriptive message"
+git commit -m "Your descriptive message" 
+
 ```
 
 ### 3. Push to Main
