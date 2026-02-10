@@ -185,7 +185,9 @@
   gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
   // --- Supersampling setup ---
-  const supersampleFactor = 2.0; // Render at 2x resolution
+  // Use 2x SSAA on desktop, skip on mobile/low-power to save GPU
+  const isMobile = window.innerWidth <= 768 || (window.devicePixelRatio || 1) >= 2.5;
+  const supersampleFactor = isMobile ? 1.0 : 2.0;
   let fb, fbTexture;
 
   // Create a framebuffer to render to
@@ -301,9 +303,24 @@
     }
   }
 
+  // --- Page Visibility: pause when tab/app is hidden ---
+  let paused = false;
+  let rafId = null;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      paused = true;
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    } else {
+      paused = false;
+      lastRealTime = performance.now() * 0.001; // reset clock to avoid time-jump
+      if (!rafId) { rafId = requestAnimationFrame(render); }
+    }
+  });
+
   // Animation loop
   let firstFrameShown = false;
   function render() {
+    if (paused) { rafId = null; return; }
     resize();
     // Real elapsed time since last frame
     const now = performance.now() * 0.001; // seconds
@@ -356,10 +373,10 @@
       canvas.classList.add('is-ready');
     }
     
-    requestAnimationFrame(render);
+    rafId = requestAnimationFrame(render);
   }
   
   // Initial setup
   setupFramebuffer();
-  render();
+  rafId = requestAnimationFrame(render);
 })();

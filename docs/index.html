@@ -6,7 +6,17 @@
   <title>Joslynn Losee | Artist Gallery & Shop</title>
   <meta name="description" content="Official gallery and shop for Joslynn Losee. View artwork, custom pet portraits, coloring books, and more.">
   
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- DNS prefetch & preconnect for external image/CDN hosts -->
+  <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://i.etsystatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="dns-prefetch" href="https://lh3.googleusercontent.com">
+  <link rel="dns-prefetch" href="https://i.etsystatic.com">
+  <link rel="dns-prefetch" href="https://v.etsystatic.com">
+  <link rel="dns-prefetch" href="https://pciubbwphwpnptgawgok.supabase.co">
+  
+  <!-- Defer Supabase — not needed until reviews tab is opened -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
   <link rel="stylesheet" href="css/Styles.css">
   
@@ -64,7 +74,7 @@
   <header role="banner">
     <canvas id="shaderCanvas" class="header-background" aria-hidden="true"></canvas>
     <div class="header-container">
-      <h1 class="logo"><img src="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw" width="250" height="250" alt="JossDraws Home"></h1>
+      <h1 class="logo"><img src="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw" width="250" height="250" alt="JossDraws Home" fetchpriority="high" decoding="async"></h1>
       
       <nav aria-label="Main navigation">
         <ul>
@@ -117,7 +127,6 @@
           </select>
         </div>
         <div id="masonry-gallery">
-          <p class="muted-center loading-message">Loading artwork...</p>
         </div>
       </div>
     </section>
@@ -127,7 +136,7 @@
       <h2 id="about-heading">About</h2>
       
       <div class="grid grid-2">
-        <img src="https://lh3.googleusercontent.com/d/1t-dOjZJLTpkC2UdUmhvdRNWlfm8wM1pG" loading="lazy" width="800" height="800" alt="Joslynn Losee - The artist behind the work">
+        <img src="https://lh3.googleusercontent.com/d/1t-dOjZJLTpkC2UdUmhvdRNWlfm8wM1pG" loading="lazy" decoding="async" width="800" height="800" alt="Joslynn Losee - The artist behind the work">
         <div>
           <p>My name is <strong>Joslynn Losee</strong> I am a 25 year old multidisciplinary artist who specializes in illustration and graphic design.
           <br><br></p>

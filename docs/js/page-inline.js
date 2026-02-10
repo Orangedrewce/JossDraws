@@ -146,11 +146,27 @@
         if (data.length > 1) {
           var currentIndex = 0;
           var cards = document.querySelectorAll(".review-card");
-          setInterval(function () {
-            cards[currentIndex].classList.remove("active");
-            currentIndex = (currentIndex + 1) % cards.length;
-            cards[currentIndex].classList.add("active");
-          }, 6000);
+          var intervalId = null;
+
+          function startCarousel() {
+            if (intervalId) return;
+            intervalId = setInterval(function () {
+              cards[currentIndex].classList.remove("active");
+              currentIndex = (currentIndex + 1) % cards.length;
+              cards[currentIndex].classList.add("active");
+            }, 6000);
+          }
+
+          function stopCarousel() {
+            if (intervalId) { clearInterval(intervalId); intervalId = null; }
+          }
+
+          // Pause carousel when page is hidden
+          document.addEventListener("visibilitychange", function () {
+            if (document.hidden) { stopCarousel(); } else { startCarousel(); }
+          });
+
+          startCarousel();
         }
 
       } catch (e) {
