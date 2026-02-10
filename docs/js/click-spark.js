@@ -28,15 +28,16 @@ class ClickSpark {
       height: 100%;
       display: block;
       user-select: none;
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
       pointer-events: none;
-      z-index: 9999;
+      z-index: 999999;
+      isolation: isolate;
     `;
     
-    container.style.position = 'relative';
-    container.appendChild(this.canvas);
+    // Append to body to avoid stacking context issues
+    document.body.appendChild(this.canvas);
     
     this.ctx = this.canvas.getContext('2d');
     
@@ -53,19 +54,17 @@ class ClickSpark {
   resizeCanvas() {
     if (!this.canvas) return;
     
-    const parent = this.canvas.parentElement;
-    if (!parent) return;
-    
-    const rect = parent.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
     
     // Set display size (CSS)
-    this.canvas.style.width = rect.width + 'px';
-    this.canvas.style.height = rect.height + 'px';
+    this.canvas.style.width = width + 'px';
+    this.canvas.style.height = height + 'px';
     
     // Set actual canvas size (accounting for device pixel ratio)
-    this.canvas.width = rect.width * dpr;
-    this.canvas.height = rect.height * dpr;
+    this.canvas.width = width * dpr;
+    this.canvas.height = height * dpr;
     
     // Scale context to match device pixel ratio
     if (this.ctx) {
@@ -82,12 +81,13 @@ class ClickSpark {
     
     window.addEventListener('resize', handleResize);
     
-    // Handle clicks
-    container.addEventListener('click', (e) => this.handleClick(e));
+    // Handle clicks on document
+    document.addEventListener('click', (e) => this.handleClick(e), true);
     
     // Store cleanup function
     this.cleanup = () => {
       window.removeEventListener('resize', handleResize);
+      document.removeEventListener('click', (e) => this.handleClick(e), true);
       if (this.animationId) {
         cancelAnimationFrame(this.animationId);
       }
@@ -100,10 +100,9 @@ class ClickSpark {
   handleClick(e) {
     if (!this.canvas) return;
     
-    const rect = this.canvas.getBoundingClientRect();
-    // Get coordinates relative to the displayed canvas size (not internal resolution)
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Get coordinates relative to viewport (fixed positioning)
+    const x = e.clientX;
+    const y = e.clientY;
     
     const now = performance.now();
     const newSparks = Array.from({ length: this.sparkCount }, (_, i) => ({
@@ -137,8 +136,9 @@ class ClickSpark {
   draw(timestamp) {
     if (!this.ctx || !this.canvas) return;
     
-    const rect = this.canvas.getBoundingClientRect();
-    this.ctx.clearRect(0, 0, rect.width, rect.height);
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    this.ctx.clearRect(0, 0, width, height);
     
     this.sparks = this.sparks.filter(spark => {
       const elapsed = timestamp - spark.startTime;
