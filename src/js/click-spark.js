@@ -16,6 +16,12 @@ class ClickSpark {
     this.sparks = [];
     this.animationId = null;
     this.resizeTimeout = null;
+
+    this._paused = false;
+    this._onClick = null;
+    this._onResize = null;
+    this._onVisChange = null;
+    this.cleanup = null;
   }
   
   init(container) {
@@ -32,7 +38,7 @@ class ClickSpark {
       top: 0;
       left: 0;
       pointer-events: none;
-      z-index: 999999;
+      z-index: 9999;
       isolation: isolate;
     `;
     
@@ -68,32 +74,44 @@ class ClickSpark {
     
     // Scale context to match device pixel ratio
     if (this.ctx) {
+      // Reset transform defensively (setting width/height also resets state)
+      if (typeof this.ctx.setTransform === 'function') {
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      }
       this.ctx.scale(dpr, dpr);
     }
   }
   
   setupEventListeners(container) {
-    // Handle window resize
-    const handleResize = () => {
-      clearTimeout(this.resizeTimeout);
-      this.resizeTimeout = setTimeout(() => this.resizeCanvas(), 100);
-    };
-    
-    window.addEventListener('resize', handleResize);
-    
-    // Handle clicks on document
-    document.addEventListener('click', (e) => this.handleClick(e), true);
-    
-    // Store cleanup function
+    // Stable handler references so removeEventListener works
+    if (!this._onResize) {
+      this._onResize = () => {
+        clearTimeout(this.resizeTimeout);
+        this.resizeTimeout = setTimeout(() => this.resizeCanvas(), 100);
+      };
+    }
+
+    if (!this._onClick) {
+      this._onClick = (e) => this.handleClick(e);
+    }
+
+    window.addEventListener('resize', this._onResize);
+    document.addEventListener('click', this._onClick, true);
+
     this.cleanup = () => {
-      window.removeEventListener('resize', handleResize);
-      document.removeEventListener('click', (e) => this.handleClick(e), true);
+      clearTimeout(this.resizeTimeout);
+      window.removeEventListener('resize', this._onResize);
+      document.removeEventListener('click', this._onClick, true);
       if (this.animationId) {
         cancelAnimationFrame(this.animationId);
+        this.animationId = null;
       }
       if (this.canvas && this.canvas.parentElement) {
         this.canvas.parentElement.removeChild(this.canvas);
       }
+      this.canvas = null;
+      this.ctx = null;
+      this.sparks = [];
     };
   }
   
@@ -105,18 +123,18 @@ class ClickSpark {
     const y = e.clientY;
     
     const now = performance.now();
-    const newSparks = Array.from({ length: this.sparkCount }, (_, i) => ({
-      x,
-      y,
-      angle: (2 * Math.PI * i) / this.sparkCount,
-      startTime: now
-    }));
-    
-    this.sparks.push(...newSparks);
+    for (let i = 0; i < this.sparkCount; i++) {
+      this.sparks.push({
+        x,
+        y,
+        angle: (2 * Math.PI * i) / this.sparkCount,
+        startTime: now
+      });
+    }
 
     // Restart animation loop if it was idle (no sparks before this click)
     if (!this.animationId && !this._paused) {
-      this.animationId = requestAnimationFrame((ts) => this._animateLoop(ts));
+      this.animationId = requestAnimationFrame(this._animateLoop);
     }
   }
   
@@ -139,33 +157,38 @@ class ClickSpark {
     const width = window.innerWidth;
     const height = window.innerHeight;
     this.ctx.clearRect(0, 0, width, height);
-    
-    this.sparks = this.sparks.filter(spark => {
+
+    this.ctx.strokeStyle = this.sparkColor;
+    this.ctx.lineWidth = 2;
+
+    // Reverse loop allows safe splice() without creating new arrays
+    for (let i = this.sparks.length - 1; i >= 0; i--) {
+      const spark = this.sparks[i];
       const elapsed = timestamp - spark.startTime;
       if (elapsed >= this.duration) {
-        return false;
+        this.sparks.splice(i, 1);
+        continue;
       }
-      
+
       const progress = elapsed / this.duration;
       const eased = this.easeFunc(progress);
-      
+
       const distance = eased * this.sparkRadius * this.extraScale;
       const lineLength = this.sparkSize * (1 - eased);
-      
-      const x1 = spark.x + distance * Math.cos(spark.angle);
-      const y1 = spark.y + distance * Math.sin(spark.angle);
-      const x2 = spark.x + (distance + lineLength) * Math.cos(spark.angle);
-      const y2 = spark.y + (distance + lineLength) * Math.sin(spark.angle);
-      
-      this.ctx.strokeStyle = this.sparkColor;
-      this.ctx.lineWidth = 2;
+
+      const cos = Math.cos(spark.angle);
+      const sin = Math.sin(spark.angle);
+
+      const x1 = spark.x + distance * cos;
+      const y1 = spark.y + distance * sin;
+      const x2 = spark.x + (distance + lineLength) * cos;
+      const y2 = spark.y + (distance + lineLength) * sin;
+
       this.ctx.beginPath();
       this.ctx.moveTo(x1, y1);
       this.ctx.lineTo(x2, y2);
       this.ctx.stroke();
-      
-      return true;
-    });
+    }
   }
   
   startAnimation() {
@@ -192,6 +215,8 @@ class ClickSpark {
         }
       }
     };
+    // Prevent duplicate listeners if startAnimation() is ever called twice
+    document.removeEventListener('visibilitychange', this._onVisChange);
     document.addEventListener('visibilitychange', this._onVisChange);
     
     // Don't start the loop until the first click (idle by default)
