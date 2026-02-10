@@ -27,6 +27,8 @@ class MasonryGallery {
     this.focusedItemId = null;
     // Store natural media dimensions keyed by src
     this.imageMeta = {};
+    // Scroll position saved before focus (restored on unfocus)
+    this.savedScrollY = null;
     // Bound event handler for cleanup
     this.boundHandleResize = () => this.handleResize();
   }
@@ -411,6 +413,9 @@ class MasonryGallery {
       this.unfocusCard(element);
       this.focusedCard = null;
     } else {
+      // Save scroll position BEFORE the grid reflows
+      this.savedScrollY = window.scrollY;
+      
       this.focusCard(element, item);
       this.focusedCard = element;
       
@@ -447,6 +452,15 @@ class MasonryGallery {
     this.focusedItemId = null;
     this.calculateGrid();
     this.updateLayout();
+    
+    // Restore scroll position to where user was before focusing
+    if (this.savedScrollY !== null) {
+      const targetY = this.savedScrollY;
+      this.savedScrollY = null;
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: targetY, behavior: 'smooth' });
+      });
+    }
   }
   
   handleMouseEnter(element, item) {
