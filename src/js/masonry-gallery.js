@@ -29,11 +29,37 @@ class MasonryGallery {
     this.imageMeta = {};
     // Scroll position saved before focus (restored on unfocus)
     this.savedScrollY = null;
+    // Track where we auto-scrolled to when focusing (used to detect user-driven scroll drift)
+    this.focusScrollTargetY = null;
+    this.lastFocusWasMobile = false;
+
+    // Reduced motion support
+    this.reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.motionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
+    this.boundHandleMotionChange = (e) => {
+      this.reduceMotion = e.matches;
+    };
+    try {
+      this.motionMedia.addEventListener('change', this.boundHandleMotionChange);
+    } catch (_) {
+      // Older Safari fallback
+      try { this.motionMedia.addListener(this.boundHandleMotionChange); } catch (_) {}
+    }
+
+    // Cancellation / teardown safety for rapid filter changes
+    this.isDestroyed = false;
+    this.initRunId = 0;
     // Bound event handler for cleanup
     this.boundHandleResize = () => this.handleResize();
+    // Bound click-outside handler (set in initClickOutside)
+    this.boundHandleDocClick = null;
+    // Bound ESC key handler
+    this.boundHandleKeyDown = null;
   }
   
   async init(items) {
+    this.isDestroyed = false;
+    const runId = ++this.initRunId;
     this.items = items;
     
     // Show loading state
@@ -41,6 +67,7 @@ class MasonryGallery {
     
     // Preload images/videos and capture natural dimensions
     await this.preloadMedia(items);
+    if (this.isDestroyed || runId !== this.initRunId) return;
     this.imagesReady = true;
 
     // Merge natural dimensions onto items and compute aspect ratios
@@ -62,8 +89,14 @@ class MasonryGallery {
     // Initial layout
     this.calculateGrid();
     this.hideLoading();
+    if (this.isDestroyed || runId !== this.initRunId) return;
     this.render();
-    this.animateIn();
+    if (this.reduceMotion) {
+      this.hasMounted = true;
+      this.updateLayout();
+    } else {
+      this.animateIn();
+    }
     
     // Set up window resize
     window.addEventListener('resize', this.boundHandleResize);
@@ -197,6 +230,8 @@ class MasonryGallery {
     this.container.innerHTML = '';
     this.container.style.position = 'relative';
     this.container.style.width = '100%';
+    // If we're re-rendering, the old focused DOM node is gone.
+    // We'll re-link focusedCard while building the new DOM.
     this.focusedCard = null;
     
     this.grid.forEach(item => {
@@ -205,15 +240,20 @@ class MasonryGallery {
       wrapper.dataset.key = item.id;
       wrapper.setAttribute('tabindex', '0');
       wrapper.setAttribute('role', 'button');
-      wrapper.setAttribute('aria-pressed', 'false');
+      wrapper.setAttribute('aria-pressed', item.focused ? 'true' : 'false');
       wrapper.style.cssText = `
         position: absolute;
         cursor: pointer;
         overflow: hidden;
         border-radius: 8px;
-        transition: transform 0.3s ease, z-index 0s;
-        z-index: 1;
+        transition: ${this.reduceMotion ? 'none' : 'transform 0.3s ease, z-index 0s'};
+        z-index: ${item.focused ? 20 : 1};
       `;
+
+      if (item.focused) {
+        wrapper.classList.add('card-focused');
+        this.focusedCard = wrapper;
+      }
       
       // Media rendering (image or video)
       let mediaContainer;
@@ -354,6 +394,21 @@ class MasonryGallery {
   }
   
   animateIn() {
+    if (this.reduceMotion) {
+      this.grid.forEach((item) => {
+        const element = this.container.querySelector(`[data-key="${item.id}"]`);
+        if (!element) return;
+        element.style.transition = 'none';
+        element.style.opacity = '1';
+        element.style.transform = `translate(${item.x}px, ${item.y}px)`;
+        element.style.width = `${item.w}px`;
+        element.style.height = `${item.h}px`;
+        element.style.filter = 'none';
+      });
+      this.hasMounted = true;
+      return;
+    }
+
     this.grid.forEach((item, index) => {
       const element = this.container.querySelector(`[data-key="${item.id}"]`);
       if (!element) return;
@@ -385,15 +440,20 @@ class MasonryGallery {
   
   updateLayout() {
     if (!this.hasMounted) return;
+
+    const duration = this.reduceMotion ? 0 : this.options.duration;
     
     this.grid.forEach(item => {
       const element = this.container.querySelector(`[data-key="${item.id}"]`);
       if (!element) return;
-      
-      element.style.transition = `all ${this.options.duration}s cubic-bezier(0.22, 1, 0.36, 1)`;
+
+      element.style.transition = this.reduceMotion
+        ? 'none'
+        : `transform ${duration}s cubic-bezier(0.22, 1, 0.36, 1), width ${duration}s, height ${duration}s, filter ${duration}s, z-index 0s`;
       element.style.transform = `translate(${item.x}px, ${item.y}px)`;
       element.style.width = `${item.w}px`;
       element.style.height = `${item.h}px`;
+      element.style.zIndex = item.focused ? '20' : '1';
       const imgDiv = element.querySelector('.masonry-item-img');
       if (imgDiv) {
         imgDiv.style.backgroundImage = `url('${item.img}')`;
@@ -409,24 +469,64 @@ class MasonryGallery {
     
     // Remove focus from previously focused card
     if (this.focusedCard && this.focusedCard !== element) {
-      this.unfocusCard(this.focusedCard);
+      // Direct handoff: don't collapse layout or restore scroll between A -> B.
+      this.unfocusCard(this.focusedCard, { restoreScroll: false, skipLayout: true });
     }
     
     // Toggle the clicked card
     if (wasFocused) {
-      this.unfocusCard(element);
+      this.unfocusCard(element, { restoreScroll: true, skipLayout: false });
       this.focusedCard = null;
     } else {
-      // Save scroll position BEFORE the grid reflows
-      this.savedScrollY = window.scrollY;
+      // Save scroll position once per focus session (preserve original position when switching cards)
+      if (this.savedScrollY === null) {
+        this.savedScrollY = window.scrollY;
+      }
       
       this.focusCard(element, item);
       this.focusedCard = element;
-      
-      // Smooth scroll to focused card
-      setTimeout(() => {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 100);
+
+      const isMobile = window.matchMedia('(max-width: 768px)').matches;
+      const scrollBehavior = this.reduceMotion ? 'auto' : 'smooth';
+
+      this.lastFocusWasMobile = isMobile;
+      this.focusScrollTargetY = null;
+
+      const getStickyHeaderOffset = () => {
+        const header = document.querySelector('header, .navbar, [data-header]');
+        if (!header) return 0;
+        const pos = window.getComputedStyle(header).position;
+        if (pos !== 'sticky' && pos !== 'fixed') return 0;
+        const rect = header.getBoundingClientRect();
+        return rect.height || header.offsetHeight || 0;
+      };
+
+      // Wait for layout/styles to be applied so scroll targets are stable.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (isMobile) {
+            // Mobile: scroll to the focused item's computed y within the container.
+            const gridItem = this.grid.find(i => i.id === item.id);
+            const itemY = gridItem ? gridItem.y : 0;
+            const containerRect = this.container.getBoundingClientRect();
+            const absoluteContainerTop = containerRect.top + window.pageYOffset;
+            const headerOffset = getStickyHeaderOffset();
+            const buffer = headerOffset + 20;
+            this.focusScrollTargetY = absoluteContainerTop + itemY - buffer;
+            window.scrollTo({
+              top: this.focusScrollTargetY,
+              behavior: scrollBehavior
+            });
+          } else {
+            // Desktop: deterministic centering so we can track drift reliably.
+            const rect = element.getBoundingClientRect();
+            const absoluteTop = rect.top + window.pageYOffset;
+            const targetY = Math.max(0, Math.round(absoluteTop - (window.innerHeight / 2 - rect.height / 2)));
+            this.focusScrollTargetY = targetY;
+            window.scrollTo({ top: targetY, behavior: scrollBehavior });
+          }
+        });
+      });
     }
   }
   
@@ -446,25 +546,59 @@ class MasonryGallery {
     }
   }
   
-  unfocusCard(element) {
+  unfocusCard(element, { restoreScroll = true, skipLayout = false } = {}) {
     element.classList.remove('card-focused');
     element.setAttribute('aria-pressed', 'false');
     const v = element.querySelector('video');
     if (v) {
       v.pause();
     }
-    this.focusedItemId = null;
-    this.calculateGrid();
-    this.updateLayout();
+    if (!skipLayout) {
+      this.focusedItemId = null;
+      this.calculateGrid();
+      this.updateLayout();
+    }
     
     // Restore scroll position to where user was before focusing
-    if (this.savedScrollY !== null) {
-      const targetY = this.savedScrollY;
+    if (restoreScroll && this.savedScrollY !== null) {
+      const currentScroll = window.scrollY;
+      const restoreToY = this.savedScrollY;
+      const scrollBehavior = this.reduceMotion ? 'auto' : 'smooth';
+
+      // Drift detection: mobile uses fixed px, desktop uses viewport-relative.
+      const threshold = this.lastFocusWasMobile ? 200 : window.innerHeight * 0.3;
+      const anchorY = (typeof this.focusScrollTargetY === 'number') ? this.focusScrollTargetY : currentScroll;
+
+      if (Math.abs(currentScroll - anchorY) < threshold) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: restoreToY, behavior: scrollBehavior });
+        });
+      }
+
       this.savedScrollY = null;
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: targetY, behavior: 'smooth' });
-      });
+      this.focusScrollTargetY = null;
+      this.lastFocusWasMobile = false;
+    } else if (!restoreScroll) {
+      // Switching focus: do not restore, preserve savedScrollY baseline.
+      this.focusScrollTargetY = null;
+      this.lastFocusWasMobile = false;
     }
+  }
+
+  initEscapeToClose() {
+    if (this.boundHandleKeyDown) return;
+    this.boundHandleKeyDown = (e) => {
+      if (e.key !== 'Escape') return;
+      // Don't steal ESC from form controls
+      const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      if (this.focusedCard) {
+        this.unfocusCard(this.focusedCard, { restoreScroll: true, skipLayout: false });
+        this.focusedCard = null;
+      }
+    };
+    document.addEventListener('keydown', this.boundHandleKeyDown);
   }
   
   handleMouseEnter(element, item) {
@@ -516,16 +650,21 @@ class MasonryGallery {
   }
   
   initClickOutside() {
-    document.addEventListener('click', (e) => {
+    if (this.boundHandleDocClick) return;
+    this.boundHandleDocClick = (e) => {
       const insideCard = e.target.closest('.masonry-item-wrapper');
       if (this.focusedCard && !insideCard) {
-        this.unfocusCard(this.focusedCard);
+        this.unfocusCard(this.focusedCard, { restoreScroll: true });
         this.focusedCard = null;
       }
-    });
+    };
+    document.addEventListener('click', this.boundHandleDocClick);
   }
 
   showLoading() {
+    if (this.container) {
+      this.container.setAttribute('aria-busy', 'true');
+    }
     const loader = document.createElement('div');
     loader.className = 'masonry-loader';
     loader.innerHTML = '<div class="loader-spinner"></div>';
@@ -537,15 +676,38 @@ class MasonryGallery {
     if (loader) {
       loader.remove();
     }
+    if (this.container) {
+      this.container.setAttribute('aria-busy', 'false');
+    }
   }
 
   destroy() {
+    this.isDestroyed = true;
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
     }
     window.removeEventListener('resize', this.boundHandleResize);
+    if (this.boundHandleDocClick) {
+      document.removeEventListener('click', this.boundHandleDocClick);
+      this.boundHandleDocClick = null;
+    }
+    if (this.boundHandleKeyDown) {
+      document.removeEventListener('keydown', this.boundHandleKeyDown);
+      this.boundHandleKeyDown = null;
+    }
+    if (this.motionMedia) {
+      try {
+        this.motionMedia.removeEventListener('change', this.boundHandleMotionChange);
+      } catch (_) {
+        try { this.motionMedia.removeListener(this.boundHandleMotionChange); } catch (_) {}
+      }
+    }
     this.container.innerHTML = '';
     this.focusedCard = null;
+    this.focusedItemId = null;
+    this.savedScrollY = null;
+    this.focusScrollTargetY = null;
+    this.lastFocusWasMobile = false;
   }
 }
 
@@ -640,17 +802,25 @@ const GalleryManager = {
   },
 
   applyFilters() {
-    if (!this.gallery || !this.container) return;
+    if (!this.container) return;
     const items = this.getFilteredItems();
     if (items.length === 0) {
+      if (this.gallery) {
+        this.gallery.destroy();
+        this.gallery = null;
+      }
       this.container.innerHTML = '<p class="muted-center">No artwork matches your filters.</p>';
       this.container.style.height = '';
       return;
     }
-    this.gallery.destroy();
+
+    if (this.gallery) {
+      this.gallery.destroy();
+    }
     this.gallery = new MasonryGallery(this.container, this.galleryOptions);
     this.gallery.init(items);
     this.gallery.initClickOutside();
+    this.gallery.initEscapeToClose();
   },
 
   bindFilterEvents() {
@@ -707,6 +877,7 @@ const GalleryManager = {
     this.gallery = new MasonryGallery(this.container, this.galleryOptions);
     this.gallery.init(items);
     this.gallery.initClickOutside();
+    this.gallery.initEscapeToClose();
     this.initialized = true;
 
     console.log('🎨 Masonry Gallery Initialized');
