@@ -1215,6 +1215,10 @@ footer a:focus-visible {
   text-align: center;
   z-index: 10;
   padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .loader-spinner {
@@ -1225,10 +1229,16 @@ footer a:focus-visible {
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto var(--spacing-md);
+  will-change: transform;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .masonry-loader p {
@@ -1244,4 +1254,11 @@ footer a:focus-visible {
   opacity: 0.6;
   padding: var(--spacing-2xl);
   font-size: var(--font-size-lg);
+}
+
+/* Masonry gallery container */
+#masonry-gallery {
+  position: relative;
+  width: 100%;
+  min-height: 300px;
 }
