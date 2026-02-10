@@ -313,6 +313,9 @@ nav label {
   transition: all var(--transition-speed);
   border-bottom: 2px solid transparent;
   border-radius: var(--border-radius);
+  /* Eliminate 300ms tap delay on mobile */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 nav label:hover {
@@ -1159,10 +1162,16 @@ footer a:focus-visible {
 }
 
 .masonry-item-img {
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-clip: content-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.masonry-item-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .masonry-item-video video {
