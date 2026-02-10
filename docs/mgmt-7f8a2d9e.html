@@ -3183,37 +3183,9 @@
                     // Quietly sync sort_order numbers from server
                     syncSortOrders();
                 } catch (err) {
-                    const msg = String(err?.message || err || 'Move failed');
-                    const missingRpc = /admin_move_gallery_item|function.*does not exist|not exist/i.test(msg);
-
-                    if (!missingRpc) {
-                        showGalleryMsg('Error: ' + msg + ' — reverting', true);
-                        galleryItems = snapshot;
-                        renderGalleryItems();
-                        return;
-                    }
-
-                    // Fallback to swap if move RPC is unavailable
-                    try {
-                        const { data, error } = await db.rpc('admin_swap_gallery_order', {
-                            p_admin_code: adminCode,
-                            p_item_a: parseInt(dragSrcId, 10),
-                            p_item_b: parseInt(targetId, 10)
-                        });
-                        if (error) throw new Error(error.message);
-                        if (!data || !data.success) {
-                            showGalleryMsg(data?.error || 'Swap failed — reverting', true);
-                            galleryItems = snapshot;
-                            renderGalleryItems();
-                            return;
-                        }
-                        // Swap succeeded — DOM may be slightly off, do a quiet refresh
-                        loadGalleryItems();
-                    } catch (swapErr) {
-                        showGalleryMsg('Swap error: ' + (swapErr?.message || swapErr) + ' — reverting', true);
-                        galleryItems = snapshot;
-                        renderGalleryItems();
-                    }
+                    showGalleryMsg('Error: ' + (err?.message || err) + ' — reverting', true);
+                    galleryItems = snapshot;
+                    renderGalleryItems();
                 }
             }
 
@@ -3259,7 +3231,7 @@
                 if (dragSourceRow) dragSourceRow.style.pointerEvents = 'none';
                 const elBelow = document.elementFromPoint(clientX, clientY);
                 if (dragSourceRow) dragSourceRow.style.pointerEvents = '';
-                const row = elBelow ? elBelow.closest('.gallery-item') : null;
+                const row = elBelow ? elBelow.closest('[data-gallery-id]') : null;
                 updateDropIndicator(row, clientY);
             }
 
