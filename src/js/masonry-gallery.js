@@ -36,8 +36,11 @@ class MasonryGallery {
   async init(items) {
     this.items = items;
     
-  // Preload images/videos and capture natural dimensions
-  await this.preloadMedia(items);
+    // Show loading state
+    this.showLoading();
+    
+    // Preload images/videos and capture natural dimensions
+    await this.preloadMedia(items);
     this.imagesReady = true;
 
     // Merge natural dimensions onto items and compute aspect ratios
@@ -58,6 +61,7 @@ class MasonryGallery {
     
     // Initial layout
     this.calculateGrid();
+    this.hideLoading();
     this.render();
     this.animateIn();
     
@@ -520,7 +524,21 @@ class MasonryGallery {
       }
     });
   }
-  
+
+  showLoading() {
+    const loader = document.createElement('div');
+    loader.className = 'masonry-loader';
+    loader.innerHTML = '<div class="loader-spinner"></div>';
+    this.container.appendChild(loader);
+  }
+
+  hideLoading() {
+    const loader = this.container.querySelector('.masonry-loader');
+    if (loader) {
+      loader.remove();
+    }
+  }
+
   destroy() {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
