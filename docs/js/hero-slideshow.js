@@ -1,78 +1,94 @@
-// Hero slideshow - Random image selector
+// Hero slideshow - Fetches active slides from Supabase, picks one at random
 (function() {
-  // Array of hero images
-  const heroImages = [
-    {
-      src: 'https://lh3.googleusercontent.com/d/1MtPSN3HE_QFhX7taSfntQPam2Jk5AlhM',
-      alt: 'Featured Photograph - Peaches'
-    },
-    {
-      src: 'https://lh3.googleusercontent.com/d/1idNUdY-AhkGZVUJ8T0Tk7hLGVTRvp_OV',
-      alt: 'Featured Photograph - Flowers'
-    },
-    {
-      src: 'https://lh3.googleusercontent.com/d/12GZXLY1475KYALQcF2j8gk1Urzo283dz',
-      alt: 'Featured Photograph - Cow'
-    },
-    {
-      src: 'https://lh3.googleusercontent.com/d/1aw_g9UM9hdDZBwlTZfaueZcAW1_HP4In',
-      alt: 'Featured Photograph - Snail'
-    },
-    {
-      src: 'https://lh3.googleusercontent.com/d/1Oe5ZPQjo6oN0Ka8KgnY6PTd-_S06VnmJ',
-      alt: 'Featured Photograph - Flowers'
-    },
-    {
-      src: 'https://lh3.googleusercontent.com/d/1-FasJ91bSrXt0k3-VtrWcaJaOf9NRrb4',
-      alt: 'Featured Photograph - Flowers'
-    },
-    {
-      src: 'https://lh3.googleusercontent.com/d/1hGkvz2U_Zqx0n1D_Jn31QdfHWewIEdkt',
-      alt: 'Featured Photograph - Flower'
-    },
-    {
-      src: 'https://lh3.googleusercontent.com/d/1km7KmSGPXsjeDRBWW_oznCQGAzsE4vrI',
-      alt: 'Featured Photograph - Flowers'
-    },
-    {
-      src: 'https://lh3.googleusercontent.com/d/1rmdghdMszddJ6TjBHvJDnRiWj229f2W4',
-      alt: 'Featured Photograph - Dog'
-    },
+  // Supabase config (anon key is safe to expose — RLS restricts to active slides only)
+  const HERO_SUPABASE_URL = 'https://pciubbwphwpnptgawgok.supabase.co';
+  const HERO_SUPABASE_KEY = 'sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv';
+
+  // Hardcoded fallback array — used when DB is unreachable or empty
+  const fallbackImages = [
+    { src: 'https://lh3.googleusercontent.com/d/1MtPSN3HE_QFhX7taSfntQPam2Jk5AlhM', alt: 'Featured Photograph' },
+    { src: 'https://lh3.googleusercontent.com/d/1idNUdY-AhkGZVUJ8T0Tk7hLGVTRvp_OV', alt: 'Featured Photograph' },
+    { src: 'https://lh3.googleusercontent.com/d/12GZXLY1475KYALQcF2j8gk1Urzo283dz', alt: 'Featured Photograph' },
+    { src: 'https://lh3.googleusercontent.com/d/1aw_g9UM9hdDZBwlTZfaueZcAW1_HP4In', alt: 'Featured Photograph' },
+    { src: 'https://lh3.googleusercontent.com/d/1Oe5ZPQjo6oN0Ka8KgnY6PTd-_S06VnmJ', alt: 'Featured Photograph' },
+    { src: 'https://lh3.googleusercontent.com/d/1-FasJ91bSrXt0k3-VtrWcaJaOf9NRrb4', alt: 'Featured Photograph' },
+    { src: 'https://lh3.googleusercontent.com/d/1hGkvz2U_Zqx0n1D_Jn31QdfHWewIEdkt', alt: 'Featured Photograph' },
+    { src: 'https://lh3.googleusercontent.com/d/1km7KmSGPXsjeDRBWW_oznCQGAzsE4vrI', alt: 'Featured Photograph' },
+    { src: 'https://lh3.googleusercontent.com/d/1rmdghdMszddJ6TjBHvJDnRiWj229f2W4', alt: 'Featured Photograph' }
   ];
 
-  // Function to select a random image
-  function getRandomImage() {
-    const randomIndex = Math.floor(Math.random() * heroImages.length);
-    return heroImages[randomIndex];
+  // Cached slides (survives tab switches within the same page load)
+  let cachedSlides = null;
+
+  function pickRandom(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
   }
 
-  // Function to inject the random image
-  function loadRandomHeroImage() {
-    const heroSlideshow = document.querySelector('.hero-slideshow');
-    if (!heroSlideshow) return;
-
-    const randomImage = getRandomImage();
-    
-    // Clear existing content
+  function injectImage(heroSlideshow, imageData) {
     heroSlideshow.innerHTML = '';
-    
-    // Create and inject new image
     const img = document.createElement('img');
-    img.src = randomImage.src;
-    img.alt = randomImage.alt;
-    img.loading = 'eager'; // Load immediately for hero image
-    
+    img.src = imageData.src;
+    img.alt = imageData.alt || 'Featured Photograph';
+    img.loading = 'eager';
     heroSlideshow.appendChild(img);
   }
 
-  // Load random image on page load
+  async function fetchSlidesFromDB() {
+    // Wait for Supabase SDK (it's loaded with defer)
+    if (typeof supabase === 'undefined') return null;
+
+    try {
+      const db = supabase.createClient(HERO_SUPABASE_URL, HERO_SUPABASE_KEY);
+      const { data, error } = await db
+        .from('hero_slides')
+        .select('img_url')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+      if (!data || data.length === 0) return null;
+
+      return data.map(row => ({
+        src: row.img_url,
+        alt: 'Featured Photograph'
+      }));
+    } catch (err) {
+      console.warn('Hero slideshow: DB fetch failed, using fallback images', err);
+      return null;
+    }
+  }
+
+  async function loadRandomHeroImage() {
+    const heroSlideshow = document.querySelector('.hero-slideshow');
+    if (!heroSlideshow) return;
+
+    // Use cached slides if available (tab switch scenario)
+    if (cachedSlides && cachedSlides.length > 0) {
+      injectImage(heroSlideshow, pickRandom(cachedSlides));
+      return;
+    }
+
+    // Try fetching from Supabase
+    const dbSlides = await fetchSlidesFromDB();
+    if (dbSlides && dbSlides.length > 0) {
+      cachedSlides = dbSlides;
+      console.log(`🖼️ Hero slideshow: loaded ${dbSlides.length} slides from database`);
+    } else {
+      cachedSlides = fallbackImages;
+      console.log('🖼️ Hero slideshow: using fallback images');
+    }
+
+    injectImage(heroSlideshow, pickRandom(cachedSlides));
+  }
+
+  // Load on page ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadRandomHeroImage);
   } else {
     loadRandomHeroImage();
   }
 
-  // Listen for tab changes to reload image when returning to home tab
+  // Reload image when switching back to home tab
   const homeTabRadio = document.getElementById('tab-home');
   if (homeTabRadio) {
     homeTabRadio.addEventListener('change', function() {
