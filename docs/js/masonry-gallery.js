@@ -112,11 +112,15 @@ class MasonryGallery {
     // Set up resize observer
     this.setupResizeObserver();
     
-    // Initial layout — renders immediately, no image download required
+    // Initial layout — renders immediately with placeholder ratios.
+    // Each card shows its own spinner; photos appear as they load.
     this.calculateGrid();
-    this.hideLoading();
     if (this.isDestroyed || runId !== this.initRunId) return;
     this.render();
+
+    // Remove main gallery spinner now that cards are in the grid
+    this.hideLoading();
+
     if (this.reduceMotion) {
       this.hasMounted = true;
       this.updateLayout();
@@ -468,8 +472,17 @@ class MasonryGallery {
     } else {
       const imgDiv = document.createElement('div');
       imgDiv.className = 'masonry-item-img';
+
+      // Per-card loading spinner (visible until image loads)
+      const itemSpinner = document.createElement('div');
+      itemSpinner.className = 'masonry-item-spinner';
+      itemSpinner.innerHTML = '<div class="loader-spinner loader-spinner--small"></div>';
+      imgDiv.appendChild(itemSpinner);
+
       const img = document.createElement('img');
       img.alt = item.caption || '';
+      img.style.opacity = '0';
+      img.style.transition = 'opacity 0.3s ease';
 
       // Set loading strategy BEFORE src so the browser knows intent
       const inViewport = item.y < visibleDepth;
@@ -479,7 +492,15 @@ class MasonryGallery {
       img.src = item.img;
 
       img.addEventListener('load', () => {
+        // Reveal the image and remove the spinner
+        img.style.opacity = '1';
+        if (itemSpinner.parentNode) itemSpinner.remove();
         this.handleImageLoaded(item.id, img.naturalWidth, img.naturalHeight);
+      });
+      img.addEventListener('error', () => {
+        // Remove spinner on error too — don't leave it spinning forever
+        if (itemSpinner.parentNode) itemSpinner.remove();
+        img.style.opacity = '1';
       });
       imgDiv.appendChild(img);
       mediaContainer = imgDiv;
@@ -692,41 +713,41 @@ class MasonryGallery {
       // Mobile needs more time — layout transitions are 0.6s (600ms),
       // so we wait long enough for the element to reach its final position.
       const scrollDelay = isMobile ? 350 : 80;
+      const isChrome = /Chrome/i.test(navigator.userAgent) && !/Edg/i.test(navigator.userAgent);
       
+      // Helper: force-scroll to the focused element's current position
+      const forceScrollToElement = (smooth) => {
+        if (this.focusedCard !== element) return;
+        const rect = element.getBoundingClientRect();
+        const headerOffset = getStickyHeaderOffset();
+        const absoluteTop = rect.top + window.pageYOffset;
+        if (isMobile) {
+          // Scroll so element top sits just below header
+          const targetY = Math.max(0, Math.round(absoluteTop - headerOffset - 16));
+          window.scrollTo({ top: targetY, behavior: smooth ? scrollBehavior : 'auto' });
+          this.focusScrollTargetY = targetY;
+        } else {
+          const targetY = Math.max(0, Math.round(absoluteTop - (window.innerHeight / 2 - rect.height / 2)));
+          window.scrollTo({ top: targetY, behavior: smooth ? scrollBehavior : 'auto' });
+          this.focusScrollTargetY = targetY;
+        }
+      };
+
       setTimeout(() => {
         // Double-check element is still focused (user might have clicked elsewhere)
         if (this.focusedCard !== element) return;
         
-        // Use scrollIntoView on the actual focused element — this is more
-        // reliable than computing scroll offsets manually because it uses
-        // the element's real rendered position (post-transition).
-        try {
-          const headerOffset = getStickyHeaderOffset();
-          if (isMobile) {
-            // On mobile, scroll the element near the top with some breathing room
-            element.scrollIntoView({ block: 'start', behavior: scrollBehavior });
-            // Adjust for sticky header after scrollIntoView settles
-            if (headerOffset > 0) {
-              requestAnimationFrame(() => {
-                if (this.focusedCard !== element) return;
-                window.scrollBy({ top: -(headerOffset + 16), behavior: 'auto' });
-              });
-            }
-          } else {
-            // Desktop: center the focused card in the viewport
-            element.scrollIntoView({ block: 'center', behavior: scrollBehavior });
-          }
-          // Record where we scrolled to (for drift detection on unfocus)
-          requestAnimationFrame(() => {
-            this.focusScrollTargetY = window.scrollY;
-          });
-        } catch (_) {
-          // Fallback: manual scroll calculation
-          const rect = element.getBoundingClientRect();
-          const absoluteTop = rect.top + window.pageYOffset;
-          const targetY = Math.max(0, Math.round(absoluteTop - (window.innerHeight / 2 - rect.height / 2)));
-          this.focusScrollTargetY = targetY;
-          window.scrollTo({ top: targetY, behavior: scrollBehavior });
+        // Primary scroll attempt
+        forceScrollToElement(true);
+        
+        // Chrome mobile: redundant forced scroll after transition fully completes.
+        // Chrome sometimes swallows or miscalculates scrollTo during CSS transforms,
+        // so we fire again at 650ms (transition duration 600ms + margin).
+        if (isChrome && isMobile) {
+          setTimeout(() => {
+            if (this.focusedCard !== element) return;
+            forceScrollToElement(false);
+          }, 350); // 350 (initial delay) + 350 = 700ms total, well past 600ms transition
         }
       }, scrollDelay);
     }
@@ -919,13 +940,17 @@ class MasonryGallery {
   showLoading() {
     if (this.container) {
       this.container.setAttribute('aria-busy', 'true');
+      // Ensure container has minimum height so the spinner is visible
+      if (!this.container.style.minHeight) {
+        this.container.style.minHeight = '300px';
+      }
     }
     // Prevent stacking multiple loaders
     if (this.container.querySelector('.masonry-loader')) return;
     
     const loader = document.createElement('div');
     loader.className = 'masonry-loader';
-    loader.innerHTML = '<div class="loader-spinner"></div>';
+    loader.innerHTML = '<div class="loader-spinner"></div><p>Loading gallery\u2026</p>';
     this.container.appendChild(loader);
   }
 
@@ -936,6 +961,7 @@ class MasonryGallery {
     }
     if (this.container) {
       this.container.setAttribute('aria-busy', 'false');
+      this.container.style.minHeight = '';
     }
   }
 
@@ -1127,6 +1153,9 @@ const GalleryManager = {
     if (this.initialized || this.initializing) return;
     this.initializing = true;
 
+    // Show spinner immediately so it's visible during Supabase fetch
+    this._showManagerSpinner();
+
     try {
       // Fetch gallery items from Supabase
       if (typeof supabase === 'undefined') {
@@ -1157,6 +1186,7 @@ const GalleryManager = {
       console.log(`🎨 Loaded ${this.allRows.length} gallery items from database`);
 
       if (this.allRows.length === 0) {
+        this._hideManagerSpinner();
         this.container.innerHTML = '<p class="muted-center">No artwork to display yet.</p>';
         return;
       }
@@ -1167,6 +1197,9 @@ const GalleryManager = {
 
       const items = this.getFilteredItems();
 
+      // Remove manager-level spinner — MasonryGallery.init() manages its own
+      // showLoading/hideLoading lifecycle, but it will reuse the existing 
+      // .masonry-loader DOM node if still present (prevents flicker).
       this.gallery = new MasonryGallery(this.container, this.galleryOptions);
       this.gallery.init(items);
       this.gallery.initClickOutside();
@@ -1176,6 +1209,7 @@ const GalleryManager = {
       console.log('🎨 Masonry Gallery Initialized');
     } catch (err) {
       console.error('Failed to load gallery from database:', err);
+      this._hideManagerSpinner();
       this.container.innerHTML = '<p class="muted-center">Gallery temporarily unavailable. Please try refreshing.</p>';
     } finally {
       this.initializing = false;
@@ -1194,10 +1228,31 @@ const GalleryManager = {
     if (this.gallery) {
       this.gallery.destroy();
     }
+    this._hideManagerSpinner();
     if (this._supabaseRetryTimer) {
       clearTimeout(this._supabaseRetryTimer);
       this._supabaseRetryTimer = null;
     }
+  },
+
+  // Show spinner directly in the container (before MasonryGallery exists)
+  _showManagerSpinner() {
+    if (!this.container) return;
+    if (this.container.querySelector('.masonry-loader')) return;
+    this.container.setAttribute('aria-busy', 'true');
+    this.container.style.minHeight = '300px';
+    const loader = document.createElement('div');
+    loader.className = 'masonry-loader';
+    loader.innerHTML = '<div class="loader-spinner"></div><p>Loading gallery\u2026</p>';
+    this.container.appendChild(loader);
+  },
+
+  _hideManagerSpinner() {
+    if (!this.container) return;
+    const loader = this.container.querySelector('.masonry-loader');
+    if (loader) loader.remove();
+    this.container.setAttribute('aria-busy', 'false');
+    this.container.style.minHeight = '';
   }
 };
 
