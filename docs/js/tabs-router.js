@@ -94,13 +94,18 @@
     const ua = navigator.userAgent || '';
     const isEdge = /Edg\//.test(ua);
     const isChrome = /Chrome\//.test(ua) && !/Edg\//.test(ua);
+    const isSafari = /Safari\//.test(ua) && !/Chrome\//.test(ua);
 
-    if (isChrome || isEdge) {
+    // Scroll restoration handling for Chrome, Edge, and Safari
+    if (isChrome || isEdge || isSafari) {
       if ('scrollRestoration' in history) {
         history.scrollRestoration = 'manual';
       }
+      // Use double RAF to ensure scroll happens after layout
       requestAnimationFrame(() => {
-        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        });
       });
     }
 
