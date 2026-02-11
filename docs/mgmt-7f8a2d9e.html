@@ -183,8 +183,7 @@
                     <label for="shopUrl">Etsy URL <span class="text-danger">*</span></label>
                     <input type="url" id="shopUrl" placeholder="https://www.etsy.com/listing/..." required>
 
-                    <label for="shopSectionLabel">Section Label (optional)</label>
-                    <input type="text" id="shopSectionLabel" placeholder="e.g. Best Sellers, Featured Items">
+
 
                     <label for="shopMedia">Media URLs (one per line) <span class="text-danger">*</span></label>
                     <textarea id="shopMedia" rows="4" placeholder="Paste URLs here (Google Drive links auto-convert)" required></textarea>
@@ -209,7 +208,7 @@
                 <div class="shop-page-titles-editor" style="margin:1.5rem 0; padding:1rem; border:1px solid var(--mgmt-border); border-radius:6px;">
                     <h4 style="margin:0 0 0.5rem;">Page Titles</h4>
                     <p class="description" style="margin-bottom:0.75rem; font-size:0.82rem;">
-                        Each pagination page (3 items per page) gets a title heading shown above the cards.
+                        3 items per page gets a title heading shown above the cards.
                         Leave blank to hide the title for that page.
                     </p>
                     <div id="shopPageTitlesList"></div>
@@ -3194,7 +3193,7 @@
                 titleInput: document.getElementById('shopTitle'),
                 priceInput: document.getElementById('shopPrice'),
                 urlInput: document.getElementById('shopUrl'),
-                sectionLabelInput: document.getElementById('shopSectionLabel'),
+
                 mediaInput: document.getElementById('shopMedia'),
                 activeCheckbox: document.getElementById('shopActive'),
                 preview: document.getElementById('shopPreview'),
@@ -3331,7 +3330,6 @@
                 const title = sEl.titleInput.value.trim();
                 const priceDisplay = sEl.priceInput.value.trim();
                 const etsyUrl = sEl.urlInput.value.trim();
-                const sectionLabel = sEl.sectionLabelInput.value.trim() || null;
                 const mediaUrls = parseMediaUrls(sEl.mediaInput.value);
                 const isActive = sEl.activeCheckbox.checked;
 
@@ -3364,7 +3362,6 @@
                             p_title: title,
                             p_price_display: priceDisplay,
                             p_etsy_url: etsyUrl,
-                            p_section_label: sectionLabel,
                             p_media: mediaUrls,
                             p_is_active: isActive
                         });
@@ -3388,7 +3385,6 @@
                             p_title: title,
                             p_price_display: priceDisplay,
                             p_etsy_url: etsyUrl,
-                            p_section_label: sectionLabel,
                             p_media: mediaUrls,
                             p_is_active: isActive,
                             p_sort_order: nextSort
@@ -3522,7 +3518,6 @@
                     const metaEl = document.createElement('div');
                     metaEl.className = 'gallery-item-meta';
                     const metaParts = [item.price_display || ''];
-                    if (item.section_label) metaParts.push(item.section_label);
                     metaParts.push(`${media.length} media`);
                     metaEl.textContent = metaParts.filter(Boolean).join(' \u00B7 ');
                     info.append(titleEl, metaEl);
@@ -3674,8 +3669,7 @@
                             <input type="text" id="shopEditPrice" required>
                             <label for="shopEditEtsyUrl">Etsy URL</label>
                             <input type="url" id="shopEditEtsyUrl" required>
-                            <label for="shopEditSectionLabel">Section Label</label>
-                            <input type="text" id="shopEditSectionLabel" placeholder="e.g. Best Sellers, Featured">
+
                             <label for="shopEditMedia">Media URLs (one per line)</label>
                             <textarea id="shopEditMedia" rows="4" required></textarea>
                             <label for="shopEditSortOrder">Position (1 = first)</label>
@@ -3698,7 +3692,6 @@
                 const titleInput = shopEditOverlay.querySelector('#shopEditTitle');
                 const priceInput = shopEditOverlay.querySelector('#shopEditPrice');
                 const etsyUrlInput = shopEditOverlay.querySelector('#shopEditEtsyUrl');
-                const sectionInput = shopEditOverlay.querySelector('#shopEditSectionLabel');
                 const mediaInput = shopEditOverlay.querySelector('#shopEditMedia');
                 const sortInput = shopEditOverlay.querySelector('#shopEditSortOrder');
                 const activeToggle = shopEditOverlay.querySelector('#shopEditActiveToggle');
@@ -3712,7 +3705,6 @@
                 titleInput.value = String(item.title || '');
                 priceInput.value = String(item.price_display || '');
                 etsyUrlInput.value = String(item.etsy_url || '');
-                sectionInput.value = String(item.section_label || '');
                 mediaInput.value = media.join('\n');
                 sortInput.value = String(Math.max(1, Number(item.sort_order) || 1));
 
@@ -3807,7 +3799,6 @@
                     const newTitle = titleInput.value.trim();
                     const newPrice = priceInput.value.trim();
                     const newEtsyUrl = etsyUrlInput.value.trim();
-                    const newSection = sectionInput.value.trim() || null;
                     const newMedia = parseMediaUrls(mediaInput.value);
                     const newSort = sortInput.value ? Math.max(1, parseInt(sortInput.value, 10)) : 1;
                     const newActive = activeToggle.dataset.active === 'true';
@@ -3828,7 +3819,6 @@
                             p_title: newTitle,
                             p_price_display: newPrice,
                             p_etsy_url: newEtsyUrl,
-                            p_section_label: newSection,
                             p_media: newMedia,
                             p_is_active: newActive,
                             p_sort_order: newSort
@@ -4176,7 +4166,7 @@
                     removeBtn.type = 'button';
                     removeBtn.textContent = '\u00D7';
                     removeBtn.title = 'Remove page title';
-                    removeBtn.style.cssText = 'background:none;border:1px solid var(--mgmt-border);border-radius:4px;cursor:pointer;font-size:1rem;line-height:1;padding:0.15rem 0.4rem;color:var(--mgmt-text);';
+                    removeBtn.className = 'mini-btn danger';
                     removeBtn.addEventListener('click', () => {
                         shopPageTitles.splice(idx, 1);
                         renderPageTitleInputs();
