@@ -226,7 +226,10 @@ main > section {
 .gallery-filters select:focus-visible {
   border-color: rgba(255,255,255,0.3);
   background-color: rgba(255,255,255,0.1);
-  outline: none;
+}
+.gallery-filters select:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
 }
 .gallery-filters select option {
   background: #1a1a2e;
@@ -781,9 +784,13 @@ textarea {
 
 input:focus,
 textarea:focus {
-  outline: none;
   border-color: var(--color-text);
   box-shadow: 0 0 0 3px var(--color-shadow);
+}
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
 }
 
 textarea {

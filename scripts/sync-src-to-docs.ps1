@@ -20,11 +20,15 @@ if (!(Test-Path -Path $docsRoot -PathType Container)) {
 # Canonical list of files that are mirrored from src/ to docs/
 # Keep this explicit to avoid accidentally copying secrets or dev-only assets.
 $relativePaths = @(
+    'CNAME',
     'index.html',
     'review.html',
     'mgmt-7f8a2d9e.html',
+    'sitemap.xml',
+    'robots.txt',
 
     'css/Styles.css',
+    'css/mgmt.css',
 
     'js/click-spark.js',
     'js/FormSubmission.js',
