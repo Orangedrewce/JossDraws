@@ -509,6 +509,15 @@ class MasonryGallery {
       if (this.options.blurToFocus) {
         element.style.filter = 'blur(10px)';
       }
+    });
+
+    // Force reflow to ensure initial positions are applied before animation
+    // This prevents images from stacking at (0,0) during load
+    this.container.offsetHeight;
+    
+    this.grid.forEach((item, index) => {
+      const element = this.nodeMap.get(item.id);
+      if (!element) return;
       
       // Animate to final position
       setTimeout(() => {
@@ -649,8 +658,11 @@ class MasonryGallery {
       const anchorY = (typeof this.focusScrollTargetY === 'number') ? this.focusScrollTargetY : currentScroll;
 
       if (Math.abs(currentScroll - anchorY) < threshold) {
+        // Wait for layout to stabilize before scrolling to ensure correct position
         requestAnimationFrame(() => {
-          window.scrollTo({ top: restoreToY, behavior: scrollBehavior });
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: restoreToY, behavior: scrollBehavior });
+          });
         });
       }
 
