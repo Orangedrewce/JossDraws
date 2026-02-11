@@ -642,6 +642,7 @@ class MasonryGallery {
       element.style.transform = `translate(${item.x}px, ${item.y}px)`;
       element.style.width = `${item.w}px`;
       element.style.height = `${item.h}px`;
+      element.style.opacity = '1'; // ensure items are always visible after mount
       element.style.zIndex = item.focused ? '20' : '1';
     });
 
@@ -687,29 +688,40 @@ class MasonryGallery {
         return rect.height || header.offsetHeight || 0;
       };
 
-      // Wait for layout to stabilize before scrolling
-      // Use a longer delay on mobile (slower rendering)
-      const scrollDelay = isMobile ? 150 : 50;
+      // Wait for CSS transition to settle before scrolling.
+      // Mobile needs more time — layout transitions are 0.6s (600ms),
+      // so we wait long enough for the element to reach its final position.
+      const scrollDelay = isMobile ? 350 : 80;
       
       setTimeout(() => {
         // Double-check element is still focused (user might have clicked elsewhere)
         if (this.focusedCard !== element) return;
         
-        if (isMobile) {
-          // Mobile: scroll to the focused item's computed y within the container.
-          const gridItem = this.grid.find(i => i.id === item.id);
-          const itemY = gridItem ? gridItem.y : 0;
-          const containerRect = this.container.getBoundingClientRect();
-          const absoluteContainerTop = containerRect.top + window.pageYOffset;
+        // Use scrollIntoView on the actual focused element — this is more
+        // reliable than computing scroll offsets manually because it uses
+        // the element's real rendered position (post-transition).
+        try {
           const headerOffset = getStickyHeaderOffset();
-          const buffer = headerOffset + 20;
-          this.focusScrollTargetY = absoluteContainerTop + itemY - buffer;
-          window.scrollTo({
-            top: this.focusScrollTargetY,
-            behavior: scrollBehavior
+          if (isMobile) {
+            // On mobile, scroll the element near the top with some breathing room
+            element.scrollIntoView({ block: 'start', behavior: scrollBehavior });
+            // Adjust for sticky header after scrollIntoView settles
+            if (headerOffset > 0) {
+              requestAnimationFrame(() => {
+                if (this.focusedCard !== element) return;
+                window.scrollBy({ top: -(headerOffset + 16), behavior: 'auto' });
+              });
+            }
+          } else {
+            // Desktop: center the focused card in the viewport
+            element.scrollIntoView({ block: 'center', behavior: scrollBehavior });
+          }
+          // Record where we scrolled to (for drift detection on unfocus)
+          requestAnimationFrame(() => {
+            this.focusScrollTargetY = window.scrollY;
           });
-        } else {
-          // Desktop: deterministic centering so we can track drift reliably.
+        } catch (_) {
+          // Fallback: manual scroll calculation
           const rect = element.getBoundingClientRect();
           const absoluteTop = rect.top + window.pageYOffset;
           const targetY = Math.max(0, Math.round(absoluteTop - (window.innerHeight / 2 - rect.height / 2)));
