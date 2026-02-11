@@ -619,6 +619,12 @@
         .section-summary .chevron {
             font-size: 0.8rem;
             opacity: 0.4;
+            transition: transform 0.3s;
+            display: inline-block;
+        }
+
+        details:not([open]) .section-summary .chevron {
+            transform: rotate(-90deg);
         }
 
         .btn-warning {
@@ -1036,13 +1042,13 @@
 <body>
     <main class="card">
         <div class="card-header">
-            <h1>🎨 JossDraws Admin Dashboard</h1>
+            <h1>Admin Dashboard</h1>
             <p class="description">Manage review links, gallery content, and site settings</p>
         </div>
 
         <details class="recent-links" open>
             <summary class="section-summary" style="padding-bottom:0.5rem; margin-bottom:0.75rem;">
-                <span>📧 Review Link Generator</span>
+                <span>Review Link Generator</span>
                 <span class="chevron">▼</span>
             </summary>
 
@@ -1103,32 +1109,11 @@
             <div class="empty-state-text">No links generated yet</div>
         </div>
 
-        <hr class="divider" id="settingsDivider">
-
-        <details class="recent-links" id="settingsSection">
-            <summary class="section-summary">
-                <span>⚙️ Settings</span>
-                <span class="chevron">▼</span>
-            </summary>
-            <div class="gallery-section-content">
-                <form class="gallery-form" onsubmit="return false;">
-                    <label for="currentCodeInput">Current Admin Code</label>
-                    <input type="password" id="currentCodeInput" placeholder="Current code" autocomplete="current-password">
-                    <label for="newCodeInput">New Admin Code</label>
-                    <input type="password" id="newCodeInput" placeholder="New code (min 4 characters)" autocomplete="new-password">
-                    <label for="confirmCodeInput">Confirm New Code</label>
-                    <input type="password" id="confirmCodeInput" placeholder="Re-enter new code" autocomplete="new-password">
-                    <button type="button" id="changeCodeBtn" class="btn-warning">Change Admin Code</button>
-                </form>
-                <div id="changeCodeMessage" class="is-hidden gallery-msg" style="margin-top:0.75rem;"></div>
-            </div>
-        </details>
-
         <hr class="divider" id="galleryDivider">
 
         <details class="recent-links" id="gallerySection">
             <summary class="section-summary">
-                <span>🖼️ Gallery Manager</span>
+                <span>Gallery Manager</span>
                 <span class="chevron">▼</span>
             </summary>
 
@@ -1174,7 +1159,7 @@
 
         <details class="recent-links" id="heroSection">
             <summary class="section-summary">
-                <span>🖼️ Hero Slideshow Manager</span>
+                <span>Hero Slideshow Manager</span>
                 <span class="chevron">▼</span>
             </summary>
 
@@ -1196,6 +1181,27 @@
                     <div id="heroCount" class="gallery-count"></div>
                     <div id="heroList"><p class="text-muted-2" style="font-size:0.85rem;">Open this section to load hero slides...</p></div>
                 </div>
+            </div>
+        </details>
+
+        <hr class="divider" id="settingsDivider">
+
+        <details class="recent-links" id="settingsSection">
+            <summary class="section-summary">
+                <span>Settings</span>
+                <span class="chevron">▼</span>
+            </summary>
+            <div class="gallery-section-content">
+                <form class="gallery-form" onsubmit="return false;">
+                    <label for="currentCodeInput">Current Admin Code</label>
+                    <input type="password" id="currentCodeInput" placeholder="Current code" autocomplete="current-password">
+                    <label for="newCodeInput">New Admin Code</label>
+                    <input type="password" id="newCodeInput" placeholder="New code (min 4 characters)" autocomplete="new-password">
+                    <label for="confirmCodeInput">Confirm New Code</label>
+                    <input type="password" id="confirmCodeInput" placeholder="Re-enter new code" autocomplete="new-password">
+                    <button type="button" id="changeCodeBtn" class="btn-warning">Change Admin Code</button>
+                </form>
+                <div id="changeCodeMessage" class="is-hidden gallery-msg" style="margin-top:0.75rem;"></div>
             </div>
         </details>
     </main>
