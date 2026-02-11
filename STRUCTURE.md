@@ -116,10 +116,8 @@ git diff src/ docs/
 
 ## Future Improvements
 
-- [ ] Create automation script for src/ → docs/ sync
 - [ ] Add pre-push hook to verify sync status
 - [ ] Add file-watching to auto-update docs/ when src/ changes
-- [ ] Create deploy script for docs/ → main
 
 ---
 

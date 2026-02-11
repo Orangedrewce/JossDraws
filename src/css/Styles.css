@@ -791,6 +791,27 @@ textarea {
   min-height: 100px;
 }
 
+input[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+.error-message {
+  display: block;
+  margin-top: var(--spacing-xs);
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+.char-counter {
+  text-align: right;
+  margin-top: var(--spacing-xs);
+  color: #666;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
 button[type="submit"] {
   align-self: flex-start;
   padding: var(--spacing-sm) var(--spacing-md);

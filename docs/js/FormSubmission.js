@@ -4,6 +4,8 @@
 const CONFIG = {
   formspreeEndpoint: 'https://formspree.io/f/mqaglzrb',
   messageTimeout: 5000,
+  maxNameLength: 60,
+  maxMessageLength: 280,
   pagination: {
     // If true, the grid will auto-scroll into view when changing pages
     scrollOnChange: false,
@@ -203,18 +205,48 @@ const FormManager = {
   form: null,
   messageDiv: null,
   messageTimeoutId: null,
+  nameInput: null,
+  emailInput: null,
+  messageInput: null,
+  nameError: null,
+  emailError: null,
+  messageError: null,
+  messageCounter: null,
   
   init() {
     this.form = DOM.getElement('#contact-form');
     this.messageDiv = DOM.getElement('#form-message');
+    this.nameInput = DOM.getElement('#name');
+    this.emailInput = DOM.getElement('#email');
+    this.messageInput = DOM.getElement('#message');
+    this.nameError = DOM.getElement('#name-error');
+    this.emailError = DOM.getElement('#email-error');
+    this.messageError = DOM.getElement('#message-error');
+    this.messageCounter = DOM.getElement('#message-counter');
     
     if (!this.form) {
       Logger.log('Form Manager', 'Contact form not found on page');
       return;
     }
+
+    if (this.nameInput) {
+      this.nameInput.setAttribute('maxlength', CONFIG.maxNameLength);
+    }
+
+    if (this.messageInput) {
+      this.messageInput.setAttribute('maxlength', CONFIG.maxMessageLength);
+      this.messageInput.addEventListener('input', () => this.updateMessageCounter());
+      this.updateMessageCounter();
+    }
     
     this.attachListeners();
     this.attachInputLoggers();
+  },
+
+  updateMessageCounter() {
+    if (!this.messageInput || !this.messageCounter) return;
+    const remaining = CONFIG.maxMessageLength - this.messageInput.value.length;
+    this.messageCounter.textContent = `${remaining} remaining`;
   },
   
   attachListeners() {
@@ -244,6 +276,14 @@ const FormManager = {
   
   async handleSubmit(event) {
     event.preventDefault();
+
+    if (!this.validateForm()) {
+      return;
+    }
+
+    if (this.nameInput) this.nameInput.value = this.nameInput.value.trim();
+    if (this.emailInput) this.emailInput.value = this.emailInput.value.trim();
+    if (this.messageInput) this.messageInput.value = this.messageInput.value.trim();
     
     const formData = new FormData(this.form);
     
@@ -306,6 +346,7 @@ const FormManager = {
   handleSuccess() {
     this.showMessage('Thank you! Your message has been sent successfully.', 'success');
     this.form.reset();
+    this.clearFieldErrors();
     
     Logger.log('Form Submission Successful', {
       'Status': '✅ Success',
@@ -318,6 +359,95 @@ const FormManager = {
   handleError(error) {
     this.showMessage('Oops! There was a problem sending your message. Please try again.', 'error');
     Logger.error('Form Submission', error);
+  },
+
+  setFieldError(field, errorEl, message) {
+    if (field) {
+      field.setAttribute('aria-invalid', 'true');
+    }
+    if (errorEl) {
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+    }
+  },
+
+  clearFieldError(field, errorEl) {
+    if (field) {
+      field.removeAttribute('aria-invalid');
+    }
+    if (errorEl) {
+      errorEl.textContent = '';
+      errorEl.style.display = 'none';
+    }
+  },
+
+  clearFieldErrors() {
+    this.clearFieldError(this.nameInput, this.nameError);
+    this.clearFieldError(this.emailInput, this.emailError);
+    this.clearFieldError(this.messageInput, this.messageError);
+  },
+
+  validateForm() {
+    this.clearFieldErrors();
+
+    let isValid = true;
+    let firstInvalid = null;
+
+    if (this.nameInput) {
+      const nameValue = this.nameInput.value.trim();
+      if (!nameValue) {
+        this.setFieldError(this.nameInput, this.nameError, 'Name is required.');
+        isValid = false;
+        firstInvalid = firstInvalid || this.nameInput;
+      } else if (nameValue.length > CONFIG.maxNameLength) {
+        this.setFieldError(
+          this.nameInput,
+          this.nameError,
+          `Name must be ${CONFIG.maxNameLength} characters or less.`
+        );
+        isValid = false;
+        firstInvalid = firstInvalid || this.nameInput;
+      }
+    }
+
+    if (this.emailInput) {
+      const emailValue = this.emailInput.value.trim();
+      if (!emailValue) {
+        this.setFieldError(this.emailInput, this.emailError, 'Email is required.');
+        isValid = false;
+        firstInvalid = firstInvalid || this.emailInput;
+      } else if (!this.emailInput.checkValidity()) {
+        this.setFieldError(this.emailInput, this.emailError, 'Please enter a valid email address.');
+        isValid = false;
+        firstInvalid = firstInvalid || this.emailInput;
+      }
+    }
+
+    if (this.messageInput) {
+      const messageValue = this.messageInput.value.trim();
+      if (!messageValue) {
+        this.setFieldError(this.messageInput, this.messageError, 'Message is required.');
+        isValid = false;
+        firstInvalid = firstInvalid || this.messageInput;
+      } else if (messageValue.length > CONFIG.maxMessageLength) {
+        this.setFieldError(
+          this.messageInput,
+          this.messageError,
+          `Message must be ${CONFIG.maxMessageLength} characters or less.`
+        );
+        isValid = false;
+        firstInvalid = firstInvalid || this.messageInput;
+      }
+    }
+
+    if (!isValid) {
+      this.showMessage('Please fix the highlighted fields and try again.', 'error');
+      if (firstInvalid) {
+        firstInvalid.focus();
+      }
+    }
+
+    return isValid;
   },
   
   showMessage(text, type) {
