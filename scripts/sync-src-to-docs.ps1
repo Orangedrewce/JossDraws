@@ -35,6 +35,7 @@ $relativePaths = @(
     'js/hero-slideshow.js',
     'js/masonry-gallery.js',
     'js/page-inline.js',
+    'js/shop-renderer.js',
     'js/tabs-router.js',
     'js/webgl.js'
 )
