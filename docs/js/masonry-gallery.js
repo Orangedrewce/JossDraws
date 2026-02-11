@@ -732,51 +732,48 @@ class MasonryGallery {
       const forceScrollToElement = (smooth) => {
         if (this.focusedCard !== element) return;
         const headerOffset = getStickyHeaderOffset();
+        const align = this.options.focusScrollAlign || 'top';
+        const topBuffer = isMobile ? 24 : 32;
+        const gridItem = this.gridIndex.get(item.id);
+        const containerRect = this.container.getBoundingClientRect();
+        const containerAbsoluteTop = containerRect.top + window.pageYOffset;
+        const gridY = gridItem ? gridItem.y : 0;
+        const gridH = gridItem ? gridItem.h : 0;
+        const absoluteTargetTop = gridItem
+          ? containerAbsoluteTop + gridY
+          : null;
         
         // Chrome-specific fix: Use calculated grid coordinates instead of DOM queries
         // during animations. Chrome reads mid-animation positions, causing misalignment.
         if (isChrome) {
-          // Use the CALCULATED position from grid data (source of truth)
-          const containerRect = this.container.getBoundingClientRect();
-          const containerAbsoluteTop = containerRect.top + window.pageYOffset;
-          
-          // Get the final calculated position from grid data
-          const gridItem = this.gridIndex.get(item.id);
           if (!gridItem) return; // Safety check
-          
-          const finalItemY = gridItem.y;
-          const finalItemH = gridItem.h;
-          const absoluteTargetTop = containerAbsoluteTop + finalItemY;
-          
-          // Buffer to ensure top edge isn't cut off (Chrome's lazy layout)
-          const topBuffer = isMobile ? 24 : 32;
-          
+
           let targetY;
-          if (isMobile) {
-            // Mobile: Pin to just below header with aggressive buffer
-            targetY = Math.max(0, Math.round(absoluteTargetTop - headerOffset - topBuffer));
-          } else {
-            // Desktop: Center the card using calculated dimensions
+          if (align === 'center' && !isMobile) {
             const screenCenter = window.innerHeight / 2;
-            const cardCenter = finalItemH / 2;
+            const cardCenter = gridH / 2;
             targetY = Math.max(0, Math.round(absoluteTargetTop - (screenCenter - cardCenter)));
+          } else {
+            targetY = Math.max(0, Math.round(absoluteTargetTop - headerOffset - topBuffer));
           }
-          
+
           window.scrollTo({ top: targetY, behavior: smooth ? scrollBehavior : 'auto' });
           this.focusScrollTargetY = targetY;
         } else {
           // Firefox and other browsers: Use DOM queries (they handle animation state better)
           const rect = element.getBoundingClientRect();
           const absoluteTop = rect.top + window.pageYOffset;
-          if (isMobile) {
-            const targetY = Math.max(0, Math.round(absoluteTop - headerOffset - 16));
-            window.scrollTo({ top: targetY, behavior: smooth ? scrollBehavior : 'auto' });
-            this.focusScrollTargetY = targetY;
+          const finalTop = (absoluteTargetTop !== null) ? absoluteTargetTop : absoluteTop;
+          const finalHeight = gridH || rect.height;
+
+          let targetY;
+          if (align === 'center' && !isMobile) {
+            targetY = Math.max(0, Math.round(finalTop - (window.innerHeight / 2 - finalHeight / 2)));
           } else {
-            const targetY = Math.max(0, Math.round(absoluteTop - (window.innerHeight / 2 - rect.height / 2)));
-            window.scrollTo({ top: targetY, behavior: smooth ? scrollBehavior : 'auto' });
-            this.focusScrollTargetY = targetY;
+            targetY = Math.max(0, Math.round(finalTop - headerOffset - topBuffer));
           }
+          window.scrollTo({ top: targetY, behavior: smooth ? scrollBehavior : 'auto' });
+          this.focusScrollTargetY = targetY;
         }
       };
 
