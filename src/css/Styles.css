@@ -1264,6 +1264,7 @@ footer a:focus-visible {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 }
 
 .loader-spinner {

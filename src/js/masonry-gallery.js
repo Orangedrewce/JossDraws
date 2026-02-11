@@ -935,6 +935,7 @@ class MasonryGallery {
   initClickOutside() {
     if (this.boundHandleDocClick) return;
     this.boundHandleDocClick = (e) => {
+      if (!e.target || typeof e.target.closest !== 'function') return;
       const insideCard = e.target.closest('.masonry-item-wrapper');
       if (this.focusedCard && !insideCard) {
         this.unfocusCard(this.focusedCard, { restoreScroll: true });

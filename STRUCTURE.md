@@ -1,125 +1,58 @@
-# JossDraws Project Structure
+# JossDraws (Beginner Guide)
 
-## Folder Organization
+## The Only Workflow You Need
 
-```
-JossDraws(beta)/
-├── .git/                          # Git repository
-├── .gitignore                     # Git ignore rules
-├── docs/                          # PRODUCTION FILES
-│   ├── css/                       # Production styles
-│   ├── js/                        # Production scripts
-│   ├── index.html
-│   ├── review.html
-│   ├── mgmt-7f8a2d9e.html
-│   └── robots.txt
-│
-├── src/                           # DEVELOPMENT FILES (working directory)
-│   ├── .gitignore
-│   ├── css/                       # Dev styles (synced to docs/)
-│   ├── js/                        # Dev scripts (synced to docs/)
-│   ├── media/                     # Dev assets
-│   ├── index.html
-│   ├── review.html
-│   └── other files
-│
-└── merge-to-main.ps1              # Helper script (not committed)
-```
-
-## Git Branches
-
-- **main** → Production (tracked by docs/)
-- **dev** → Development (tracked by src/)
-
-## Workflow for Pushing to Main
-
-### 1. Work on Development
 ```powershell
-# Make sure you're on dev branch
+# 1) Work in dev
 git checkout dev
 
-# Make changes in src/ folder
-# Edit: src/js/click-spark.js, etc.
-```
+# 2) Edit files in src/
 
-### 2. Sync and Commit
-```powershell
+# 3) Sync src -> docs
 ./scripts/sync-src-to-docs.ps1
 
-# Commit changes
+# 4) Save changes
 git add -A
-git commit -m "Your descriptive message" 
+git commit -m "Your message"
 
-```
-
-### 3. Push to Main
-```powershell
-# Push dev branch → main branch
+# 5) Publish to live site
 git push origin dev:main
 
-# Verify push was successful - check GitHub
-```
-
-### 4. Sync Main Back to Dev (Poke-Yoke)
-```powershell
-# Always pull main back after pushing (ensures sync)
+# 6) Pull main back to dev (keeps things in sync)
 git fetch
 git pull origin main
-
-# Verify docs/ and src/ are in sync (run verification)
 ```
 
-## Key Rules (Poke-Yoke) ✅
-
-✅ **ALWAYS:**
-- Keep src/ as your working directory
-- Keep docs/ in sync with git branch before pushing
-- Pull main back to dev after pushing
-- Commit before pushing
-
-❌ **NEVER:**
-- Work directly in docs/ folder (it's for syncing only)
-- Push without ensuring src/ and docs/ match
-- Merge main → dev & dev → main in same session
-- Create conflicting folder names
-
-## Quick Commands
+## If Push Is Rejected
 
 ```powershell
-# Show current branch
-git branch -a
-
-# Show what's different
-git diff main
-
-# Check status
-git status
-
-# Undo uncommitted changes
-git checkout -- .
-
-# Safe sync check (no changes applied)
-git diff src/ docs/
+git fetch origin
+git merge origin/main
+git push origin dev:main
 ```
 
-## Folder Sync Verification
+## Simple Rules
 
-To verify src/ and docs/ are in sync:
-
-```powershell
-# Compare all files
-git diff src/ docs/
-
-# If empty = they match ✓
-# If shows differences = need to sync!
-```
-
-## Future Improvements
-
-- [ ] Add pre-push hook to verify sync status
-- [ ] Add file-watching to auto-update docs/ when src/ changes
+- Always edit in src/
+- Never edit in docs/
+- Always sync before pushing
 
 ---
 
-**Last Updated:** 2026-02-09  
-**Structure Version:** 1.0
+## Folder Basics (Less Important)
+
+```
+docs/   = live site files (do not edit here)
+src/    = your working files (edit here)
+```
+
+## Quick Checks (Less Important)
+
+```powershell
+git status
+git diff src/ docs/
+```
+
+---
+
+**Last Updated:** 2026-02-11
