@@ -68,6 +68,8 @@ class MasonryGallery {
     this.boundHandleDocClick = null;
     // Bound ESC key handler
     this.boundHandleKeyDown = null;
+    // Video metadata loader tracking for cleanup
+    this._videoMetaLoaders = [];
   }
   
   async init(items) {
@@ -131,7 +133,8 @@ class MasonryGallery {
       const video = document.createElement('video');
       video.preload = 'metadata';
       video.src = src;
-      video.addEventListener('loadedmetadata', () => {
+      
+      const onLoadedMetadata = () => {
         if (this.isDestroyed) return;
         const w = video.videoWidth || 1000;
         const h = video.videoHeight || 1000;
@@ -147,8 +150,15 @@ class MasonryGallery {
             this.debouncedRelayout();
           }
         }
-      });
-      video.onerror = () => {};
+      };
+      
+      const onError = () => {};
+      
+      video.addEventListener('loadedmetadata', onLoadedMetadata);
+      video.addEventListener('error', onError);
+      
+      // Store for cleanup on destroy
+      this._videoMetaLoaders.push({ video, onLoadedMetadata, onError });
     });
   }
 
@@ -227,7 +237,12 @@ class MasonryGallery {
       if (isFocused) {
         const y = Math.min(...colHeights);
         const w = this.width;
-        const h = Math.max(child.height / 2, Math.floor(window.innerHeight * 0.9));
+        // Use actual ratio to compute focused height; cap at 90% of viewport
+        const ratio = child.ratio || (child.naturalHeight && child.naturalWidth
+          ? child.naturalHeight / child.naturalWidth
+          : 1);
+        const hFromRatio = Math.max(80, Math.round(w * ratio));
+        const h = Math.max(hFromRatio, Math.floor(window.innerHeight * 0.9));
         for (let i = 0; i < colHeights.length; i++) {
           colHeights[i] = y + h;
         }
@@ -237,7 +252,9 @@ class MasonryGallery {
       const col = colHeights.indexOf(Math.min(...colHeights));
       const x = columnWidth * col;
       // Use natural aspect ratio to compute precise height for dense layout
-      const ratio = child.ratio || (child.height && child.width ? child.height / child.width : 1);
+      const ratio = child.ratio || (child.naturalHeight && child.naturalWidth
+        ? child.naturalHeight / child.naturalWidth
+        : 1);
       const height = Math.max(80, Math.round(columnWidth * ratio));
       const y = colHeights[col];
       colHeights[col] += height;
@@ -777,6 +794,39 @@ class MasonryGallery {
     document.addEventListener('click', this.boundHandleDocClick);
   }
 
+  setItems(items) {
+    if (!items || items.length === 0) return;
+    
+    // Load metadata for any videos we haven't seen yet
+    const videoItems = items.filter(
+      i => (i.type === 'video' || i.video) && !this.imageMeta[i.video || i.img]
+    );
+    if (videoItems.length > 0) {
+      this.startVideoMetaLoading(videoItems);
+    }
+
+    // Normalize items with cached dimensions or defaults
+    const normalizedItems = items.map(i => {
+      const src = i.video || i.img;
+      const meta = this.imageMeta[src];
+      if (meta) {
+        const ratio = meta.naturalHeight / meta.naturalWidth;
+        return { ...i, naturalWidth: meta.naturalWidth, naturalHeight: meta.naturalHeight, ratio };
+      }
+      // Apply defaults if not in cache
+      const naturalWidth = i.width || 1000;
+      const naturalHeight = i.height || 1000;
+      const ratio = naturalHeight / naturalWidth;
+      return { ...i, naturalWidth, naturalHeight, ratio };
+    });
+
+    this.items = normalizedItems;
+    this._gridHash = ''; // Invalidate cache
+    this.calculateGrid();
+    this.render();
+    this.updateLayout();
+  }
+
   showLoading() {
     if (this.container) {
       this.container.setAttribute('aria-busy', 'true');
@@ -821,6 +871,17 @@ class MasonryGallery {
     if (this._relayoutTimer) {
       cancelAnimationFrame(this._relayoutTimer);
       this._relayoutTimer = null;
+    }
+    // Clean up video metadata loaders
+    if (this._videoMetaLoaders && this._videoMetaLoaders.length > 0) {
+      this._videoMetaLoaders.forEach(({ video, onLoadedMetadata, onError }) => {
+        try {
+          video.removeEventListener('loadedmetadata', onLoadedMetadata);
+          video.removeEventListener('error', onError);
+          video.src = '';
+        } catch (_) {}
+      });
+      this._videoMetaLoaders = [];
     }
     this.nodeMap.clear();
     this.gridIndex.clear();
@@ -925,39 +986,6 @@ const GalleryManager = {
     return rows.map(r => this.rowToItem(r));
   },
 
-  setItems(items) {
-    if (!items || items.length === 0) return;
-    
-    // Load metadata for any videos we haven't seen yet
-    const videoItems = items.filter(
-      i => (i.type === 'video' || i.video) && !this.imageMeta[i.video || i.img]
-    );
-    if (videoItems.length > 0) {
-      this.startVideoMetaLoading(videoItems);
-    }
-
-    // Normalize items with cached dimensions or defaults
-    const normalizedItems = items.map(i => {
-      const src = i.video || i.img;
-      const meta = this.imageMeta[src];
-      if (meta) {
-        const ratio = meta.naturalHeight / meta.naturalWidth;
-        return { ...i, naturalWidth: meta.naturalWidth, naturalHeight: meta.naturalHeight, ratio };
-      }
-      // Apply defaults if not in cache
-      const naturalWidth = i.width || 1000;
-      const naturalHeight = i.height || 1000;
-      const ratio = naturalHeight / naturalWidth;
-      return { ...i, naturalWidth, naturalHeight, ratio };
-    });
-
-    this.items = normalizedItems;
-    this._gridHash = ''; // Invalidate cache
-    this.calculateGrid();
-    this.render();
-    this.updateLayout();
-  },
-
   applyFilters() {
     if (!this.container) return;
     const items = this.getFilteredItems();
@@ -1004,9 +1032,13 @@ const GalleryManager = {
     try {
       // Fetch gallery items from Supabase
       if (typeof supabase === 'undefined') {
-        // Supabase script may be loading async, retry in 100ms
-        setTimeout(() => this.init(), 100);
-        this.initializing = false;
+        // Supabase script may be loading async, retry with backoff
+        if (!this._supabaseRetryTimer) {
+          this._supabaseRetryTimer = setTimeout(() => {
+            this._supabaseRetryTimer = null;
+            this.init();
+          }, 200);
+        }
         return;
       }
 
@@ -1060,6 +1092,10 @@ const GalleryManager = {
   destroy() {
     if (this.gallery) {
       this.gallery.destroy();
+    }
+    if (this._supabaseRetryTimer) {
+      clearTimeout(this._supabaseRetryTimer);
+      this._supabaseRetryTimer = null;
     }
   }
 };
