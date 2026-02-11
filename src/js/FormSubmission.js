@@ -1061,7 +1061,9 @@ function initializeComponents() {
   });
   
   // Initialize all components
-  TabManager.init();
+  if (!window.__tabsRouterPreferred && !window.__tabsRouterActive) {
+    TabManager.init();
+  }
   FormManager.init();
   CarouselManager.init();
   CardFocusManager.init();

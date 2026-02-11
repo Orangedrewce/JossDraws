@@ -4,32 +4,8 @@
   // ---------------------------------------------------------------------------
   // 1. Tab Logic (Keep tabs working)
   // ---------------------------------------------------------------------------
-  (function preselectTabFromHash() {
-    try {
-      var raw = (location.hash || "").toLowerCase().replace(/^#/, "");
-      var names = ["home", "gallery", "about", "shop", "contact", "reviews"];
-
-      function pick(n) {
-        if (!n) return "home";
-        if (names.indexOf(n) !== -1) return n;
-        if (n.indexOf("tab-") === 0) {
-          var p = n.slice(4);
-          if (names.indexOf(p) !== -1) return p;
-        }
-        for (var i = 0; i < names.length; i++) {
-          if (n.indexOf(names[i]) !== -1) return names[i];
-        }
-        return "home";
-      }
-
-      var tab = pick(raw);
-      var id = "tab-" + tab;
-      var el = document.getElementById(id);
-      if (el) el.checked = true;
-    } catch (_) {
-      // ignore
-    }
-  })();
+  // Tabs are managed by tabs-router.js to avoid double-init races.
+  window.__tabsRouterPreferred = true;
 
   // ---------------------------------------------------------------------------
   // 2. Reviews Carousel (The Fix)

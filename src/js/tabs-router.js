@@ -1,4 +1,8 @@
 (function () {
+  if (window.__tabsRouterActive) return;
+  window.__tabsRouterActive = true;
+  window.__tabsRouterPreferred = true;
+
   const TAB_NAMES = ["home", "gallery", "about", "shop", "contact", "reviews"];
   const idFor = (name) => `tab-${name}`;
 
@@ -87,6 +91,15 @@
   }
 
   function init() {
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+    if (!location.hash) {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      });
+    }
+
     // Initial selection (support deep links)
     const initial = pickTabFromHash();
     selectTab(initial, { replace: true, scroll: false });

@@ -807,6 +807,7 @@ const GALLERY_SUPABASE_KEY = 'sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv';
 const GalleryManager = {
   gallery: null,
   initialized: false,
+  initializing: false,
   allRows: [],       // raw DB rows (unfiltered)
   container: null,
   galleryOptions: {
@@ -931,10 +932,11 @@ const GalleryManager = {
       return;
     }
 
-    if (this.initialized) return;
+    if (this.initialized || this.initializing) return;
+    this.initializing = true;
 
-    // Fetch gallery items from Supabase
     try {
+      // Fetch gallery items from Supabase
       if (typeof supabase === 'undefined') {
         throw new Error('Supabase SDK not loaded');
       }
@@ -951,30 +953,31 @@ const GalleryManager = {
 
       this.allRows = data || [];
       console.log(`🎨 Loaded ${this.allRows.length} gallery items from database`);
+
+      if (this.allRows.length === 0) {
+        this.container.innerHTML = '<p class="muted-center">No artwork to display yet.</p>';
+        return;
+      }
+
+      // Populate filter dropdowns
+      this.populateFilterDropdowns();
+      this.bindFilterEvents();
+
+      const items = this.getFilteredItems();
+
+      this.gallery = new MasonryGallery(this.container, this.galleryOptions);
+      this.gallery.init(items);
+      this.gallery.initClickOutside();
+      this.gallery.initEscapeToClose();
+      this.initialized = true;
+
+      console.log('🎨 Masonry Gallery Initialized');
     } catch (err) {
       console.error('Failed to load gallery from database:', err);
       this.container.innerHTML = '<p class="muted-center">Gallery temporarily unavailable. Please try refreshing.</p>';
-      return;
+    } finally {
+      this.initializing = false;
     }
-
-    if (this.allRows.length === 0) {
-      this.container.innerHTML = '<p class="muted-center">No artwork to display yet.</p>';
-      return;
-    }
-
-    // Populate filter dropdowns
-    this.populateFilterDropdowns();
-    this.bindFilterEvents();
-
-    const items = this.getFilteredItems();
-
-    this.gallery = new MasonryGallery(this.container, this.galleryOptions);
-    this.gallery.init(items);
-    this.gallery.initClickOutside();
-    this.gallery.initEscapeToClose();
-    this.initialized = true;
-
-    console.log('🎨 Masonry Gallery Initialized');
   },
   
   checkAndInit() {
