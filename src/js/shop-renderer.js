@@ -1,9 +1,10 @@
 // =============================================================================
 // SHOP RENDERER — Dynamic shop items from Supabase
 // =============================================================================
-// Self-contained IIFE: fetches active shop items, renders product cards with
-// image carousels, section labels, and pagination. Lazy-loads on first visit
-// to the shop tab. Follows the same architecture as masonry-gallery.js.
+// Self-contained IIFE: fetches active shop items + page titles, renders
+// product cards with image carousels and paginated pages (3 per page).
+// Each page gets a single title heading from the admin-managed page_titles
+// array. Lazy-loads on first visit to the shop tab.
 // =============================================================================
 
 (function () {
@@ -16,6 +17,7 @@
 
   // State
   let shopItems = [];
+  let pageTitles = [];   // ["Best Sellers", "More Products", ...]
   let currentPage = 1;
   let totalPages = 1;
   let initialized = false;
@@ -24,7 +26,7 @@
   // DOM refs (resolved lazily)
   let grid = null;
   let paginationContainer = null;
-  let sectionLabelsContainer = null;
+  let pageTitleEl = null;  // single <h3> above the grid
 
   // -------------------------------------------------------------------------
   // Helpers
@@ -50,38 +52,32 @@
     const isVid = isVideo(firstUrl);
     const safeTitle = escapeHtml(item.title || '');
     const safePrice = escapeHtml(item.price_display || '');
-    const safeSection = escapeHtml(item.section_label || '');
     const safeEtsyUrl = escapeHtml(item.etsy_url || '#');
     const mediaJson = JSON.stringify(mediaArr).replace(/'/g, '&#39;');
 
-    let mediaHtml;
+    var mediaHtml;
     if (isVid) {
-      mediaHtml = `<video src="${firstUrl}" muted autoplay loop playsinline
-                          style="width:100%;height:auto;display:block"
-                          data-media='${mediaJson}'></video>`;
+      mediaHtml = '<video src="' + firstUrl + '" muted autoplay loop playsinline ' +
+                  'style="width:100%;height:auto;display:block" ' +
+                  "data-media='" + mediaJson + "'></video>";
     } else {
-      mediaHtml = `<img src="${firstUrl}"
-                        loading="lazy" decoding="async"
-                        width="800" height="800"
-                        alt="${safeTitle}"
-                        data-media='${mediaJson}'>`;
+      mediaHtml = '<img src="' + firstUrl + '" loading="lazy" decoding="async" ' +
+                  'width="800" height="800" alt="' + safeTitle + '" ' +
+                  "data-media='" + mediaJson + "'>";
     }
 
-    return `
-      <article class="card" data-section="${safeSection}" data-shop-item-id="${item.id}">
-        <div class="image-carousel" role="region" aria-label="Product images for ${safeTitle}">
-          <button class="arrow left" aria-label="Previous image">\u2039</button>
-          <div class="media-container">
-            ${mediaHtml}
-          </div>
-          <button class="arrow right" aria-label="Next image">\u203A</button>
-        </div>
-        <div class="card-content">
-          <h3>${safeTitle}</h3>
-          <p><strong>${safePrice}</strong></p>
-          <a href="${safeEtsyUrl}" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>
-        </div>
-      </article>`;
+    return '<article class="card" data-shop-item-id="' + item.id + '">' +
+      '<div class="image-carousel" role="region" aria-label="Product images for ' + safeTitle + '">' +
+        '<button class="arrow left" aria-label="Previous image">\u2039</button>' +
+        '<div class="media-container">' + mediaHtml + '</div>' +
+        '<button class="arrow right" aria-label="Next image">\u203A</button>' +
+      '</div>' +
+      '<div class="card-content">' +
+        '<h3>' + safeTitle + '</h3>' +
+        '<p><strong>' + safePrice + '</strong></p>' +
+        '<a href="' + safeEtsyUrl + '" class="btn" target="_blank" rel="noopener noreferrer">View on Etsy</a>' +
+      '</div>' +
+    '</article>';
   }
 
   // -------------------------------------------------------------------------
@@ -89,16 +85,15 @@
   // -------------------------------------------------------------------------
 
   function initCarouselsInContainer(container) {
-    const carousels = container.querySelectorAll('.image-carousel');
+    var carousels = container.querySelectorAll('.image-carousel');
     carousels.forEach(function (el) {
-      const mediaContainer = el.querySelector('.media-container');
+      var mediaContainer = el.querySelector('.media-container');
       if (!mediaContainer) return;
 
-      // Read media array from the first img/video data-media attribute
-      const mediaEl = mediaContainer.querySelector('[data-media]');
+      var mediaEl = mediaContainer.querySelector('[data-media]');
       if (!mediaEl) return;
 
-      let mediaItems;
+      var mediaItems;
       try {
         mediaItems = JSON.parse(mediaEl.getAttribute('data-media'));
       } catch (_) {
@@ -106,15 +101,15 @@
       }
       if (!Array.isArray(mediaItems) || mediaItems.length === 0) return;
 
-      let currentIndex = 0;
+      var currentIndex = 0;
 
       function showMedia(index) {
-        const url = mediaItems[index];
-        const vid = isVideo(url);
+        var url = mediaItems[index];
+        var vid = isVideo(url);
         mediaContainer.innerHTML = '';
 
         if (vid) {
-          const video = document.createElement('video');
+          var video = document.createElement('video');
           video.src = url;
           video.controls = true;
           video.autoplay = true;
@@ -124,7 +119,7 @@
           video.style.cssText = 'width:100%;height:auto;display:block';
           mediaContainer.appendChild(video);
         } else {
-          const img = document.createElement('img');
+          var img = document.createElement('img');
           img.src = url;
           img.alt = 'Product image';
           img.loading = 'lazy';
@@ -134,8 +129,8 @@
         }
       }
 
-      const leftArrow = el.querySelector('.arrow.left');
-      const rightArrow = el.querySelector('.arrow.right');
+      var leftArrow = el.querySelector('.arrow.left');
+      var rightArrow = el.querySelector('.arrow.right');
 
       if (leftArrow) {
         leftArrow.addEventListener('click', function (e) {
@@ -162,11 +157,12 @@
     if (!paginationContainer) return;
     paginationContainer.innerHTML = '';
 
+    var navEl = paginationContainer.closest('.shop-pagination-nav');
     if (totalPages <= 1) {
-      paginationContainer.closest('.shop-pagination-nav').style.display = 'none';
+      if (navEl) navEl.style.display = 'none';
       return;
     }
-    paginationContainer.closest('.shop-pagination-nav').style.display = '';
+    if (navEl) navEl.style.display = '';
 
     // Prev
     var liPrev = document.createElement('li');
@@ -226,19 +222,17 @@
     paginationContainer.appendChild(liNext);
   }
 
-  function updateSectionLabels() {
-    if (!sectionLabelsContainer) return;
-    var start = (currentPage - 1) * ITEMS_PER_PAGE;
-    var end = start + ITEMS_PER_PAGE;
-    var pageItems = shopItems.slice(start, end);
-    var sections = [];
-    pageItems.forEach(function (item) {
-      var label = (item.section_label || '').trim();
-      if (label && sections.indexOf(label) === -1) sections.push(label);
-    });
-    sectionLabelsContainer.innerHTML = sections.map(function (s) {
-      return '<h3>' + escapeHtml(s) + '</h3>';
-    }).join('');
+  // Show the page title for the current page (from pageTitles array)
+  function updatePageTitle() {
+    if (!pageTitleEl) return;
+    var title = (pageTitles[currentPage - 1] || '').trim();
+    if (title) {
+      pageTitleEl.textContent = title;
+      pageTitleEl.style.display = '';
+    } else {
+      pageTitleEl.textContent = '';
+      pageTitleEl.style.display = 'none';
+    }
   }
 
   function displayPage(pageNum) {
@@ -253,8 +247,9 @@
       card.style.display = (idx >= start && idx < end) ? 'flex' : 'none';
     });
 
+    grid.setAttribute('aria-busy', 'false');
     renderPagination();
-    updateSectionLabels();
+    updatePageTitle();
   }
 
   // -------------------------------------------------------------------------
@@ -266,15 +261,14 @@
 
     if (shopItems.length === 0) {
       grid.innerHTML = '<p class="muted-center" style="grid-column:1/-1">Shop coming soon!</p>';
-      if (paginationContainer) {
-        paginationContainer.closest('.shop-pagination-nav').style.display = 'none';
-      }
+      var navEl = paginationContainer && paginationContainer.closest('.shop-pagination-nav');
+      if (navEl) navEl.style.display = 'none';
+      if (pageTitleEl) pageTitleEl.style.display = 'none';
       return;
     }
 
     // Build all cards
-    var html = shopItems.map(buildCardHtml).join('');
-    grid.innerHTML = html;
+    grid.innerHTML = shopItems.map(buildCardHtml).join('');
 
     // Initialize carousels on new cards
     initCarouselsInContainer(grid);
@@ -293,12 +287,11 @@
     if (loading) return;
     loading = true;
 
-    // Show loading state
     if (grid) {
+      grid.setAttribute('aria-busy', 'true');
       grid.innerHTML = '<p class="muted-center" style="grid-column:1/-1">Loading shop\u2026</p>';
     }
 
-    // Wait for Supabase SDK to be available
     if (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function') {
       setTimeout(function () {
         loading = false;
@@ -326,6 +319,7 @@
         }
 
         shopItems = data.items || [];
+        pageTitles = data.page_titles || [];
         initialized = true;
         renderShop();
         console.log('\uD83D\uDED2 Loaded ' + shopItems.length + ' shop items from database');
@@ -339,6 +333,7 @@
 
   function fallbackToEmpty() {
     shopItems = [];
+    pageTitles = [];
     initialized = true;
     renderShop();
   }
@@ -350,21 +345,19 @@
   function tryInit() {
     grid = document.getElementById('shop-grid');
     paginationContainer = document.querySelector('.shop-pagination-nav .pagination');
-    sectionLabelsContainer = document.getElementById('shop-section-labels');
+    pageTitleEl = document.getElementById('shop-page-title');
 
     if (!grid) return;
 
     var shopTab = document.getElementById('tab-shop');
     if (!shopTab) return;
 
-    // If shop tab is already active on load, fetch immediately
     if (shopTab.checked) {
       fetchShopItems();
       return;
     }
 
-    // Listen for tab change
-    shopTab.addEventListener('change', function onShopTab() {
+    shopTab.addEventListener('change', function () {
       if (shopTab.checked && !initialized) {
         fetchShopItems();
       }

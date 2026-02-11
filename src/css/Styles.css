@@ -1012,16 +1012,11 @@ footer a:focus-visible {
   margin: 0;
 }
 
-/* Section labels for shop */
-#shop-section-labels {
-  margin-top: var(--spacing-lg);
-  margin-bottom: var(--spacing-md);
-}
-
-#shop-section-labels h3 {
+/* Page title heading for current shop page */
+.shop-page-title {
   font-size: 1.25rem;
   color: var(--color-text);
-  margin: 0;
+  margin: 0 0 var(--spacing-md);
   font-weight: 600;
 }
 

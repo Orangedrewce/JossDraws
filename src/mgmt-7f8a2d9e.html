@@ -205,6 +205,21 @@
 
                 <div id="shopMessage" class="gallery-msg is-hidden" role="status" aria-live="polite"></div>
 
+                <!-- PAGE TITLES EDITOR -->
+                <div class="shop-page-titles-editor" style="margin:1.5rem 0; padding:1rem; border:1px solid var(--mgmt-border); border-radius:6px;">
+                    <h4 style="margin:0 0 0.5rem;">Page Titles</h4>
+                    <p class="description" style="margin-bottom:0.75rem; font-size:0.82rem;">
+                        Each pagination page (3 items per page) gets a title heading shown above the cards.
+                        Leave blank to hide the title for that page.
+                    </p>
+                    <div id="shopPageTitlesList"></div>
+                    <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                        <button type="button" id="shopAddPageTitleBtn" class="gallery-add-btn" style="font-size:0.82rem; padding:0.3rem 0.75rem;">+ Add Page</button>
+                        <button type="button" id="shopSavePageTitlesBtn" class="gallery-add-btn" style="font-size:0.82rem; padding:0.3rem 0.75rem;">Save Titles</button>
+                    </div>
+                    <div id="shopPageTitlesMsg" class="gallery-msg is-hidden" role="status" style="margin-top:0.5rem;"></div>
+                </div>
+
                 <div class="gallery-items-list">
                     <div id="shopCount" class="gallery-count"></div>
                     <div id="shopList"><p class="text-muted-2" style="font-size:0.85rem;">Open this section to load shop items...</p></div>
@@ -3187,7 +3202,12 @@
                 cancelBtn: document.getElementById('shopCancelBtn'),
                 message: document.getElementById('shopMessage'),
                 list: document.getElementById('shopList'),
-                count: document.getElementById('shopCount')
+                count: document.getElementById('shopCount'),
+                // Page titles editor
+                pageTitlesList: document.getElementById('shopPageTitlesList'),
+                addPageTitleBtn: document.getElementById('shopAddPageTitleBtn'),
+                savePageTitlesBtn: document.getElementById('shopSavePageTitlesBtn'),
+                pageTitlesMsg: document.getElementById('shopPageTitlesMsg')
             };
 
             let shopLoaded = false;
@@ -3416,6 +3436,7 @@
                     shopItems = data.items || [];
                     renderShopItems();
                     shopLoaded = true;
+                    renderPageTitleInputs(); // sync page count with titles
                 } catch (err) {
                     sEl.list.textContent = '';
                     const p = document.createElement('p');
@@ -4121,10 +4142,122 @@
                 await shopEndDrag();
             });
 
+            // ----- Page Titles Editor -----
+            let shopPageTitles = [];
+
+            function renderPageTitleInputs() {
+                if (!sEl.pageTitlesList) return;
+                sEl.pageTitlesList.innerHTML = '';
+                const totalPages = Math.max(1, Math.ceil(shopItems.length / 3));
+
+                // Ensure we have at least as many title slots as pages
+                while (shopPageTitles.length < totalPages) shopPageTitles.push('');
+
+                shopPageTitles.forEach((title, idx) => {
+                    const row = document.createElement('div');
+                    row.style.cssText = 'display:flex;gap:0.4rem;align-items:center;margin-bottom:0.35rem;';
+
+                    const label = document.createElement('label');
+                    label.textContent = 'Page ' + (idx + 1) + ':';
+                    label.style.cssText = 'font-size:0.82rem;min-width:55px;white-space:nowrap;';
+
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = title;
+                    input.placeholder = '(no title)';
+                    input.style.cssText = 'flex:1;font-size:0.85rem;padding:0.25rem 0.4rem;border:1px solid var(--mgmt-border);border-radius:4px;background:var(--mgmt-input-bg);color:var(--mgmt-text);';
+                    input.dataset.pageIdx = idx;
+
+                    input.addEventListener('input', () => {
+                        shopPageTitles[idx] = input.value;
+                    });
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.textContent = '\u00D7';
+                    removeBtn.title = 'Remove page title';
+                    removeBtn.style.cssText = 'background:none;border:1px solid var(--mgmt-border);border-radius:4px;cursor:pointer;font-size:1rem;line-height:1;padding:0.15rem 0.4rem;color:var(--mgmt-text);';
+                    removeBtn.addEventListener('click', () => {
+                        shopPageTitles.splice(idx, 1);
+                        renderPageTitleInputs();
+                    });
+
+                    row.appendChild(label);
+                    row.appendChild(input);
+                    row.appendChild(removeBtn);
+                    sEl.pageTitlesList.appendChild(row);
+                });
+            }
+
+            function showPageTitlesMsg(msg, isError) {
+                if (!sEl.pageTitlesMsg) return;
+                sEl.pageTitlesMsg.textContent = msg;
+                sEl.pageTitlesMsg.className = 'gallery-msg ' + (isError ? 'danger' : 'success');
+                setHidden(sEl.pageTitlesMsg, false);
+                setTimeout(() => setHidden(sEl.pageTitlesMsg, true), 3000);
+            }
+
+            async function loadPageTitles() {
+                if (!db || !adminCode) return;
+                try {
+                    const { data, error } = await db.rpc('admin_get_shop_page_titles', {
+                        p_admin_code: adminCode
+                    });
+                    if (error) throw new Error(error.message);
+                    if (!data || !data.success) return;
+                    shopPageTitles = Array.isArray(data.titles) ? data.titles : [];
+                    renderPageTitleInputs();
+                } catch (err) {
+                    console.error('Failed to load page titles:', err);
+                }
+            }
+
+            if (sEl.addPageTitleBtn) {
+                sEl.addPageTitleBtn.addEventListener('click', () => {
+                    shopPageTitles.push('');
+                    renderPageTitleInputs();
+                    // Focus the new input
+                    const inputs = sEl.pageTitlesList.querySelectorAll('input');
+                    if (inputs.length) inputs[inputs.length - 1].focus();
+                });
+            }
+
+            if (sEl.savePageTitlesBtn) {
+                sEl.savePageTitlesBtn.addEventListener('click', async () => {
+                    if (!db || !adminCode) return;
+                    sEl.savePageTitlesBtn.disabled = true;
+                    sEl.savePageTitlesBtn.textContent = 'Saving...';
+                    try {
+                        // Trim trailing empty strings
+                        const trimmed = shopPageTitles.slice();
+                        while (trimmed.length > 0 && !trimmed[trimmed.length - 1].trim()) trimmed.pop();
+
+                        const { data, error } = await db.rpc('admin_set_shop_page_titles', {
+                            p_admin_code: adminCode,
+                            p_titles: trimmed
+                        });
+                        if (error) throw new Error(error.message);
+                        if (!data || !data.success) {
+                            showPageTitlesMsg(data?.error || 'Failed to save', true);
+                            return;
+                        }
+                        shopPageTitles = trimmed;
+                        renderPageTitleInputs();
+                        showPageTitlesMsg('Page titles saved!', false);
+                    } catch (err) {
+                        showPageTitlesMsg('Error: ' + err.message, true);
+                    } finally {
+                        sEl.savePageTitlesBtn.disabled = false;
+                        sEl.savePageTitlesBtn.textContent = 'Save Titles';
+                    }
+                });
+            }
+
             // ----- Load on section open -----
             sEl.section.addEventListener('toggle', () => {
                 if (sEl.section.open && !shopLoaded && db && adminCode) {
                     loadShopItems();
+                    loadPageTitles();
                 }
             });
         }

@@ -234,15 +234,15 @@
     <!-- Shop Tab -->
     <section class="tab-shop container" aria-labelledby="shop-heading">
       <h2 id="shop-heading">Shop</h2>
-      
+
+      <!-- Page title — updated dynamically per pagination page -->
+      <h3 id="shop-page-title" class="shop-page-title" style="display:none"></h3>
+
       <div class="shop-grid-wrapper">
         <div class="grid grid-3" id="shop-grid" aria-busy="true" aria-label="Shop loading">
           <!-- Products loaded dynamically by shop-renderer.js -->
           <p class="muted-center" style="grid-column:1/-1">Loading shop&hellip;</p>
         </div>
-
-        <!-- Section labels shown above current page -->
-        <div id="shop-section-labels"></div>
       </div>
 
       <!-- Pagination - Rendered dynamically by shop-renderer.js -->
