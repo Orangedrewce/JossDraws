@@ -91,10 +91,14 @@
   }
 
   function init() {
-    if ('scrollRestoration' in history) {
-      history.scrollRestoration = 'manual';
-    }
-    if (!location.hash) {
+    const ua = navigator.userAgent || '';
+    const isEdge = /Edg\//.test(ua);
+    const isChrome = /Chrome\//.test(ua) && !/Edg\//.test(ua);
+
+    if (isChrome || isEdge) {
+      if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+      }
       requestAnimationFrame(() => {
         window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
       });
