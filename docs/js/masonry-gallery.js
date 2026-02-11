@@ -718,18 +718,47 @@ class MasonryGallery {
       // Helper: force-scroll to the focused element's current position
       const forceScrollToElement = (smooth) => {
         if (this.focusedCard !== element) return;
-        const rect = element.getBoundingClientRect();
         const headerOffset = getStickyHeaderOffset();
-        const absoluteTop = rect.top + window.pageYOffset;
-        if (isMobile) {
-          // Scroll so element top sits just below header
-          const targetY = Math.max(0, Math.round(absoluteTop - headerOffset - 16));
+        
+        // Chrome-specific fix: Use calculated grid coordinates instead of DOM queries
+        // during animations. Chrome reads mid-animation positions, causing misalignment.
+        if (isChrome) {
+          // Use the CALCULATED position from grid data (source of truth)
+          const containerRect = this.container.getBoundingClientRect();
+          const containerAbsoluteTop = containerRect.top + window.pageYOffset;
+          
+          // Get the final calculated position from grid data
+          const gridItem = this.gridIndex.get(item.id);
+          if (!gridItem) return; // Safety check
+          
+          const finalItemY = gridItem.y;
+          const finalItemH = gridItem.h;
+          const absoluteTargetTop = containerAbsoluteTop + finalItemY;
+          
+          let targetY;
+          if (isMobile) {
+            // Mobile: Pin to just below header
+            targetY = Math.max(0, Math.round(absoluteTargetTop - headerOffset - 16));
+          } else {
+            // Desktop: Center the card using calculated dimensions
+            targetY = Math.max(0, Math.round(absoluteTargetTop - (window.innerHeight / 2 - finalItemH / 2)));
+          }
+          
           window.scrollTo({ top: targetY, behavior: smooth ? scrollBehavior : 'auto' });
           this.focusScrollTargetY = targetY;
         } else {
-          const targetY = Math.max(0, Math.round(absoluteTop - (window.innerHeight / 2 - rect.height / 2)));
-          window.scrollTo({ top: targetY, behavior: smooth ? scrollBehavior : 'auto' });
-          this.focusScrollTargetY = targetY;
+          // Firefox and other browsers: Use DOM queries (they handle animation state better)
+          const rect = element.getBoundingClientRect();
+          const absoluteTop = rect.top + window.pageYOffset;
+          if (isMobile) {
+            const targetY = Math.max(0, Math.round(absoluteTop - headerOffset - 16));
+            window.scrollTo({ top: targetY, behavior: smooth ? scrollBehavior : 'auto' });
+            this.focusScrollTargetY = targetY;
+          } else {
+            const targetY = Math.max(0, Math.round(absoluteTop - (window.innerHeight / 2 - rect.height / 2)));
+            window.scrollTo({ top: targetY, behavior: smooth ? scrollBehavior : 'auto' });
+            this.focusScrollTargetY = targetY;
+          }
         }
       };
 
@@ -740,14 +769,14 @@ class MasonryGallery {
         // Primary scroll attempt
         forceScrollToElement(true);
         
-        // Chrome mobile: redundant forced scroll after transition fully completes.
+        // Chrome: redundant forced scroll after transition fully completes.
         // Chrome sometimes swallows or miscalculates scrollTo during CSS transforms,
-        // so we fire again at 650ms (transition duration 600ms + margin).
-        if (isChrome && isMobile) {
+        // so we fire again with instant snap (behavior: auto) to ensure final position.
+        if (isChrome) {
           setTimeout(() => {
             if (this.focusedCard !== element) return;
-            forceScrollToElement(false);
-          }, 350); // 350 (initial delay) + 350 = 700ms total, well past 600ms transition
+            forceScrollToElement(false); // false = instant snap (auto behavior)
+          }, isMobile ? 350 : 400); // Mobile: 700ms total, Desktop: 480ms total
         }
       }, scrollDelay);
     }
