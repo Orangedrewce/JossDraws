@@ -1,3 +1,4 @@
 User-agent: *
 Disallow: /mgmt-7f8a2d9e.html
 Disallow: /review-admin.html
+Sitemap: https://jossdraws.com/sitemap.xml
