@@ -1166,6 +1166,16 @@ footer a:focus-visible {
   opacity: 0;
 }
 
+/* Focus state management - hide outline for mouse/touch, show for keyboard */
+.masonry-item-wrapper:focus {
+  outline: none;
+}
+
+.masonry-item-wrapper:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
 /* Masonry video styling */
 .masonry-item-video,
 .masonry-item-img {
