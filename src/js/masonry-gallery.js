@@ -513,8 +513,8 @@ class MasonryGallery {
 
     // Force reflow to ensure initial positions are applied before animation
     // This prevents images from stacking at (0,0) during load
-    this.container.offsetHeight;
-    
+    void this.container.offsetHeight;
+
     this.grid.forEach((item, index) => {
       const element = this.nodeMap.get(item.id);
       if (!element) return;
