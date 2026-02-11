@@ -70,6 +70,8 @@ class MasonryGallery {
     this.boundHandleKeyDown = null;
     // Video metadata loader tracking for cleanup
     this._videoMetaLoaders = [];
+    // Animation timeout IDs for cleanup on destroy
+    this._animateTimeouts = [];
   }
   
   async init(items) {
@@ -183,7 +185,10 @@ class MasonryGallery {
       this._relayoutTimer = null;
       if (this.isDestroyed) return;
       this.calculateGrid();
-      this.updateLayout();
+      // Only update layout if we've finished mounting (prevents fighting entry animation)
+      if (this.hasMounted) {
+        this.updateLayout();
+      }
     });
   }
   
@@ -198,15 +203,21 @@ class MasonryGallery {
   
   setupResizeObserver() {
     this._lastObservedWidth = this.container.offsetWidth;
+    this._lastObservedHeight = this.container.offsetHeight;
     const ro = new ResizeObserver(() => {
       const w = this.container.offsetWidth;
-      // Guard: skip if width didn't change (avoids feedback loop from
+      const h = this.container.offsetHeight;
+      // Guard: skip if dimensions didn't change (avoids feedback loop from
       // setting container height which re-triggers the observer).
-      if (w === this._lastObservedWidth) return;
+      if (w === this._lastObservedWidth && h === this._lastObservedHeight) return;
       this._lastObservedWidth = w;
+      this._lastObservedHeight = h;
       this.width = w;
       this.calculateGrid();
-      this.updateLayout();
+      // Only update layout if we've finished mounting
+      if (this.hasMounted) {
+        this.updateLayout();
+      }
     });
     ro.observe(this.container);
     this.resizeObserver = ro;
@@ -217,8 +228,10 @@ class MasonryGallery {
     if (!this.width) return;
 
     // Hash check: skip full recalc if inputs haven't changed
+    // Include item IDs to ensure different items aren't skipped if count/ratios match
+    const idKey = this.items.map(i => i.id).join(',');
     const ratioKey = this.items.map(i => (i.ratio || 1).toFixed(3)).join(',');
-    const hash = `${this.columns}|${this.width}|${this.focusedItemId || ''}|${this.items.length}|${ratioKey}`;
+    const hash = `${this.columns}|${this.width}|${this.focusedItemId || ''}|${idKey}|${ratioKey}`;
     if (hash === this._gridHash) return;
     this._gridHash = hash;
 
@@ -242,7 +255,7 @@ class MasonryGallery {
           ? child.naturalHeight / child.naturalWidth
           : 1);
         const hFromRatio = Math.max(80, Math.round(w * ratio));
-        const h = Math.max(hFromRatio, Math.floor(window.innerHeight * 0.9));
+        const h = Math.max(300, Math.min(hFromRatio, Math.floor(window.innerHeight * 0.9)));
         for (let i = 0; i < colHeights.length; i++) {
           colHeights[i] = y + h;
         }
@@ -311,13 +324,20 @@ class MasonryGallery {
     const visibleDepth = Math.max(0, viewportBottom - containerTop) + window.innerHeight;
 
     // DOM reconciliation: remove nodes for items that left the grid (filter change)
+    // Collect IDs to remove first to avoid mutating map during iteration
     const activeIds = new Set(this.grid.map(i => i.id));
-    for (const [id, el] of this.nodeMap) {
-      if (!activeIds.has(id)) {
-        el.remove();
-        this.nodeMap.delete(id);
-      }
+    const toRemove = [];
+    for (const [id] of this.nodeMap) {
+      if (!activeIds.has(id)) toRemove.push(id);
     }
+    toRemove.forEach(id => {
+      const el = this.nodeMap.get(id);
+      if (!el) return;
+      // Run stored cleanup to remove all wrapper-level listeners
+      if (el._mvcCleanup) el._mvcCleanup();
+      el.remove();
+      this.nodeMap.delete(id);
+    });
 
     this.grid.forEach(item => {
       let wrapper = this.nodeMap.get(item.id);
@@ -413,7 +433,8 @@ class MasonryGallery {
         }
       };
 
-      playBtn.addEventListener('click', (e) => {
+      // Define handlers with named references for cleanup
+      const playClickHandler = (e) => {
         e.stopPropagation();
         if (videoEl.paused) {
           videoEl.play().catch(() => {});
@@ -421,18 +442,29 @@ class MasonryGallery {
           videoEl.pause();
         }
         syncControls();
-      });
+      };
 
-      muteBtn.addEventListener('click', (e) => {
+      const muteClickHandler = (e) => {
         e.stopPropagation();
         videoEl.muted = !videoEl.muted;
         syncControls();
-      });
+      };
+
+      // NOW add listeners with the defined handlers
+      playBtn.addEventListener('click', playClickHandler);
+      muteBtn.addEventListener('click', muteClickHandler);
 
       videoEl.addEventListener('play', syncControls);
       videoEl.addEventListener('pause', syncControls);
       videoEl.addEventListener('volumechange', syncControls);
       syncControls();
+
+      // Store ACTUAL handler references for cleanup (all of them)
+      videoEl._mvcHandlers = {
+        syncControls,
+        playClickHandler,
+        muteClickHandler
+      };
     } else {
       const imgDiv = document.createElement('div');
       imgDiv.className = 'masonry-item-img';
@@ -453,14 +485,10 @@ class MasonryGallery {
       mediaContainer = imgDiv;
     }
 
-    // Optional caption overlay
-    if (item.caption) {
-      const caption = document.createElement('div');
-      caption.className = 'masonry-caption';
-      caption.textContent = item.caption;
-      wrapper.appendChild(caption);
-    }
+    // Append media FIRST so it's under caption overlay in DOM
+    wrapper.appendChild(mediaContainer);
 
+    // Add color shift overlay if enabled
     if (this.options.colorShiftOnHover) {
       const overlay = document.createElement('div');
       overlay.className = 'color-overlay';
@@ -476,29 +504,60 @@ class MasonryGallery {
         border-radius: 8px;
         transition: opacity 0.3s ease;
       `;
-      mediaContainer.appendChild(overlay);
+      wrapper.appendChild(overlay);
     }
 
-    wrapper.appendChild(mediaContainer);
+    // Optional caption overlay — append AFTER media+overlay for correct stacking
+    if (item.caption) {
+      const caption = document.createElement('div');
+      caption.className = 'masonry-caption';
+      caption.textContent = item.caption;
+      wrapper.appendChild(caption);
+    }
 
     // Event listeners (bound once per item, survive across filter changes)
-    wrapper.addEventListener('click', (e) => {
+    // Use named references so we can remove them deterministically
+    const onClick = (e) => {
       if (this.focusedCard === wrapper && item.url) {
         window.open(item.url, '_blank', 'noopener');
       } else {
         this.toggleFocus(wrapper, item);
       }
-    });
-
-    wrapper.addEventListener('keydown', (e) => {
+    };
+    const onKeyDown = (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         this.toggleFocus(wrapper, item);
       }
-    });
+    };
+    const onMouseEnter = () => this.handleMouseEnter(wrapper, item);
+    const onMouseLeave = () => this.handleMouseLeave(wrapper, item);
 
-    wrapper.addEventListener('mouseenter', () => this.handleMouseEnter(wrapper, item), { passive: true });
-    wrapper.addEventListener('mouseleave', () => this.handleMouseLeave(wrapper, item), { passive: true });
+    wrapper.addEventListener('click', onClick);
+    wrapper.addEventListener('keydown', onKeyDown);
+    wrapper.addEventListener('mouseenter', onMouseEnter, { passive: true });
+    wrapper.addEventListener('mouseleave', onMouseLeave, { passive: true });
+
+    // Store a single cleanup function for deterministic listener removal
+    wrapper._mvcCleanup = () => {
+      wrapper.removeEventListener('click', onClick);
+      wrapper.removeEventListener('keydown', onKeyDown);
+      wrapper.removeEventListener('mouseenter', onMouseEnter);
+      wrapper.removeEventListener('mouseleave', onMouseLeave);
+      // Also clean up video handlers if present
+      const v = wrapper.querySelector('video');
+      if (v && v._mvcHandlers) {
+        try {
+          v.removeEventListener('play', v._mvcHandlers.syncControls);
+          v.removeEventListener('pause', v._mvcHandlers.syncControls);
+          v.removeEventListener('volumechange', v._mvcHandlers.syncControls);
+          const btnPlay = wrapper.querySelector('.mvc-play');
+          const btnMute = wrapper.querySelector('.mvc-mute');
+          if (btnPlay) btnPlay.removeEventListener('click', v._mvcHandlers.playClickHandler);
+          if (btnMute) btnMute.removeEventListener('click', v._mvcHandlers.muteClickHandler);
+        } catch (_) {}
+      }
+    };
 
     return wrapper;
   }
@@ -549,7 +608,7 @@ class MasonryGallery {
       if (!element) return;
       
       // Slight delay before animating to ensure initial state is applied on mobile
-      setTimeout(() => {
+      const tid = setTimeout(() => {
         if (this.isDestroyed || !this.nodeMap.has(item.id)) return;
         // Animate to final position
         element.style.opacity = '1';
@@ -558,9 +617,16 @@ class MasonryGallery {
           element.style.filter = 'blur(0px)';
         }
       }, index * this.options.stagger * 1000 + 16);
+      this._animateTimeouts.push(tid);
     });
     
-    this.hasMounted = true;
+    // Set hasMounted after the last staggered animation fires,
+    // so relayouts don't interfere with the entry animation
+    const totalDelay = this.grid.length * this.options.stagger * 1000 + 16;
+    const mountTid = setTimeout(() => {
+      if (!this.isDestroyed) this.hasMounted = true;
+    }, totalDelay);
+    this._animateTimeouts.push(mountTid);
   }
   
   updateLayout() {
@@ -587,6 +653,8 @@ class MasonryGallery {
     
     // Remove focus from previously focused card
     if (this.focusedCard && this.focusedCard !== element) {
+      // Update baseline when switching cards so unfocus restores to current position
+      this.savedScrollY = window.scrollY;
       // Direct handoff: don't collapse layout or restore scroll between A -> B.
       this.unfocusCard(this.focusedCard, { restoreScroll: false, skipLayout: true });
     }
@@ -771,12 +839,14 @@ class MasonryGallery {
   handleResize() {
     clearTimeout(this.resizeTimeout);
     this.resizeTimeout = setTimeout(() => {
-      const oldColumns = this.columns;
       this.updateColumns();
-      
-      if (oldColumns !== this.columns) {
-        this.calculateGrid();
+      // Always recalculate and update layout on window resize, not just on column change
+      // This ensures fluid responsiveness within breakpoints (e.g., 1100px → 1300px while staying 4 cols)
+      this.calculateGrid();
+      // Only call render if we haven't mounted yet; otherwise use updateLayout for animation
+      if (!this.hasMounted) {
         this.render();
+      } else {
         this.updateLayout();
       }
     }, 200);
@@ -796,6 +866,13 @@ class MasonryGallery {
 
   setItems(items) {
     if (!items || items.length === 0) return;
+    
+    // Clear stale focus references if focused item was filtered out
+    if (this.focusedItemId && !items.some(i => i.id === this.focusedItemId)) {
+      this.focusedItemId = null;
+      this.focusedCard = null;
+      this.savedScrollY = null;
+    }
     
     // Load metadata for any videos we haven't seen yet
     const videoItems = items.filter(
@@ -831,6 +908,9 @@ class MasonryGallery {
     if (this.container) {
       this.container.setAttribute('aria-busy', 'true');
     }
+    // Prevent stacking multiple loaders
+    if (this.container.querySelector('.masonry-loader')) return;
+    
     const loader = document.createElement('div');
     loader.className = 'masonry-loader';
     loader.innerHTML = '<div class="loader-spinner"></div>';
@@ -871,6 +951,11 @@ class MasonryGallery {
     if (this._relayoutTimer) {
       cancelAnimationFrame(this._relayoutTimer);
       this._relayoutTimer = null;
+    }
+    // Clear any in-flight animation stagger timeouts
+    if (this._animateTimeouts && this._animateTimeouts.length > 0) {
+      this._animateTimeouts.forEach(clearTimeout);
+      this._animateTimeouts = [];
     }
     // Clean up video metadata loaders
     if (this._videoMetaLoaders && this._videoMetaLoaders.length > 0) {
@@ -921,11 +1006,9 @@ const GalleryManager = {
 
   buildCaption(title, medium, year) {
     let c = title || '';
-    if (medium || year) {
-      c += ' - ';
-      if (medium) c += medium;
-      if (medium && year) c += ' ';
-      if (year) c += year;
+    const meta = [medium, year].filter(Boolean).join(' ');
+    if (meta) {
+      c = c ? `${c} - ${meta}` : meta;
     }
     return c;
   },
@@ -1006,6 +1089,9 @@ const GalleryManager = {
     }
 
     // First time or after empty state — create fresh
+    // SAFETY: Ensure we don't have a lingering instance
+    if (this.gallery) this.gallery.destroy();
+    
     this.gallery = new MasonryGallery(this.container, this.galleryOptions);
     this.gallery.init(items);
     this.gallery.initClickOutside();
@@ -1033,6 +1119,9 @@ const GalleryManager = {
       // Fetch gallery items from Supabase
       if (typeof supabase === 'undefined') {
         // Supabase script may be loading async, retry with backoff
+        // CRITICAL: Reset flag BEFORE early return so retry can execute
+        this.initializing = false;
+        
         if (!this._supabaseRetryTimer) {
           this._supabaseRetryTimer = setTimeout(() => {
             this._supabaseRetryTimer = null;
