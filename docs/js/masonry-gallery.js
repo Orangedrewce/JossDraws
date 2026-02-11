@@ -370,6 +370,14 @@ class MasonryGallery {
       wrapper.style.transform = `translate(${item.x}px, ${item.y}px)`;
       wrapper.style.width = `${item.w}px`;
       wrapper.style.height = `${item.h}px`;
+      
+      // Control opacity: hide ONLY if we're about to animate in (prevents flash)
+      // Once mounted, always show (fixes small photos bug on filter/sort)
+      if (!this.hasMounted && !this.reduceMotion) {
+        wrapper.style.opacity = '0'; // Will be revealed by animateIn()
+      } else {
+        wrapper.style.opacity = '1'; // Mounted: show immediately
+      }
     });
 
     this.container.style.height = `${this._cachedMaxHeight}px`;
@@ -387,6 +395,11 @@ class MasonryGallery {
       cursor: pointer;
       overflow: hidden;
       border-radius: 8px;
+      left: 0;
+      top: 0;
+      width: ${item.w}px;
+      height: ${item.h}px;
+      transform: translate(${item.x}px, ${item.y}px);
       transition: ${this.reduceMotion ? 'none' : 'transform 0.3s ease, z-index 0s'};
     `;
 
@@ -735,13 +748,18 @@ class MasonryGallery {
           const finalItemH = gridItem.h;
           const absoluteTargetTop = containerAbsoluteTop + finalItemY;
           
+          // Buffer to ensure top edge isn't cut off (Chrome's lazy layout)
+          const topBuffer = isMobile ? 24 : 32;
+          
           let targetY;
           if (isMobile) {
-            // Mobile: Pin to just below header
-            targetY = Math.max(0, Math.round(absoluteTargetTop - headerOffset - 16));
+            // Mobile: Pin to just below header with aggressive buffer
+            targetY = Math.max(0, Math.round(absoluteTargetTop - headerOffset - topBuffer));
           } else {
             // Desktop: Center the card using calculated dimensions
-            targetY = Math.max(0, Math.round(absoluteTargetTop - (window.innerHeight / 2 - finalItemH / 2)));
+            const screenCenter = window.innerHeight / 2;
+            const cardCenter = finalItemH / 2;
+            targetY = Math.max(0, Math.round(absoluteTargetTop - (screenCenter - cardCenter)));
           }
           
           window.scrollTo({ top: targetY, behavior: smooth ? scrollBehavior : 'auto' });
