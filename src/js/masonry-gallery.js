@@ -322,6 +322,13 @@ class MasonryGallery {
         wrapper.classList.remove('card-focused');
         wrapper.style.zIndex = '1';
       }
+
+      // Set initial absolute positions immediately to prevent stacking on mobile
+      // This ensures images have position/dimensions before they start loading
+      wrapper.style.position = 'absolute';
+      wrapper.style.transform = `translate(${item.x}px, ${item.y}px)`;
+      wrapper.style.width = `${item.w}px`;
+      wrapper.style.height = `${item.h}px`;
     });
 
     this.container.style.height = `${this._cachedMaxHeight}px`;
@@ -495,13 +502,17 @@ class MasonryGallery {
       return;
     }
 
+    // Set transition and initial state before animation
     this.grid.forEach((item, index) => {
       const element = this.nodeMap.get(item.id);
       if (!element) return;
       
       const initialPos = this.getInitialPosition(item, index);
       
-      // Set initial state
+      // Enable transitions for animation
+      element.style.transition = `all 0.8s cubic-bezier(0.22, 1, 0.36, 1)`;
+      
+      // Set initial state (off-screen)
       element.style.opacity = '0';
       element.style.transform = `translate(${initialPos.x}px, ${initialPos.y}px)`;
       element.style.width = `${item.w}px`;
@@ -515,19 +526,21 @@ class MasonryGallery {
     // This prevents images from stacking at (0,0) during load
     void this.container.offsetHeight;
 
+    // Animate items in with stagger
     this.grid.forEach((item, index) => {
       const element = this.nodeMap.get(item.id);
       if (!element) return;
       
-      // Animate to final position
+      // Slight delay before animating to ensure initial state is applied on mobile
       setTimeout(() => {
-        element.style.transition = `all 0.8s cubic-bezier(0.22, 1, 0.36, 1)`;
+        if (this.isDestroyed || !this.nodeMap.has(item.id)) return;
+        // Animate to final position
         element.style.opacity = '1';
         element.style.transform = `translate(${item.x}px, ${item.y}px)`;
         if (this.options.blurToFocus) {
           element.style.filter = 'blur(0px)';
         }
-      }, index * this.options.stagger * 1000);
+      }, index * this.options.stagger * 1000 + 16);
     });
     
     this.hasMounted = true;
@@ -589,32 +602,36 @@ class MasonryGallery {
         return rect.height || header.offsetHeight || 0;
       };
 
-      // Wait for layout/styles to be applied so scroll targets are stable.
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (isMobile) {
-            // Mobile: scroll to the focused item's computed y within the container.
-            const gridItem = this.grid.find(i => i.id === item.id);
-            const itemY = gridItem ? gridItem.y : 0;
-            const containerRect = this.container.getBoundingClientRect();
-            const absoluteContainerTop = containerRect.top + window.pageYOffset;
-            const headerOffset = getStickyHeaderOffset();
-            const buffer = headerOffset + 20;
-            this.focusScrollTargetY = absoluteContainerTop + itemY - buffer;
-            window.scrollTo({
-              top: this.focusScrollTargetY,
-              behavior: scrollBehavior
-            });
-          } else {
-            // Desktop: deterministic centering so we can track drift reliably.
-            const rect = element.getBoundingClientRect();
-            const absoluteTop = rect.top + window.pageYOffset;
-            const targetY = Math.max(0, Math.round(absoluteTop - (window.innerHeight / 2 - rect.height / 2)));
-            this.focusScrollTargetY = targetY;
-            window.scrollTo({ top: targetY, behavior: scrollBehavior });
-          }
-        });
-      });
+      // Wait for layout to stabilize before scrolling
+      // Use a longer delay on mobile (slower rendering)
+      const scrollDelay = isMobile ? 150 : 50;
+      
+      setTimeout(() => {
+        // Double-check element is still focused (user might have clicked elsewhere)
+        if (this.focusedCard !== element) return;
+        
+        if (isMobile) {
+          // Mobile: scroll to the focused item's computed y within the container.
+          const gridItem = this.grid.find(i => i.id === item.id);
+          const itemY = gridItem ? gridItem.y : 0;
+          const containerRect = this.container.getBoundingClientRect();
+          const absoluteContainerTop = containerRect.top + window.pageYOffset;
+          const headerOffset = getStickyHeaderOffset();
+          const buffer = headerOffset + 20;
+          this.focusScrollTargetY = absoluteContainerTop + itemY - buffer;
+          window.scrollTo({
+            top: this.focusScrollTargetY,
+            behavior: scrollBehavior
+          });
+        } else {
+          // Desktop: deterministic centering so we can track drift reliably.
+          const rect = element.getBoundingClientRect();
+          const absoluteTop = rect.top + window.pageYOffset;
+          const targetY = Math.max(0, Math.round(absoluteTop - (window.innerHeight / 2 - rect.height / 2)));
+          this.focusScrollTargetY = targetY;
+          window.scrollTo({ top: targetY, behavior: scrollBehavior });
+        }
+      }, scrollDelay);
     }
   }
   
@@ -653,17 +670,25 @@ class MasonryGallery {
       const restoreToY = this.savedScrollY;
       const scrollBehavior = this.reduceMotion ? 'auto' : 'smooth';
 
-      // Drift detection: mobile uses fixed px, desktop uses viewport-relative.
-      const threshold = this.lastFocusWasMobile ? 200 : window.innerHeight * 0.3;
+      // More lenient drift detection for mobile — user might have scroll during focus
+      // Desktop threshold is larger since smooth scroll might overshoot
+      const threshold = this.lastFocusWasMobile 
+        ? window.innerHeight * 0.5  // 50% of viewport on mobile
+        : window.innerHeight * 0.8; // 80% of viewport on desktop
+      
       const anchorY = (typeof this.focusScrollTargetY === 'number') ? this.focusScrollTargetY : currentScroll;
 
+      // Only restore if user hasn't scrolled much since we scrolled them
       if (Math.abs(currentScroll - anchorY) < threshold) {
         // Wait for layout to stabilize before scrolling to ensure correct position
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
+        // Use longer delay on mobile
+        const scrollDelay = this.lastFocusWasMobile ? 100 : 0;
+        setTimeout(() => {
+          // Check that focus hasn't changed since we started unfocusing
+          if (this.focusedItemId === null) {
             window.scrollTo({ top: restoreToY, behavior: scrollBehavior });
-          });
-        });
+          }
+        }, scrollDelay);
       }
 
       this.savedScrollY = null;
@@ -900,6 +925,39 @@ const GalleryManager = {
     return rows.map(r => this.rowToItem(r));
   },
 
+  setItems(items) {
+    if (!items || items.length === 0) return;
+    
+    // Load metadata for any videos we haven't seen yet
+    const videoItems = items.filter(
+      i => (i.type === 'video' || i.video) && !this.imageMeta[i.video || i.img]
+    );
+    if (videoItems.length > 0) {
+      this.startVideoMetaLoading(videoItems);
+    }
+
+    // Normalize items with cached dimensions or defaults
+    const normalizedItems = items.map(i => {
+      const src = i.video || i.img;
+      const meta = this.imageMeta[src];
+      if (meta) {
+        const ratio = meta.naturalHeight / meta.naturalWidth;
+        return { ...i, naturalWidth: meta.naturalWidth, naturalHeight: meta.naturalHeight, ratio };
+      }
+      // Apply defaults if not in cache
+      const naturalWidth = i.width || 1000;
+      const naturalHeight = i.height || 1000;
+      const ratio = naturalHeight / naturalWidth;
+      return { ...i, naturalWidth, naturalHeight, ratio };
+    });
+
+    this.items = normalizedItems;
+    this._gridHash = ''; // Invalidate cache
+    this.calculateGrid();
+    this.render();
+    this.updateLayout();
+  },
+
   applyFilters() {
     if (!this.container) return;
     const items = this.getFilteredItems();
@@ -914,12 +972,8 @@ const GalleryManager = {
     }
 
     if (this.gallery && !this.gallery.isDestroyed) {
-      // Reuse the existing gallery instance — swap items without nuking DOM listeners
-      this.gallery.items = items;
-      this.gallery._gridHash = ''; // force recalc
-      this.gallery.calculateGrid();
-      this.gallery.render();
-      this.gallery.updateLayout();
+      // Reuse the existing gallery instance — use setItems to properly handle video metadata
+      this.gallery.setItems(items);
       return;
     }
 
@@ -950,7 +1004,10 @@ const GalleryManager = {
     try {
       // Fetch gallery items from Supabase
       if (typeof supabase === 'undefined') {
-        throw new Error('Supabase SDK not loaded');
+        // Supabase script may be loading async, retry in 100ms
+        setTimeout(() => this.init(), 100);
+        this.initializing = false;
+        return;
       }
 
       const db = supabase.createClient(GALLERY_SUPABASE_URL, GALLERY_SUPABASE_KEY);
@@ -1008,24 +1065,7 @@ const GalleryManager = {
 };
 
 // Initialize when DOM is ready or when gallery tab is clicked
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    GalleryManager.checkAndInit();
-    
-    // Listen for tab changes
-    const galleryTab = document.getElementById('tab-gallery');
-    if (galleryTab) {
-      galleryTab.addEventListener('change', () => {
-        if (galleryTab.checked) {
-          GalleryManager.init();
-        }
-      });
-    }
-  });
-} else {
-  GalleryManager.checkAndInit();
-  
-  // Listen for tab changes
+const setupGalleryTabListener = () => {
   const galleryTab = document.getElementById('tab-gallery');
   if (galleryTab) {
     galleryTab.addEventListener('change', () => {
@@ -1034,6 +1074,16 @@ if (document.readyState === 'loading') {
       }
     });
   }
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    GalleryManager.checkAndInit();
+    setupGalleryTabListener();
+  });
+} else {
+  GalleryManager.checkAndInit();
+  setupGalleryTabListener();
 }
 
 
