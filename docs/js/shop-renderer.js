@@ -61,9 +61,11 @@
                   'style="width:100%;height:auto;display:block" ' +
                   "data-media='" + mediaJson + "'></video>";
     } else {
-      mediaHtml = '<img src="' + firstUrl + '" loading="lazy" decoding="async" ' +
+      mediaHtml = '<div class="img-loading-wrapper shop-img-wrapper">' +
+                  '<img src="' + firstUrl + '" loading="lazy" decoding="async" ' +
                   'width="800" height="800" alt="' + safeTitle + '" ' +
-                  "data-media='" + mediaJson + "'>";
+                  "data-media='" + mediaJson + "'>" +
+                  '</div>';
     }
 
     return '<article class="card" data-shop-item-id="' + item.id + '">' +
@@ -83,6 +85,28 @@
   // -------------------------------------------------------------------------
   // Carousel Logic (self-contained per card)
   // -------------------------------------------------------------------------
+
+  function initShopImageLoading(container) {
+    var wrappers = container.querySelectorAll('.img-loading-wrapper');
+    wrappers.forEach(function(wrapper) {
+      var img = wrapper.querySelector('img');
+      if (!img) return;
+      
+      // If image is already cached/loaded
+      if (img.complete && img.naturalWidth > 0) {
+        wrapper.classList.add('loaded');
+        return;
+      }
+      
+      img.addEventListener('load', function() {
+        wrapper.classList.add('loaded');
+      });
+      
+      img.addEventListener('error', function() {
+        wrapper.classList.add('loaded');
+      });
+    });
+  }
 
   function initCarouselsInContainer(container) {
     var carousels = container.querySelectorAll('.image-carousel');
@@ -119,13 +143,31 @@
           video.style.cssText = 'width:100%;height:auto;display:block';
           mediaContainer.appendChild(video);
         } else {
+          var wrapper = document.createElement('div');
+          wrapper.className = 'img-loading-wrapper shop-img-wrapper';
+          
           var img = document.createElement('img');
           img.src = url;
           img.alt = 'Product image';
           img.loading = 'lazy';
           img.decoding = 'async';
           img.setAttribute('data-media', JSON.stringify(mediaItems));
-          mediaContainer.appendChild(img);
+          
+          // Handle image load
+          img.addEventListener('load', function() {
+            wrapper.classList.add('loaded');
+          });
+          img.addEventListener('error', function() {
+            wrapper.classList.add('loaded');
+          });
+          
+          // Check if already cached
+          if (img.complete && img.naturalWidth > 0) {
+            wrapper.classList.add('loaded');
+          }
+          
+          wrapper.appendChild(img);
+          mediaContainer.appendChild(wrapper);
         }
       }
 
@@ -270,6 +312,9 @@
     // Build all cards
     grid.innerHTML = shopItems.map(buildCardHtml).join('');
 
+    // Initialize image loading indicators
+    initShopImageLoading(grid);
+
     // Initialize carousels on new cards
     initCarouselsInContainer(grid);
 
@@ -289,7 +334,7 @@
 
     if (grid) {
       grid.setAttribute('aria-busy', 'true');
-      grid.innerHTML = '<p class="muted-center" style="grid-column:1/-1">Loading shop\u2026</p>';
+      grid.innerHTML = '<div class="tab-loader"><div class="loader-spinner loader-spinner--shop" role="status" aria-label="Loading shop"></div></div>';
     }
 
     if (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function') {

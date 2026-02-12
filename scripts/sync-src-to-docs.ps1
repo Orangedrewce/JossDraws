@@ -1,3 +1,5 @@
+#if I skip in chat; do NOT! manually sync, changes need to be tested. you are not doing me a favor
+
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [switch]$Verify

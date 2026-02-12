@@ -79,8 +79,7 @@ class MasonryGallery {
     const runId = ++this.initRunId;
     this.items = items;
     
-    // Show loading state
-    this.showLoading();
+    // Manager already shows spinner, so we don't need to show it again here
 
     // Fire-and-forget video metadata loading — doesn't block initial render.
     // Layout updates progressively as each video's dimensions arrive.
@@ -995,7 +994,7 @@ class MasonryGallery {
     
     const loader = document.createElement('div');
     loader.className = 'masonry-loader';
-    loader.innerHTML = '<div class="loader-spinner"></div><p>Loading gallery\u2026</p>';
+    loader.innerHTML = '<div class="loader-spinner loader-spinner--gallery" role="status" aria-label="Loading gallery"></div>';
     this.container.appendChild(loader);
   }
 
@@ -1288,7 +1287,7 @@ const GalleryManager = {
     this.container.style.minHeight = '300px';
     const loader = document.createElement('div');
     loader.className = 'masonry-loader';
-    loader.innerHTML = '<div class="loader-spinner"></div><p>Loading gallery\u2026</p>';
+    loader.innerHTML = '<div class="loader-spinner loader-spinner--gallery" role="status" aria-label="Loading gallery"></div>';
     this.container.appendChild(loader);
   },
 

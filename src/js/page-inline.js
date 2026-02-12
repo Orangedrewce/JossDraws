@@ -156,4 +156,81 @@
   } else {
     initCarousel();
   }
+
+  // ---------------------------------------------------------------------------
+  // 3. Image Loading Indicators
+  // ---------------------------------------------------------------------------
+  function initImageLoading() {
+    var wrappers = document.querySelectorAll('.img-loading-wrapper');
+    wrappers.forEach(function(wrapper) {
+      var img = wrapper.querySelector('img');
+      if (!img) return;
+      
+      // If image is already cached/loaded
+      if (img.complete && img.naturalWidth > 0) {
+        wrapper.classList.add('loaded');
+        return;
+      }
+      
+      img.addEventListener('load', function() {
+        wrapper.classList.add('loaded');
+      });
+      
+      img.addEventListener('error', function() {
+        wrapper.classList.add('loaded');
+      });
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initImageLoading);
+  } else {
+    initImageLoading();
+  }
+
+  // ---------------------------------------------------------------------------
+  // 4. Decorative Tab Loading (First Visit Only)
+  // ---------------------------------------------------------------------------
+  var visitedTabs = {};
+  
+  function showDecorativeLoading(tabName, container, spinnerClass) {
+    // Skip if already visited (except home tab which reloads images)
+    if (visitedTabs[tabName] && tabName !== 'tab-home') return;
+    
+    // Mark as visited
+    visitedTabs[tabName] = true;
+    
+    // For home tab, the hero-slideshow.js handles the spinner via img-loading-wrapper
+    // So we skip the decorative overlay for home
+    if (tabName === 'tab-home') return;
+    
+    // Create decorative overlay for other tabs
+    var overlay = document.createElement('div');
+    overlay.className = 'decorative-loading-overlay';
+    overlay.innerHTML = '<div class="loader-spinner ' + spinnerClass + '"></div>';
+    container.appendChild(overlay);
+    
+    // Remove after brief moment
+    setTimeout(function() {
+      overlay.style.opacity = '0';
+      setTimeout(function() {
+        if (overlay.parentNode) overlay.remove();
+      }, 300);
+    }, 400);
+  }
+  
+  // Monitor tab changes
+  var tabRadios = document.querySelectorAll('input[name="tabs"]');
+  tabRadios.forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      if (!this.checked) return;
+      
+      var tabId = this.id;
+      var tabSection = document.querySelector('.tab-' + tabId.replace('tab-', ''));
+      if (!tabSection) return;
+      
+      var spinnerClass = 'loader-spinner--' + tabId.replace('tab-', '');
+      showDecorativeLoading(tabId, tabSection, spinnerClass);
+    });
+  });
 })();

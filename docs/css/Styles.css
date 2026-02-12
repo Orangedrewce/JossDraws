@@ -63,6 +63,14 @@
   --arrow-letter-spacing: 0;
   --arrow-vertical-offset: 0;
   --arrow-horizontal-offset: 0;
+
+  /* Spinner Positioning */
+  --spinner-y-position: 30%;        /* Vertical position (0% = top, 50% = middle, 100% = bottom) */
+  --spinner-x-position: 50%;        /* Horizontal position (0% = left, 50% = center, 100% = right) */
+  --spinner-translate-x: -50%;      /* X-axis centering offset */
+  --spinner-translate-y: -50%;      /* Y-axis centering offset */
+  --spinner-z-image: 1;             /* Z-index for image spinners */
+  --spinner-z-decorative: 100;      /* Z-index for decorative tab spinners */
 }
 
 /* =============================================================================
@@ -1294,6 +1302,32 @@ footer a:focus-visible {
   margin: 0 auto var(--spacing-md);
 }
 
+/* Tab-specific spinner colors */
+.loader-spinner--home {
+  border-top-color: var(--tab-home-color);
+}
+
+.loader-spinner--gallery {
+  border-top-color: var(--tab-gallery-color);
+}
+
+.loader-spinner--about {
+  border-top-color: var(--tab-about-color);
+}
+
+.loader-spinner--shop {
+  border-top-color: var(--tab-shop-color);
+}
+
+.loader-spinner--contact {
+  border-top-color: var(--tab-contact-color);
+}
+
+.loader-spinner--reviews {
+  border-top-color: var(--color-text);
+  border-color: var(--tab-reviews-color);
+}
+
 /* Small spinner variant — used inside individual gallery cards */
 .loader-spinner--small {
   width: 28px;
@@ -1331,6 +1365,159 @@ footer a:focus-visible {
   opacity: 0.7;
 }
 
+/* Generic loading container for all tabs */
+.tab-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+  min-height: 200px;
+  grid-column: 1 / -1;
+}
+
+/* Image loading wrapper with spinner */
+.img-loading-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  min-height: 0;
+}
+
+.img-loading-wrapper::before {
+  content: '';
+  position: absolute;
+  top: var(--spinner-y-position);
+  left: var(--spinner-x-position);
+  transform: translate(var(--spinner-translate-x), var(--spinner-translate-y));
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-top-color: var(--color-text);
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+  opacity: 1;
+  transition: opacity 0.3s;
+  z-index: var(--spinner-z-image);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.img-loading-wrapper.loaded::before {
+  opacity: 0;
+}
+
+.img-loading-wrapper img {
+  position: relative;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.img-loading-wrapper.loaded img {
+  opacity: 1;
+}
+
+/* Masonry-specific image wrapper adjustments */
+.masonry-img-wrapper {
+  min-height: 150px;
+  border-radius: var(--border-radius);
+}
+
+.masonry-img-wrapper::before {
+  border-color: rgba(0, 0, 0, 0.1);
+  border-top-color: var(--tab-gallery-color);
+}
+
+/* Shop-specific image wrapper adjustments */
+.shop-img-wrapper {
+  min-height: 200px;
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+  background: var(--color-lighter-bg);
+}
+
+.shop-img-wrapper::before {
+  border-color: rgba(0, 0, 0, 0.1);
+  border-top-color: var(--tab-shop-color);
+}
+
+/* Hero-specific image wrapper adjustments */
+.hero-img-wrapper {
+  min-height: 0;
+  border-radius: var(--border-radius);
+  background: transparent;
+  display: block;
+}
+
+.hero-img-wrapper::before {
+  border-color: rgba(0, 0, 0, 0.1);
+  border-top-color: var(--tab-home-color);
+}
+
+/* Hero slideshow container should maintain aspect ratio */
+.hero-slideshow {
+  position: relative;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+/* When image hasn't loaded yet, show spinner in center of hero area */
+.hero-slideshow .img-loading-wrapper:not(.loaded) {
+  width: 100%;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Show spinner before image loads */
+.hero-slideshow .img-loading-wrapper:not(.loaded)::before {
+  opacity: 1;
+}
+
+/* Once loaded, wrapper shouldn't add extra space */
+.hero-slideshow .img-loading-wrapper.loaded {
+  min-height: 0;
+  display: block;
+}
+
+.hero-slideshow .img-loading-wrapper.loaded::before {
+  opacity: 0;
+}
+
+/* Logo-specific adjustments (no min-height for logo) */
+.logo .img-loading-wrapper {
+  min-height: auto;
+  background: transparent;
+}
+
+.logo .img-loading-wrapper::before {
+  width: 30px;
+  height: 30px;
+  border-width: 2px;
+}
+
+/* About page image adjustments */
+.tab-about .img-loading-wrapper {
+  min-height: 200px;
+  background: var(--color-lighter-bg);
+  border-radius: var(--border-radius);
+}
+
+.tab-about .img-loading-wrapper::before {
+  border-color: rgba(0, 0, 0, 0.1);
+  border-top-color: var(--tab-about-color);
+}
+
+.tab-about .img-loading-wrapper.loaded {
+  min-height: 0;
+  background: transparent;
+}
+
 /* Utility class for empty state messages */
 .muted-center {
   text-align: center;
@@ -1345,4 +1532,19 @@ footer a:focus-visible {
   position: relative;
   width: 100%;
   min-height: 300px;
+}
+
+/* Decorative loading overlay for tabs */
+.decorative-loading-overlay {
+  position: absolute;
+  top: var(--spinner-y-position);
+  left: var(--spinner-x-position);
+  transform: translate(var(--spinner-translate-x), var(--spinner-translate-y));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--spinner-z-decorative);
+  opacity: 1;
+  transition: opacity 0.3s;
+  pointer-events: none;
 }

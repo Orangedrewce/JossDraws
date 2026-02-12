@@ -26,11 +26,33 @@
 
   function injectImage(heroSlideshow, imageData) {
     heroSlideshow.innerHTML = '';
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'img-loading-wrapper hero-img-wrapper';
+    
     const img = document.createElement('img');
     img.src = imageData.src;
     img.alt = imageData.alt || 'Featured Photograph';
     img.loading = 'eager';
-    heroSlideshow.appendChild(img);
+    
+    // Always start without loaded class to show spinner
+    // Handle image load
+    img.addEventListener('load', () => {
+      wrapper.classList.add('loaded');
+    });
+    img.addEventListener('error', () => {
+      wrapper.classList.add('loaded');
+    });
+    
+    // Even if cached, delay the loaded class slightly to show spinner briefly on tab switch
+    setTimeout(() => {
+      if (img.complete && img.naturalWidth > 0) {
+        wrapper.classList.add('loaded');
+      }
+    }, 50);
+    
+    wrapper.appendChild(img);
+    heroSlideshow.appendChild(wrapper);
   }
 
   async function fetchSlidesFromDB() {
