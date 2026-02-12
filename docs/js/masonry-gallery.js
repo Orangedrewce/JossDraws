@@ -173,6 +173,12 @@ class MasonryGallery {
     const item = this.items.find(i => i.id === itemId);
     if (!item) return;
     const newRatio = naturalHeight / naturalWidth;
+
+    // Cache dimensions so setItems() (filter changes) can restore correct ratios
+    // without waiting for <img> onload to refire on already-loaded images
+    const src = item.img;
+    if (src) this.imageMeta[src] = { naturalWidth, naturalHeight };
+
     // Only relayout if the ratio changed meaningfully
     if (Math.abs((item.ratio || 1) - newRatio) < 0.03) return;
     item.ratio = newRatio;
@@ -1142,9 +1148,19 @@ const GalleryManager = {
 
     // Only create a mutable copy when we need to sort (filter returns new array already)
     if (sortVal === 'newest') {
-      rows = [...rows].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      rows = [...rows].sort((a, b) => {
+        if (a.year_created && b.year_created) return b.year_created - a.year_created;
+        if (a.year_created) return -1;  // items with year come first
+        if (b.year_created) return 1;
+        return 0;
+      });
     } else if (sortVal === 'oldest') {
-      rows = [...rows].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      rows = [...rows].sort((a, b) => {
+        if (a.year_created && b.year_created) return a.year_created - b.year_created;
+        if (a.year_created) return -1;  // items with year come first
+        if (b.year_created) return 1;
+        return 0;
+      });
     }
     // 'default' keeps DB order (sort_order ASC, created_at DESC)
 
