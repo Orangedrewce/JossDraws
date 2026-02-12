@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="robots" content="noindex, nofollow">
-    <title>Admin | Review Link Generator</title>
+    <title>Admin | Dashboard</title>
     <link rel="preconnect" href="https://pciubbwphwpnptgawgok.supabase.co">
     <link rel="stylesheet" href="css/mgmt.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -80,6 +80,34 @@
         </div>
 
         <hr class="divider" id="galleryDivider">
+
+        <!-- ================================================ -->
+        <!-- REVIEW MANAGER — Approve / Deny / Delete / Restore -->
+        <!-- ================================================ -->
+        <details class="recent-links" id="reviewSection">
+            <summary class="section-summary">
+                <span>Review Manager</span>
+                <span class="chevron">▼</span>
+            </summary>
+
+            <div class="gallery-section-content">
+                <p class="description" style="margin-bottom:1rem;">Approve, deny, or delete customer reviews. New reviews are pending until approved.</p>
+
+                <div class="review-filter-tabs" id="reviewTabs">
+                    <button type="button" class="review-tab active" data-tab="pending">⏳ Pending <span id="reviewPendingCount" class="review-tab-count">0</span></button>
+                    <button type="button" class="review-tab" data-tab="approved">✅ Approved <span id="reviewApprovedCount" class="review-tab-count">0</span></button>
+                    <button type="button" class="review-tab" data-tab="deleted">🗑️ Trash <span id="reviewDeletedCount" class="review-tab-count">0</span></button>
+                </div>
+
+                <div id="reviewMessage" class="gallery-msg is-hidden" role="status" aria-live="polite"></div>
+
+                <div id="reviewList" class="review-list">
+                    <p class="text-muted-2" style="font-size:0.85rem;">Open this section to load reviews...</p>
+                </div>
+            </div>
+        </details>
+
+        <hr class="divider" id="galleryDivider2">
 
         <details class="recent-links" id="gallerySection">
             <summary class="section-summary">
@@ -227,6 +255,46 @@
         </details>
 
         <hr class="divider" id="settingsDivider">
+
+        <!-- ================================================ -->
+        <!-- ABOUT PAGE EDITOR — Photo + Bio CMS -->
+        <!-- ================================================ -->
+        <details class="recent-links" id="aboutSection">
+            <summary class="section-summary">
+                <span>About Page Editor</span>
+                <span class="chevron">▼</span>
+            </summary>
+
+            <div class="gallery-section-content">
+                <p class="description" style="margin-bottom:1rem;">Edit the photo and bio text shown on the About tab. Paste a Google Drive share link for the photo.</p>
+
+                <div class="about-editor-preview" id="aboutPreviewArea">
+                    <div class="about-preview-photo" id="aboutPreviewPhoto">
+                        <span style="display:flex;align-items:center;justify-content:center;height:100%;font-size:2rem;">👤</span>
+                    </div>
+                    <div class="about-preview-text" id="aboutPreviewText">
+                        <span class="text-muted-2" style="font-size:0.82rem;">Loading current content...</span>
+                    </div>
+                </div>
+
+                <form id="aboutForm" class="gallery-form" style="margin-top:1rem;">
+                    <label for="aboutPhotoUrl">Photo URL (Google Drive)</label>
+                    <input type="text" id="aboutPhotoUrl" placeholder="Paste Google Drive share link here..." autocomplete="off">
+                    <div id="aboutUrlStatus" class="gallery-url-status is-hidden"></div>
+                    <div id="aboutPhotoPreview" class="gallery-preview is-hidden"></div>
+
+                    <label for="aboutBioText">Bio / About Text (HTML allowed)</label>
+                    <textarea id="aboutBioText" rows="10" placeholder="Write your bio here... HTML tags like <strong>, <em>, <br>, <h3>, <p> are supported."></textarea>
+                    <small class="form-hint">Supports basic HTML: &lt;strong&gt;, &lt;em&gt;, &lt;br&gt;, &lt;h3&gt;, &lt;p&gt;. Changes go live instantly.</small>
+
+                    <button type="submit" id="aboutSaveBtn" class="gallery-add-btn">Save Changes</button>
+                </form>
+
+                <div id="aboutMessage" class="gallery-msg is-hidden" role="status" aria-live="polite"></div>
+            </div>
+        </details>
+
+        <hr class="divider" id="settingsDivider2">
 
         <details class="recent-links" id="settingsSection">
             <summary class="section-summary">
@@ -4248,6 +4316,518 @@
                 if (sEl.section.open && !shopLoaded && db && adminCode) {
                     loadShopItems();
                     loadPageTitles();
+                }
+            });
+        }
+
+        // ============================================
+        // REVIEW MANAGER
+        // ============================================
+        {
+            const rEl = {
+                section: document.getElementById('reviewSection'),
+                tabs: document.getElementById('reviewTabs'),
+                list: document.getElementById('reviewList'),
+                message: document.getElementById('reviewMessage'),
+                pendingCount: document.getElementById('reviewPendingCount'),
+                approvedCount: document.getElementById('reviewApprovedCount'),
+                deletedCount: document.getElementById('reviewDeletedCount')
+            };
+
+            let reviewLoaded = false;
+            let reviewData = { pending: [], approved: [], deleted: [] };
+            let activeReviewTab = 'pending';
+            const reviewDeletePending = new Map();
+            const REVIEW_DELETE_MS = 3000;
+
+            function showReviewMsg(text, isError) {
+                rEl.message.textContent = text;
+                rEl.message.className = 'gallery-msg ' + (isError ? 'error' : 'success');
+                setHidden(rEl.message, false);
+                setTimeout(() => setHidden(rEl.message, true), 5000);
+            }
+
+            function setReviewTab(tab) {
+                activeReviewTab = tab;
+                rEl.tabs.querySelectorAll('.review-tab').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.tab === tab);
+                });
+                renderReviews();
+            }
+
+            rEl.tabs.addEventListener('click', (e) => {
+                const btn = e.target.closest('.review-tab');
+                if (!btn) return;
+                setReviewTab(btn.dataset.tab);
+            });
+
+            async function loadReviews() {
+                if (!db || !adminCode) return;
+                rEl.list.textContent = '';
+                const loader = document.createElement('p');
+                loader.className = 'text-muted-2';
+                loader.style.fontSize = '0.85rem';
+                loader.textContent = 'Loading reviews...';
+                rEl.list.appendChild(loader);
+
+                try {
+                    const { data, error } = await db.rpc('admin_list_reviews', {
+                        p_admin_code: adminCode
+                    });
+                    if (error) throw new Error(error.message);
+                    if (!data || !data.success) {
+                        if (data?.error === 'Unauthorized') {
+                            adminCode = null;
+                            showAuthLockout('Invalid admin code.');
+                            return;
+                        }
+                        throw new Error(data?.error || 'Failed to load reviews');
+                    }
+
+                    reviewData.pending = data.pending || [];
+                    reviewData.approved = data.approved || [];
+                    reviewData.deleted = data.deleted || [];
+
+                    rEl.pendingCount.textContent = reviewData.pending.length;
+                    rEl.approvedCount.textContent = reviewData.approved.length;
+                    rEl.deletedCount.textContent = reviewData.deleted.length;
+
+                    renderReviews();
+                    reviewLoaded = true;
+                } catch (err) {
+                    rEl.list.textContent = '';
+                    const p = document.createElement('p');
+                    p.className = 'text-danger';
+                    p.style.fontSize = '0.85rem';
+                    p.textContent = 'Error: ' + String(err?.message || err);
+                    rEl.list.appendChild(p);
+                }
+            }
+
+            function renderStars(rating) {
+                const r = Math.max(1, Math.min(5, Math.floor(Number(rating) || 5)));
+                return '⭐'.repeat(r);
+            }
+
+            function renderReviews() {
+                const items = reviewData[activeReviewTab] || [];
+                rEl.list.textContent = '';
+
+                if (items.length === 0) {
+                    const p = document.createElement('p');
+                    p.className = 'text-muted-2';
+                    p.style.fontSize = '0.85rem';
+                    p.textContent = activeReviewTab === 'pending'
+                        ? 'No pending reviews. All caught up!'
+                        : activeReviewTab === 'approved'
+                        ? 'No approved reviews yet.'
+                        : 'Trash is empty.';
+                    rEl.list.appendChild(p);
+                    return;
+                }
+
+                const fragment = document.createDocumentFragment();
+                for (const review of items) {
+                    fragment.appendChild(renderReviewCard(review));
+                }
+                rEl.list.appendChild(fragment);
+            }
+
+            function renderReviewCard(review) {
+                const card = document.createElement('div');
+                card.className = 'review-mgmt-card';
+
+                // Header: name + stars + source
+                const header = document.createElement('div');
+                header.className = 'review-mgmt-header';
+
+                const nameEl = document.createElement('span');
+                nameEl.className = 'review-mgmt-name';
+                nameEl.textContent = review.client_name || 'Anonymous';
+
+                const starsEl = document.createElement('span');
+                starsEl.className = 'review-mgmt-stars';
+                starsEl.textContent = renderStars(review.rating);
+
+                header.append(nameEl, starsEl);
+
+                // Source badge
+                const sourceMeta = getSourceMeta(review.source);
+                const sourceEl = document.createElement('span');
+                sourceEl.className = 'review-mgmt-source';
+                sourceEl.textContent = `${sourceMeta.emoji} ${sourceMeta.label}`;
+
+                // Review text
+                const textEl = document.createElement('p');
+                textEl.className = 'review-mgmt-text';
+                textEl.textContent = '"' + (review.review_text || '') + '"';
+
+                // Date
+                const dateEl = document.createElement('div');
+                dateEl.className = 'review-mgmt-date';
+                const date = new Date(review.created_at);
+                dateEl.textContent = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
+                    ' at ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+                if (activeReviewTab === 'deleted' && review.deleted_at) {
+                    const delDate = new Date(review.deleted_at);
+                    dateEl.textContent += ' • Deleted ' + delDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }
+
+                // Actions
+                const actions = document.createElement('div');
+                actions.className = 'review-mgmt-actions';
+
+                if (activeReviewTab === 'pending') {
+                    const approveBtn = document.createElement('button');
+                    approveBtn.className = 'mini-btn';
+                    approveBtn.type = 'button';
+                    approveBtn.dataset.reviewAction = 'approve';
+                    approveBtn.dataset.reviewId = String(review.id);
+                    approveBtn.textContent = '✅ Approve';
+                    actions.appendChild(approveBtn);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'mini-btn danger';
+                    deleteBtn.type = 'button';
+                    deleteBtn.dataset.reviewAction = 'delete';
+                    deleteBtn.dataset.reviewId = String(review.id);
+                    deleteBtn.textContent = '🗑️ Delete';
+                    actions.appendChild(deleteBtn);
+                } else if (activeReviewTab === 'approved') {
+                    const denyBtn = document.createElement('button');
+                    denyBtn.className = 'mini-btn secondary';
+                    denyBtn.type = 'button';
+                    denyBtn.dataset.reviewAction = 'deny';
+                    denyBtn.dataset.reviewId = String(review.id);
+                    denyBtn.textContent = '⏸️ Unpublish';
+                    actions.appendChild(denyBtn);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'mini-btn danger';
+                    deleteBtn.type = 'button';
+                    deleteBtn.dataset.reviewAction = 'delete';
+                    deleteBtn.dataset.reviewId = String(review.id);
+                    deleteBtn.textContent = '🗑️ Delete';
+                    actions.appendChild(deleteBtn);
+                } else if (activeReviewTab === 'deleted') {
+                    const restoreBtn = document.createElement('button');
+                    restoreBtn.className = 'mini-btn secondary';
+                    restoreBtn.type = 'button';
+                    restoreBtn.dataset.reviewAction = 'restore';
+                    restoreBtn.dataset.reviewId = String(review.id);
+                    restoreBtn.textContent = '♻️ Restore';
+                    actions.appendChild(restoreBtn);
+
+                    const purgeBtn = document.createElement('button');
+                    purgeBtn.className = 'mini-btn danger';
+                    purgeBtn.type = 'button';
+                    purgeBtn.dataset.reviewAction = 'purge';
+                    purgeBtn.dataset.reviewId = String(review.id);
+                    purgeBtn.textContent = '💀 Purge';
+                    actions.appendChild(purgeBtn);
+                }
+
+                card.append(header, sourceEl, textEl, dateEl, actions);
+                return card;
+            }
+
+            // ----- Action Handler (Event Delegation) -----
+            rEl.list.addEventListener('click', async (e) => {
+                const btn = e.target.closest('button[data-review-action]');
+                if (!btn || !db || !adminCode) return;
+
+                const action = btn.dataset.reviewAction;
+                const id = parseInt(btn.dataset.reviewId, 10);
+                if (!action || isNaN(id)) return;
+
+                const rpcMap = {
+                    approve: 'admin_approve_review',
+                    deny: 'admin_deny_review',
+                    delete: 'admin_delete_review',
+                    restore: 'admin_restore_review',
+                    purge: 'admin_purge_review'
+                };
+
+                const rpcName = rpcMap[action];
+                if (!rpcName) return;
+
+                // Two-click confirm for delete & purge
+                if (action === 'delete' || action === 'purge') {
+                    const key = `${action}-${id}`;
+                    if (!reviewDeletePending.has(key)) {
+                        reviewDeletePending.set(key, true);
+                        btn.textContent = action === 'delete' ? '⚠️ Sure?' : '⚠️ Purge forever?';
+                        btn.classList.remove('danger');
+                        btn.classList.add('confirm-armed');
+                        setTimeout(() => {
+                            if (reviewDeletePending.has(key)) {
+                                reviewDeletePending.delete(key);
+                                btn.textContent = action === 'delete' ? '🗑️ Delete' : '💀 Purge';
+                                btn.classList.remove('confirm-armed');
+                                btn.classList.add('danger');
+                            }
+                        }, REVIEW_DELETE_MS);
+                        return;
+                    }
+                    reviewDeletePending.delete(key);
+                }
+
+                const origText = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = '...';
+
+                try {
+                    const { data, error } = await db.rpc(rpcName, {
+                        p_admin_code: adminCode,
+                        p_review_id: id
+                    });
+                    if (error) throw new Error(error.message);
+                    if (!data || !data.success) {
+                        if (data?.error === 'Unauthorized') {
+                            adminCode = null;
+                            showAuthLockout('Invalid admin code.');
+                            return;
+                        }
+                        throw new Error(data?.error || action + ' failed');
+                    }
+
+                    const msgs = {
+                        approve: 'Review approved and published!',
+                        deny: 'Review unpublished (moved to pending)',
+                        delete: 'Review moved to trash',
+                        restore: 'Review restored to pending',
+                        purge: 'Review permanently deleted'
+                    };
+                    showReviewMsg(msgs[action] || 'Done!', false);
+                    await loadReviews();
+                } catch (err) {
+                    showReviewMsg('Error: ' + err.message, true);
+                    btn.disabled = false;
+                    btn.textContent = origText;
+                }
+            });
+
+            // ----- Auto-open from URL hash (#reviews) -----
+            function checkReviewHash() {
+                if (window.location.hash === '#reviews') {
+                    if (rEl.section && !rEl.section.open) {
+                        rEl.section.open = true;
+                    }
+                    if (!reviewLoaded && db && adminCode) {
+                        loadReviews();
+                    }
+                }
+            }
+
+            window.addEventListener('hashchange', checkReviewHash);
+
+            // ----- Load on section open -----
+            rEl.section.addEventListener('toggle', () => {
+                if (rEl.section.open && !reviewLoaded && db && adminCode) {
+                    loadReviews();
+                }
+            });
+
+            // Check hash on init (for Discord deep-link)
+            checkReviewHash();
+        }
+
+        // ============================================
+        // ABOUT PAGE EDITOR
+        // ============================================
+        {
+            const aEl = {
+                section: document.getElementById('aboutSection'),
+                form: document.getElementById('aboutForm'),
+                photoUrl: document.getElementById('aboutPhotoUrl'),
+                urlStatus: document.getElementById('aboutUrlStatus'),
+                photoPreview: document.getElementById('aboutPhotoPreview'),
+                bioText: document.getElementById('aboutBioText'),
+                saveBtn: document.getElementById('aboutSaveBtn'),
+                message: document.getElementById('aboutMessage'),
+                previewPhoto: document.getElementById('aboutPreviewPhoto'),
+                previewText: document.getElementById('aboutPreviewText')
+            };
+
+            let aboutLoaded = false;
+            let aboutConvertedUrl = null;
+
+            function showAboutMsg(text, isError) {
+                aEl.message.textContent = text;
+                aEl.message.className = 'gallery-msg ' + (isError ? 'error' : 'success');
+                setHidden(aEl.message, false);
+                setTimeout(() => setHidden(aEl.message, true), 5000);
+            }
+
+            // ----- Google Drive URL Converter (reuses existing logic) -----
+            function aboutExtractDriveFileId(url) {
+                if (!url || typeof url !== 'string') return null;
+                url = url.trim();
+                let m = url.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/);
+                if (m) return m[1];
+                m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+                if (m) return m[1];
+                m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+                if (m) return m[1];
+                if (/^[a-zA-Z0-9_-]{25,}$/.test(url)) return url;
+                return null;
+            }
+
+            function aboutToEmbedUrl(fileId) {
+                return `https://lh3.googleusercontent.com/d/${fileId}`;
+            }
+
+            function handleAboutUrlInput() {
+                const raw = aEl.photoUrl.value.trim();
+                if (!raw) {
+                    setHidden(aEl.urlStatus, true);
+                    setHidden(aEl.photoPreview, true);
+                    aboutConvertedUrl = null;
+                    return;
+                }
+                const fileId = aboutExtractDriveFileId(raw);
+                if (fileId) {
+                    aboutConvertedUrl = aboutToEmbedUrl(fileId);
+                    aEl.urlStatus.textContent = '✅ Valid Google Drive URL detected';
+                    aEl.urlStatus.className = 'gallery-url-status valid';
+                    setHidden(aEl.urlStatus, false);
+                    aEl.photoPreview.textContent = '';
+                    const img = document.createElement('img');
+                    img.alt = 'Photo preview';
+                    img.src = aboutConvertedUrl;
+                    img.addEventListener('error', () => {
+                        aEl.photoPreview.textContent = '';
+                        const msg = document.createElement('span');
+                        msg.className = 'text-muted-2';
+                        msg.style.fontSize = '0.7rem';
+                        msg.style.padding = '0.5rem';
+                        msg.textContent = 'Could not load preview';
+                        aEl.photoPreview.appendChild(msg);
+                    }, { once: true });
+                    aEl.photoPreview.appendChild(img);
+                    setHidden(aEl.photoPreview, false);
+
+                    // Update live preview
+                    aEl.previewPhoto.textContent = '';
+                    const previewImg = document.createElement('img');
+                    previewImg.alt = 'About photo';
+                    previewImg.src = aboutConvertedUrl;
+                    previewImg.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+                    aEl.previewPhoto.appendChild(previewImg);
+                } else {
+                    aboutConvertedUrl = null;
+                    aEl.urlStatus.textContent = '⚠️ Could not detect a Google Drive file ID';
+                    aEl.urlStatus.className = 'gallery-url-status invalid';
+                    setHidden(aEl.urlStatus, false);
+                    setHidden(aEl.photoPreview, true);
+                }
+            }
+
+            aEl.photoUrl.addEventListener('input', handleAboutUrlInput);
+            aEl.photoUrl.addEventListener('paste', () => setTimeout(handleAboutUrlInput, 50));
+
+            // ----- Live bio preview -----
+            aEl.bioText.addEventListener('input', () => {
+                const val = aEl.bioText.value;
+                if (val.trim()) {
+                    aEl.previewText.innerHTML = val;
+                }
+            });
+
+            // ----- Load existing content -----
+            async function loadAboutContent() {
+                if (!db || !adminCode) return;
+                try {
+                    const { data, error } = await db.rpc('admin_get_about_content', {
+                        p_admin_code: adminCode
+                    });
+                    if (error) throw new Error(error.message);
+                    if (!data || !data.success) {
+                        if (data?.error === 'Unauthorized') {
+                            adminCode = null;
+                            showAuthLockout('Invalid admin code.');
+                            return;
+                        }
+                        throw new Error(data?.error || 'Failed to load about content');
+                    }
+
+                    // Populate form fields
+                    if (data.photo_url) {
+                        aEl.photoUrl.value = data.photo_url;
+                        aboutConvertedUrl = data.photo_url;
+
+                        // Show preview
+                        aEl.previewPhoto.textContent = '';
+                        const img = document.createElement('img');
+                        img.alt = 'About photo';
+                        img.src = data.photo_url;
+                        img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+                        img.addEventListener('error', () => { img.style.display = 'none'; }, { once: true });
+                        aEl.previewPhoto.appendChild(img);
+                    }
+
+                    if (data.bio_text) {
+                        aEl.bioText.value = data.bio_text;
+                        aEl.previewText.innerHTML = data.bio_text;
+                    }
+
+                    aboutLoaded = true;
+                } catch (err) {
+                    aEl.previewText.textContent = '';
+                    const p = document.createElement('p');
+                    p.className = 'text-danger';
+                    p.style.fontSize = '0.85rem';
+                    p.textContent = 'Error: ' + String(err?.message || err);
+                    aEl.previewText.appendChild(p);
+                }
+            }
+
+            // ----- Save -----
+            aEl.form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!db || !adminCode) return;
+
+                const photoUrl = aboutConvertedUrl || aEl.photoUrl.value.trim();
+                const bioText = aEl.bioText.value;
+
+                if (!photoUrl && !bioText) {
+                    showAboutMsg('Nothing to save — enter a photo URL or bio text.', true);
+                    return;
+                }
+
+                aEl.saveBtn.disabled = true;
+                aEl.saveBtn.textContent = 'Saving...';
+
+                try {
+                    const { data, error } = await db.rpc('admin_set_about_content', {
+                        p_admin_code: adminCode,
+                        p_photo_url: photoUrl || '',
+                        p_bio_text: bioText
+                    });
+                    if (error) throw new Error(error.message);
+                    if (!data || !data.success) {
+                        if (data?.error === 'Unauthorized') {
+                            adminCode = null;
+                            showAuthLockout('Invalid admin code.');
+                            return;
+                        }
+                        showAboutMsg(data?.error || 'Save failed', true);
+                        return;
+                    }
+                    showAboutMsg('About page updated! Visitors will see changes on refresh.', false);
+                } catch (err) {
+                    showAboutMsg('Error: ' + err.message, true);
+                } finally {
+                    aEl.saveBtn.disabled = false;
+                    aEl.saveBtn.textContent = 'Save Changes';
+                }
+            });
+
+            // ----- Load on section open -----
+            aEl.section.addEventListener('toggle', () => {
+                if (aEl.section.open && !aboutLoaded && db && adminCode) {
+                    loadAboutContent();
                 }
             });
         }

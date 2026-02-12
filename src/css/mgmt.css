@@ -882,6 +882,168 @@ body.is-dragging ::-moz-selection {
     margin-top: -0.25rem;
 }
 
+/* ====== REVIEW MANAGER ====== */
+.review-filter-tabs {
+    display: flex;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.review-tab {
+    flex: 1;
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.82rem !important;
+    font-weight: 600;
+    border: 1px solid var(--color-border-strong) !important;
+    border-radius: var(--radius-md) !important;
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.review-tab:hover:not(:disabled) {
+    background: var(--color-surface-3) !important;
+    border-color: var(--color-primary) !important;
+    box-shadow: none !important;
+}
+
+.review-tab.active {
+    background: var(--color-primary) !important;
+    color: var(--color-white) !important;
+    border-color: var(--color-primary) !important;
+}
+
+.review-tab-count {
+    display: inline-block;
+    background: rgba(255,255,255,0.2);
+    padding: 0.05rem 0.4rem;
+    border-radius: var(--radius-pill);
+    font-size: 0.72rem;
+    margin-left: 0.25rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.review-tab:not(.active) .review-tab-count {
+    background: var(--color-surface-3);
+    color: var(--text-muted);
+}
+
+.review-list {
+    min-height: 60px;
+}
+
+.review-mgmt-card {
+    background: var(--color-surface);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border-soft);
+    margin-bottom: 0.6rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.review-mgmt-card:hover {
+    border-color: var(--color-border-strong);
+    box-shadow: var(--shadow-sm);
+}
+
+.review-mgmt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.review-mgmt-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--color-text);
+}
+
+.review-mgmt-stars {
+    font-size: 0.85rem;
+}
+
+.review-mgmt-source {
+    display: inline-block;
+    font-size: 0.75rem;
+    background: var(--color-surface-3);
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--radius-pill);
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+}
+
+.review-mgmt-text {
+    font-size: 0.9rem;
+    color: var(--color-text);
+    line-height: 1.5;
+    margin: 0.4rem 0;
+    font-style: italic;
+}
+
+.review-mgmt-date {
+    font-size: 0.75rem;
+    color: var(--text-muted-soft);
+    margin-bottom: 0.6rem;
+}
+
+.review-mgmt-actions {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+/* ====== ABOUT PAGE EDITOR ====== */
+.about-editor-preview {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 0.75rem;
+    background: var(--color-surface-2);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border-soft);
+}
+
+.about-preview-photo {
+    width: 100px;
+    height: 100px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 2px solid var(--color-border-soft);
+    background: var(--color-bg);
+    flex-shrink: 0;
+}
+
+.about-preview-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.about-preview-text {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.82rem;
+    color: var(--color-text);
+    line-height: 1.5;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.about-preview-text h3 {
+    font-size: 0.9rem;
+    margin: 0.5rem 0 0.25rem;
+}
+
+.about-preview-text p {
+    margin: 0.25rem 0;
+}
+
 .checkbox-label {
     display: flex;
     align-items: center;
@@ -1076,6 +1238,36 @@ body.is-dragging ::-moz-selection {
     .gallery-item-actions {
         order: 3;
         margin-left: auto;
+    }
+
+    /* Review manager mobile */
+    .review-filter-tabs {
+        gap: 0.25rem;
+    }
+
+    .review-tab {
+        padding: 0.4rem 0.5rem !important;
+        font-size: 0.75rem !important;
+    }
+
+    .review-mgmt-actions {
+        flex-direction: column;
+    }
+
+    .review-mgmt-actions .mini-btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    /* About editor mobile */
+    .about-editor-preview {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .about-preview-photo {
+        width: 80px;
+        height: 80px;
     }
 }
 

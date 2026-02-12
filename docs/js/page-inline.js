@@ -46,15 +46,12 @@
 
     (async function run() {
       try {
-        // --- IMPORTANT: We MUST select 'source' here or it won't work ---
-        var result = await db
-          .from("reviews")
-          .select("client_name, review_text, rating, created_at, source") 
-          .order("created_at", { ascending: false })
-          .limit(10);
+        // Use RPC to get only approved, non-deleted reviews (server-filtered)
+        var result = await db.rpc("get_approved_reviews");
 
-        var data = result && result.data;
+        var rpcData = result && result.data;
         var error = result && result.error;
+        var data = (rpcData && rpcData.success) ? rpcData.reviews : null;
 
         if (error || !data || data.length === 0) {
             // Fallback content if empty
@@ -155,6 +152,43 @@
     document.addEventListener("DOMContentLoaded", initCarousel);
   } else {
     initCarousel();
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2b. Dynamic About Content (loaded from Supabase)
+  // ---------------------------------------------------------------------------
+  function initAboutContent() {
+    var photoEl = document.getElementById("about-photo");
+    var textEl = document.getElementById("about-text");
+    if (!photoEl || !textEl) return;
+    if (!window.supabase || typeof window.supabase.createClient !== "function") return;
+
+    var SUPABASE_URL = "https://pciubbwphwpnptgawgok.supabase.co";
+    var SUPABASE_KEY = "sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv";
+    var db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    (async function () {
+      try {
+        var result = await db.rpc("get_about_content");
+        var data = result && result.data;
+        if (!data || !data.success) return; // keep hardcoded fallback
+
+        if (data.photo_url) {
+          photoEl.src = data.photo_url;
+        }
+        if (data.bio_text) {
+          textEl.innerHTML = data.bio_text;
+        }
+      } catch (e) {
+        // Silently fail — hardcoded fallback remains visible
+      }
+    })();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initAboutContent);
+  } else {
+    initAboutContent();
   }
 
   // ---------------------------------------------------------------------------
