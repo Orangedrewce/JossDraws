@@ -24,7 +24,6 @@ if (!(Test-Path -Path $docsRoot -PathType Container)) {
 $relativePaths = @(
     'CNAME',
     'index.html',
-    'review.html',
     'sitemap.xml',
     'robots.txt',
     'googledb898fc8cc038b74.html',
@@ -41,8 +40,11 @@ $relativePaths = @(
     'js/webgl.js',
     
     'Dashboard/mgmt-7f8a2d9e.html',
+    'Dashboard/review.html',
     'Dashboard/css/mgmt.css',
-    'Dashboard/js/mgmt.js'
+    'Dashboard/css/review.css',
+    'Dashboard/js/mgmt.js',
+    'Dashboard/js/review.js'
 )
 
 $copied = New-Object System.Collections.Generic.List[string]
