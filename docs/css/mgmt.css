@@ -952,8 +952,9 @@ body.is-dragging ::-moz-selection {
 
 .review-mgmt-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
+    gap: 0.5rem;
     margin-bottom: 0.25rem;
 }
 
@@ -997,6 +998,51 @@ body.is-dragging ::-moz-selection {
     gap: 0.4rem;
     flex-wrap: wrap;
 }
+
+/* Review card drag-and-drop */
+.review-mgmt-card { position: relative; }
+.review-mgmt-card .drag-handle {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
+    cursor: grab;
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    user-select: none;
+    padding: 0.2rem 0.35rem;
+    line-height: 1;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+.review-mgmt-card:hover .drag-handle { opacity: 1; }
+.review-mgmt-card .drag-handle:active { cursor: grabbing; }
+
+.review-mgmt-card.dragging {
+    opacity: 0.4;
+    transform: scale(0.97);
+    cursor: grabbing;
+    pointer-events: none;
+}
+.review-mgmt-card.dropped { transition: none; }
+.review-mgmt-card.drag-over {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(99,102,241,0.3);
+}
+.review-mgmt-card.drop-before::before,
+.review-mgmt-card.drop-after::after {
+    content: '';
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    height: 2px;
+    background: var(--color-info);
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+    border-radius: 2px;
+}
+.review-mgmt-card.drop-before::before { top: -2px; }
+.review-mgmt-card.drop-after::after { bottom: -2px; }
 
 /* ====== ABOUT PAGE EDITOR ====== */
 .about-editor-preview {

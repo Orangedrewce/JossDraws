@@ -4436,6 +4436,15 @@
             function renderReviewCard(review) {
                 const card = document.createElement('div');
                 card.className = 'review-mgmt-card';
+                card.setAttribute('data-review-id', String(review.id));
+
+                // Drag handle (approved tab only)
+                if (activeReviewTab === 'approved') {
+                    const handle = document.createElement('span');
+                    handle.className = 'drag-handle';
+                    handle.textContent = '⠿';
+                    card.appendChild(handle);
+                }
 
                 // Header: name + stars + source
                 const header = document.createElement('div');
@@ -4606,6 +4615,205 @@
                     btn.disabled = false;
                     btn.textContent = origText;
                 }
+            });
+
+            // ----- Drag & Drop Reorder for Approved Reviews (Desktop + Touch) -----
+            let reviewDragSrcId = null;
+            let reviewCurrentDropTarget = null;
+            const reviewDragDropTarget = { id: null, position: 'before' };
+
+            function clearReviewDropIndicators() {
+                if (!rEl.list) return;
+                rEl.list.querySelectorAll('.drag-over, .drop-before, .drop-after').forEach(el => {
+                    el.classList.remove('drag-over', 'drop-before', 'drop-after');
+                });
+                reviewCurrentDropTarget = null;
+            }
+
+            function updateReviewDropIndicator(row, clientY) {
+                if (!row || row.getAttribute('data-review-id') === reviewDragSrcId) {
+                    if (reviewCurrentDropTarget) {
+                        reviewCurrentDropTarget.classList.remove('drag-over', 'drop-before', 'drop-after');
+                        reviewCurrentDropTarget = null;
+                    }
+                    reviewDragDropTarget.id = null;
+                    return;
+                }
+                const rect = row.getBoundingClientRect();
+                const isBefore = (clientY - rect.top) < rect.height / 2;
+
+                if (reviewCurrentDropTarget && reviewCurrentDropTarget !== row) {
+                    reviewCurrentDropTarget.classList.remove('drag-over', 'drop-before', 'drop-after');
+                }
+                reviewCurrentDropTarget = row;
+                row.classList.remove('drop-before', 'drop-after');
+                row.classList.add('drag-over', isBefore ? 'drop-before' : 'drop-after');
+
+                reviewDragDropTarget.id = row.getAttribute('data-review-id');
+                reviewDragDropTarget.position = isBefore ? 'before' : 'after';
+            }
+
+            function optimisticReviewReorder(srcId, tgtId, position) {
+                const srcEl = rEl.list.querySelector(`[data-review-id="${srcId}"]`);
+                const tgtEl = rEl.list.querySelector(`[data-review-id="${tgtId}"]`);
+                if (!srcEl || !tgtEl) return;
+
+                if (position === 'before') {
+                    tgtEl.parentNode.insertBefore(srcEl, tgtEl);
+                } else {
+                    tgtEl.parentNode.insertBefore(srcEl, tgtEl.nextSibling);
+                }
+
+                srcEl.classList.add('dropped');
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => srcEl.classList.remove('dropped'));
+                });
+
+                // Update local reviewData.approved to match new order
+                const items = reviewData.approved;
+                const srcIdx = items.findIndex(i => String(i.id) === String(srcId));
+                const tgtIdx = items.findIndex(i => String(i.id) === String(tgtId));
+                if (srcIdx !== -1 && tgtIdx !== -1) {
+                    const [moved] = items.splice(srcIdx, 1);
+                    const newTgtIdx = items.findIndex(i => String(i.id) === String(tgtId));
+                    if (newTgtIdx !== -1) {
+                        const insertAt = position === 'before' ? newTgtIdx : newTgtIdx + 1;
+                        items.splice(insertAt, 0, moved);
+                    }
+                    items.forEach((item, i) => { item.review_sort_order = i + 1; });
+                }
+            }
+
+            async function performReviewDrop() {
+                const targetId = reviewDragDropTarget.id;
+                const targetPosition = reviewDragDropTarget.position || 'before';
+                clearReviewDropIndicators();
+
+                if (!reviewDragSrcId || !targetId || reviewDragSrcId === targetId) return;
+
+                const snapshot = reviewData.approved.map(i => ({ ...i }));
+                optimisticReviewReorder(reviewDragSrcId, targetId, targetPosition);
+
+                try {
+                    const { data, error } = await db.rpc('admin_move_review', {
+                        p_admin_code: adminCode,
+                        p_item_id: parseInt(reviewDragSrcId, 10),
+                        p_target_id: parseInt(targetId, 10),
+                        p_position: targetPosition
+                    });
+                    if (error) throw new Error(error.message);
+                    if (!data || !data.success) {
+                        showReviewMsg(data?.error || 'Move failed — reverting', true);
+                        reviewData.approved = snapshot;
+                        renderReviews();
+                        return;
+                    }
+                } catch (err) {
+                    showReviewMsg('Error: ' + (err?.message || err) + ' — reverting', true);
+                    reviewData.approved = snapshot;
+                    renderReviews();
+                }
+            }
+
+            // ——— Shared pointer drag (mouse + touch) for reviews ———
+            let reviewDragClone = null;
+            let reviewDragSourceRow = null;
+            let reviewDragOffsetY = 0;
+
+            function startReviewDrag(row, clientX, clientY) {
+                const sel = window.getSelection();
+                if (sel) sel.removeAllRanges();
+
+                reviewDragSrcId = row.getAttribute('data-review-id');
+                reviewDragSourceRow = row;
+                row.classList.add('dragging');
+                document.body.classList.add('is-dragging');
+
+                const rect = row.getBoundingClientRect();
+                reviewDragOffsetY = clientY - rect.top;
+                reviewDragClone = row.cloneNode(true);
+                reviewDragClone.style.cssText =
+                    'position:fixed;pointer-events:none;z-index:10000;transition:none;' +
+                    'transform:scale(0.97);opacity:0.88;' +
+                    'box-shadow:0 8px 25px rgba(0,0,0,0.18);border-radius:8px;' +
+                    'width:' + rect.width + 'px;' +
+                    'left:' + rect.left + 'px;' +
+                    'top:' + rect.top + 'px;';
+                document.body.appendChild(reviewDragClone);
+            }
+
+            function moveReviewDrag(clientX, clientY) {
+                if (reviewDragClone) {
+                    reviewDragClone.style.top = (clientY - reviewDragOffsetY) + 'px';
+                }
+                if (reviewDragSourceRow) reviewDragSourceRow.style.pointerEvents = 'none';
+                const elBelow = document.elementFromPoint(clientX, clientY);
+                if (reviewDragSourceRow) reviewDragSourceRow.style.pointerEvents = '';
+                const row = elBelow ? elBelow.closest('[data-review-id]') : null;
+                updateReviewDropIndicator(row, clientY);
+            }
+
+            async function endReviewDrag() {
+                if (reviewDragSourceRow) reviewDragSourceRow.classList.remove('dragging');
+                if (reviewDragClone) { reviewDragClone.remove(); reviewDragClone = null; }
+                document.body.classList.remove('is-dragging');
+
+                await performReviewDrop();
+
+                reviewDragSourceRow = null;
+                reviewDragSrcId = null;
+                reviewDragDropTarget.id = null;
+                reviewDragDropTarget.position = 'before';
+            }
+
+            // ——— Mouse events (desktop) ———
+            rEl.list.addEventListener('mousedown', (e) => {
+                if (activeReviewTab !== 'approved') return;
+                const handle = e.target.closest('.drag-handle');
+                if (!handle) return;
+                const row = handle.closest('.review-mgmt-card');
+                if (!row) return;
+                e.preventDefault();
+
+                startReviewDrag(row, e.clientX, e.clientY);
+
+                function onMouseMove(ev) {
+                    ev.preventDefault();
+                    moveReviewDrag(ev.clientX, ev.clientY);
+                }
+                async function onMouseUp() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    await endReviewDrag();
+                }
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            rEl.list.addEventListener('dragstart', (e) => { e.preventDefault(); });
+
+            // ——— Touch events (mobile / tablet) ———
+            rEl.list.addEventListener('touchstart', (e) => {
+                if (activeReviewTab !== 'approved') return;
+                const handle = e.target.closest('.drag-handle');
+                if (!handle) return;
+                const row = handle.closest('.review-mgmt-card');
+                if (!row) return;
+
+                const touch = e.touches[0];
+                startReviewDrag(row, touch.clientX, touch.clientY);
+            }, { passive: true });
+
+            rEl.list.addEventListener('touchmove', (e) => {
+                if (!reviewDragSourceRow) return;
+                e.preventDefault();
+                const touch = e.touches[0];
+                moveReviewDrag(touch.clientX, touch.clientY);
+            }, { passive: false });
+
+            rEl.list.addEventListener('touchend', async () => {
+                if (!reviewDragSourceRow) return;
+                await endReviewDrag();
             });
 
             // ----- Auto-open from URL hash (#reviews) -----
