@@ -29,7 +29,7 @@ const CONFIG = {
     mainSpeed: 1.0,          // Speed of the primary undulation
     mainFrequency: 3.0,      // How many "humps" visible across width
     mainAmplitude: 0.25,     // Height of the wave
-    secondarySpeed: 0.8,     // Speed of secondary detail wave
+    secondarySpeed: 1.8,     // Speed of secondary detail wave
     secondaryFreq: 1.1,      // Frequency of secondary detail
     secondaryAmp: 0.1,       // Amplitude of secondary detail
     horizontalSpeed: 0.7,    // Speed of horizontal offset motion
@@ -74,7 +74,7 @@ const CONFIG = {
 
   // 8. Performance
   performance: {
-    supersampleDesktop: 2.0, // 2× rendering for sharp edges on desktop
+    supersampleDesktop: 2.5, // 2× rendering for sharp edges on desktop
     supersampleMobile: 1.0,  // 1× rendering for mobile performance
     mobileBreakpoint: 768,   // Pixels width to consider "mobile"
     respectDPR: true,        // Account for devicePixelRatio (high-DPI screens)
@@ -231,6 +231,12 @@ function initWebGL() {
 
   // ── Effective twist (respects reduced-motion) [P5] ──
   const twistEnabled = CONFIG.twist.enabled && !reduceMotion;
+  const maxWaveAbs = CONFIG.wave.mainAmplitude
+                   + CONFIG.wave.secondaryAmp
+                   + (CONFIG.wave.horizontalAmount * Math.abs(CONFIG.wave.offsetBlend));
+  const maxRibbonHalfHeight = maxWaveAbs
+                            + (CONFIG.thickness.base * CONFIG.thickness.stretchMax * CONFIG.positioning.bandCount)
+                            + CONFIG.appearance.aaFallback;
 
   // ── Dynamic Fragment Shader Source (all magic numbers from CONFIG) [P3] ──
   const createFragmentShader = () => `
@@ -274,6 +280,14 @@ function initWebGL() {
       vec2 uv = (fragCoord - 0.5 * R.xy) / R.y;
       vec3 col = bg;
 
+      // --- Early Ribbon Rejection (skip expensive math for background pixels) ---
+      float ribbonMinY = ${f(CONFIG.positioning.verticalOffset)} - ${f(maxRibbonHalfHeight)};
+      float ribbonMaxY = ${f(CONFIG.positioning.verticalOffset)} + ${f(maxRibbonHalfHeight)};
+      if (uv.y < ribbonMinY || uv.y > ribbonMaxY) {
+        gl_FragColor = vec4(bg, 1.0);
+        return;
+      }
+
       // --- Wave Motion ---
       float yWave = sin(uv.x * ${f(CONFIG.wave.mainFrequency)} + T * ${f(CONFIG.wave.mainSpeed)}) * ${f(CONFIG.wave.mainAmplitude)}
                   + sin(uv.x * ${f(CONFIG.wave.secondaryFreq)} - T * ${f(CONFIG.wave.secondarySpeed)}) * ${f(CONFIG.wave.secondaryAmp)};
@@ -311,18 +325,24 @@ function initWebGL() {
 
       int iCenter = int(xi);
       int cCenter = int(clamp(float(iCenter), 0.0, ${f(bandMax)}));
-      int cLeft   = int(clamp(float(iCenter - 1), 0.0, ${f(bandMax)}));
-      int cRight  = int(clamp(float(iCenter + 1), 0.0, ${f(bandMax)}));
+      vec3 bandCol;
 
-      vec3 colC = getColor(cCenter);
-      vec3 colL = getColor(cLeft);
-      vec3 colR = getColor(cRight);
+      // Early path: center of the band uses solid color (no adjacent lookups/blend math)
+      if (xf > aaw && xf < (1.0 - aaw)) {
+        bandCol = getColor(cCenter);
+      } else {
+        int cLeft   = int(clamp(float(iCenter - 1), 0.0, ${f(bandMax)}));
+        int cRight  = int(clamp(float(iCenter + 1), 0.0, ${f(bandMax)}));
 
-      // Blend
-      float wL = 1.0 - smoothstep(0.0, aaw, xf);
-      float wR = smoothstep(1.0 - aaw, 1.0, xf);
-      float w0 = 1.0 - wL - wR;
-      vec3 bandCol = colC*w0 + colL*wL + colR*wR;
+        vec3 colC = getColor(cCenter);
+        vec3 colL = getColor(cLeft);
+        vec3 colR = getColor(cRight);
+
+        float wL = 1.0 - smoothstep(0.0, aaw, xf);
+        float wR = smoothstep(1.0 - aaw, 1.0, xf);
+        float w0 = 1.0 - wL - wR;
+        bandCol = colC*w0 + colL*wL + colR*wR;
+      }
 
       // --- Lighting / Plastic Effect ---
       vec3 shaded = bandCol;
