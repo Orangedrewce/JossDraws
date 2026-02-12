@@ -1,6 +1,0 @@
-# Environment files
-.env
-.env.local
-
-# Database credentials and SQL files
-*.sql

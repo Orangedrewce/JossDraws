@@ -31,4 +31,4 @@ build/
 *.log
 
 # Dev-specific files (referenced but not committed)
-merge-to-main.ps1
+sync-src-to-docs.ps1
