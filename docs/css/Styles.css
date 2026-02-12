@@ -57,12 +57,8 @@
   --transition-speed: 0.2s;
   --transition-speed-slow: 0.3s;
 
-  /* Arrow Centering */
+  /* Arrow */
   --arrow-font-size: 1.5rem;
-  --arrow-line-height: 0;
-  --arrow-letter-spacing: 0;
-  --arrow-vertical-offset: 0;
-  --arrow-horizontal-offset: 0;
 
   /* Spinner Positioning */
   --spinner-y-position: 30%;        /* Vertical position (0% = top, 50% = middle, 100% = bottom) */
@@ -732,25 +728,24 @@ nav label:focus-visible {
 .image-carousel .arrow {
   position: absolute;
   top: 50%;
-  transform: translateY(calc(-50% + var(--arrow-vertical-offset))) translateX(var(--arrow-horizontal-offset));
+  transform: translateY(-50%);
   background: var(--color-white-semitransparent);
   border: 1px solid var(--color-border-light);
   border-radius: 50%;
   width: 32px;
   height: 32px;
   font-size: var(--arrow-font-size);
-  line-height: var(--arrow-line-height);
-  letter-spacing: var(--arrow-letter-spacing);
   font-weight: 600;
   cursor: pointer;
   opacity: 0;
-  z-index: 2;
+  z-index: 3;
   transition: opacity var(--transition-speed-slow), background var(--transition-speed);
   color: var(--color-text);
-  /* Perfect centering with flexbox */
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  line-height: 1;
 }
 
 .image-carousel:hover .arrow {
