@@ -987,23 +987,6 @@ class MasonryGallery {
     this.updateLayout();
   }
 
-  showLoading() {
-    if (this.container) {
-      this.container.setAttribute('aria-busy', 'true');
-      // Ensure container has minimum height so the spinner is visible
-      if (!this.container.style.minHeight) {
-        this.container.style.minHeight = '300px';
-      }
-    }
-    // Prevent stacking multiple loaders
-    if (this.container.querySelector('.masonry-loader')) return;
-    
-    const loader = document.createElement('div');
-    loader.className = 'masonry-loader';
-    loader.innerHTML = '<div class="loader-spinner loader-spinner--gallery" role="status" aria-label="Loading gallery"></div>';
-    this.container.appendChild(loader);
-  }
-
   hideLoading() {
     const loader = this.container.querySelector('.masonry-loader');
     if (loader) {
@@ -1258,7 +1241,7 @@ const GalleryManager = {
       const items = this.getFilteredItems();
 
       // Remove manager-level spinner — MasonryGallery.init() manages its own
-      // showLoading/hideLoading lifecycle, but it will reuse the existing 
+      // hideLoading lifecycle, but it will reuse the existing 
       // .masonry-loader DOM node if still present (prevents flicker).
       this.gallery = new MasonryGallery(this.container, this.galleryOptions);
       this.gallery.init(items);
