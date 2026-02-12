@@ -24,6 +24,7 @@ if (!(Test-Path -Path $docsRoot -PathType Container)) {
 $relativePaths = @(
     'CNAME',
     'index.html',
+    'review.html',
     'sitemap.xml',
     'robots.txt',
     'googledb898fc8cc038b74.html',
@@ -39,7 +40,6 @@ $relativePaths = @(
     'js/tabs-router.js',
     'js/webgl.js',
     
-    'Dashboard/review.html',
     'Dashboard/mgmt-7f8a2d9e.html',
     'Dashboard/css/mgmt.css',
     'Dashboard/js/mgmt.js'
