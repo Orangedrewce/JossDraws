@@ -102,7 +102,7 @@
         const CONFIG = {
             SUPABASE_URL: 'https://pciubbwphwpnptgawgok.supabase.co',
             SUPABASE_KEY: 'sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv',
-            SITE_URL: 'https://www.jossdraws.com/review.html',
+            SITE_URL: 'https://www.jossdraws.com/Dashboard/review.html',
             MAX_RETRIES: 3,
             RETRY_DELAY: 1000
         };
