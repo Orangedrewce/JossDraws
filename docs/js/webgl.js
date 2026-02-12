@@ -26,7 +26,7 @@ const CONFIG = {
 
   // 3. Wave Dynamics (the sine-wave motion)
   wave: {
-    mainSpeed: 1.0,          // Speed of the primary undulation
+    mainSpeed: 2.0,          // Speed of the primary undulation
     mainFrequency: 3.0,      // How many "humps" visible across width
     mainAmplitude: 0.25,     // Height of the wave
     secondarySpeed: 1.8,     // Speed of secondary detail wave
