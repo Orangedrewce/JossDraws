@@ -22,25 +22,26 @@ if (!(Test-Path -Path $docsRoot -PathType Container)) {
 # Canonical list of files that are mirrored from src/ to docs/
 # Keep this explicit to avoid accidentally copying secrets or dev-only assets.
 $relativePaths = @(
-    'JossDraws/CNAME',
-    'JossDraws/index.html',
+    'CNAME',
+    'index.html',
+    'sitemap.xml',
+    'robots.txt',
+    'googledb898fc8cc038b74.html',
+
+    'css/Styles.css',
+
+    'js/click-spark.js',
+    'js/FormSubmission.js',
+    'js/hero-slideshow.js',
+    'js/masonry-gallery.js',
+    'js/page-inline.js',
+    'js/shop-renderer.js',
+    'js/tabs-router.js',
+    'js/webgl.js',
+    
     'Dashboard/review.html',
     'Dashboard/mgmt-7f8a2d9e.html',
-    'JossDraws/sitemap.xml',
-    'JossDraws/robots.txt',
-
-    'JossDraws/css/Styles.css',
     'Dashboard/css/mgmt.css',
-
-    'JossDraws/js/click-spark.js',
-    'JossDraws/js/FormSubmission.js',
-    'JossDraws/js/hero-slideshow.js',
-    'JossDraws/js/masonry-gallery.js',
-    'JossDraws/js/page-inline.js',
-    'JossDraws/js/shop-renderer.js',
-    'JossDraws/js/tabs-router.js',
-    'JossDraws/js/webgl.js',
-    
     'Dashboard/js/mgmt.js'
 )
 
