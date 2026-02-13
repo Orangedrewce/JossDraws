@@ -34,10 +34,22 @@
     return true;
   }
 
+  function updateAriaSelected(activeTabName) {
+    TAB_NAMES.forEach((name) => {
+      const label = document.querySelector(`label[for="${idFor(name)}"]`);
+      if (label) {
+        label.setAttribute('aria-selected', name === activeTabName ? 'true' : 'false');
+      }
+    });
+  }
+
   function selectTab(name, opts = {}) {
     const { replace = false, scroll = false } = opts;
     const ok = setChecked(idFor(name));
     if (!ok) return;
+
+    // Update ARIA selected state
+    updateAriaSelected(name);
 
     const newHash = `#${name}`;
     try {

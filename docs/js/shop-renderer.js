@@ -14,6 +14,7 @@
   const SUPABASE_KEY = 'sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv';
 
   const ITEMS_PER_PAGE = 3;
+  const MAX_RETRIES = 50; // 50 retries * 200ms = 10 seconds max
 
   // State
   let shopItems = [];
@@ -22,6 +23,7 @@
   let totalPages = 1;
   let initialized = false;
   let loading = false;
+  let retryCount = 0;
 
   // DOM refs (resolved lazily)
   let grid = null;
@@ -42,17 +44,27 @@
     return div.innerHTML;
   }
 
+  function sanitizeUrl(url) {
+    if (!url || url === '#') return '#';
+    // Reject javascript:, data:, and vbscript: protocols
+    const dangerous = /^\s*(javascript|data|vbscript):/i;
+    if (dangerous.test(url)) return '#';
+    // Only allow http, https, and relative URLs
+    if (!/^(https?:\/\/|\/)/.test(url) && url !== '#') return '#';
+    return url;
+  }
+
   // -------------------------------------------------------------------------
   // Card Builder
   // -------------------------------------------------------------------------
 
   function buildCardHtml(item) {
     const mediaArr = Array.isArray(item.media) ? item.media : [];
-    const firstUrl = mediaArr[0] || '';
+    const firstUrl = sanitizeUrl(mediaArr[0] || '');
     const isVid = isVideo(firstUrl);
     const safeTitle = escapeHtml(item.title || '');
     const safePrice = escapeHtml(item.price_display || '');
-    const safeEtsyUrl = escapeHtml(item.etsy_url || '#');
+    const safeEtsyUrl = escapeHtml(sanitizeUrl(item.etsy_url || '#'));
     const mediaJson = JSON.stringify(mediaArr).replace(/'/g, '&#39;');
 
     var mediaHtml;
@@ -338,6 +350,13 @@
     }
 
     if (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function') {
+      if (retryCount >= MAX_RETRIES) {
+        console.error('Shop: Supabase CDN failed to load after', MAX_RETRIES, 'retries');
+        loading = false;
+        fallbackToEmpty();
+        return;
+      }
+      retryCount++;
       setTimeout(function () {
         loading = false;
         fetchShopItems();
@@ -345,7 +364,10 @@
       return;
     }
 
-    var db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Reset retry count on successful CDN load
+    retryCount = 0;
+
+    var db = window.__supabaseClient || supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     db.rpc('get_active_shop_items')
       .then(function (result) {

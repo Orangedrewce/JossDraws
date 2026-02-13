@@ -4,7 +4,7 @@
  * Adjust parameters here. Values are injected into the shader at compile time.
  * ============================================================================
  */
-const CONFIG = {
+const WEBGL_CONFIG = {
   // 1. Color Palette (RGB 0.0 – 1.0)
   colors: {
     c0: { r: 0.004, g: 0.569, b: 0.663 }, // Home    (Blue)
@@ -96,11 +96,11 @@ function initWebGL() {
   initWebGL._generation = (initWebGL._generation || 0) + 1;
   const generation = initWebGL._generation;
 
-  // ── Config validation [v4: P5] ──
-  if (CONFIG.thickness.base <= 0 ||
-      CONFIG.positioning.bandCount < 1 || CONFIG.positioning.bandCount > 5 ||
-      CONFIG.twist.period <= 0) {
-    console.error('[WebGL] Invalid CONFIG — check thickness.base, bandCount, twist.period.');
+  // ── WEBGL_CONFIG validation [v4: P5] ──
+  if (WEBGL_CONFIG.thickness.base <= 0 ||
+      WEBGL_CONFIG.positioning.bandCount < 1 || WEBGL_CONFIG.positioning.bandCount > 5 ||
+      WEBGL_CONFIG.twist.period <= 0) {
+    console.error('[WebGL] Invalid WEBGL_CONFIG — check thickness.base, bandCount, twist.period.');
     return;
   }
 
@@ -165,7 +165,7 @@ function initWebGL() {
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ── Derived constants ──
-  const bandMax = CONFIG.positioning.bandCount - 1;  // auto-compute [P1,P5]
+  const bandMax = WEBGL_CONFIG.positioning.bandCount - 1;  // auto-compute [P1,P5]
 
   // ── GLSL float formatter (rounds away JS float noise) ──
   const f = (num) => {
@@ -181,7 +181,7 @@ function initWebGL() {
     gl.compileShader(shader);
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
       console.error('[WebGL] Shader compile error:', gl.getShaderInfoLog(shader));
-      if (CONFIG.performance.debugMode) console.error('Source:\n', src);
+      if (WEBGL_CONFIG.performance.debugMode) console.error('Source:\n', src);
       gl.deleteShader(shader);
       return null;
     }
@@ -230,15 +230,15 @@ function initWebGL() {
     : '';
 
   // ── Effective twist (respects reduced-motion) [P5] ──
-  const twistEnabled = CONFIG.twist.enabled && !reduceMotion;
-  const maxWaveAbs = CONFIG.wave.mainAmplitude
-                   + CONFIG.wave.secondaryAmp
-                   + (CONFIG.wave.horizontalAmount * Math.abs(CONFIG.wave.offsetBlend));
+  const twistEnabled = WEBGL_CONFIG.twist.enabled && !reduceMotion;
+  const maxWaveAbs = WEBGL_CONFIG.wave.mainAmplitude
+                   + WEBGL_CONFIG.wave.secondaryAmp
+                   + (WEBGL_CONFIG.wave.horizontalAmount * Math.abs(WEBGL_CONFIG.wave.offsetBlend));
   const maxRibbonHalfHeight = maxWaveAbs
-                            + (CONFIG.thickness.base * CONFIG.thickness.stretchMax * CONFIG.positioning.bandCount)
-                            + CONFIG.appearance.aaFallback;
+                            + (WEBGL_CONFIG.thickness.base * WEBGL_CONFIG.thickness.stretchMax * WEBGL_CONFIG.positioning.bandCount)
+                            + WEBGL_CONFIG.appearance.aaFallback;
 
-  // ── Dynamic Fragment Shader Source (all magic numbers from CONFIG) [P3] ──
+  // ── Dynamic Fragment Shader Source (all magic numbers from WEBGL_CONFIG) [P3] ──
   const createFragmentShader = () => `
     ${precisionLine}
     ${extLine}
@@ -248,14 +248,14 @@ function initWebGL() {
 
     #define R iResolution
     #define T iTime
-    #define BASE_THICKNESS ${f(CONFIG.thickness.base)}
+    #define BASE_THICKNESS ${f(WEBGL_CONFIG.thickness.base)}
 
-    vec3 c0 = ${vec3(CONFIG.colors.c0)};
-    vec3 c1 = ${vec3(CONFIG.colors.c1)};
-    vec3 c2 = ${vec3(CONFIG.colors.c2)};
-    vec3 c3 = ${vec3(CONFIG.colors.c3)};
-    vec3 c4 = ${vec3(CONFIG.colors.c4)};
-    vec3 bg = ${vec3(CONFIG.colors.background)};
+    vec3 c0 = ${vec3(WEBGL_CONFIG.colors.c0)};
+    vec3 c1 = ${vec3(WEBGL_CONFIG.colors.c1)};
+    vec3 c2 = ${vec3(WEBGL_CONFIG.colors.c2)};
+    vec3 c3 = ${vec3(WEBGL_CONFIG.colors.c3)};
+    vec3 c4 = ${vec3(WEBGL_CONFIG.colors.c4)};
+    vec3 bg = ${vec3(WEBGL_CONFIG.colors.background)};
 
     vec3 getColor(int i){
         if(i==0) return c0;
@@ -281,43 +281,43 @@ function initWebGL() {
       vec3 col = bg;
 
       // --- Early Ribbon Rejection (skip expensive math for background pixels) ---
-      float ribbonMinY = ${f(CONFIG.positioning.verticalOffset)} - ${f(maxRibbonHalfHeight)};
-      float ribbonMaxY = ${f(CONFIG.positioning.verticalOffset)} + ${f(maxRibbonHalfHeight)};
+      float ribbonMinY = ${f(WEBGL_CONFIG.positioning.verticalOffset)} - ${f(maxRibbonHalfHeight)};
+      float ribbonMaxY = ${f(WEBGL_CONFIG.positioning.verticalOffset)} + ${f(maxRibbonHalfHeight)};
       if (uv.y < ribbonMinY || uv.y > ribbonMaxY) {
         gl_FragColor = vec4(bg, 1.0);
         return;
       }
 
       // --- Wave Motion ---
-      float yWave = sin(uv.x * ${f(CONFIG.wave.mainFrequency)} + T * ${f(CONFIG.wave.mainSpeed)}) * ${f(CONFIG.wave.mainAmplitude)}
-                  + sin(uv.x * ${f(CONFIG.wave.secondaryFreq)} - T * ${f(CONFIG.wave.secondarySpeed)}) * ${f(CONFIG.wave.secondaryAmp)};
+      float yWave = sin(uv.x * ${f(WEBGL_CONFIG.wave.mainFrequency)} + T * ${f(WEBGL_CONFIG.wave.mainSpeed)}) * ${f(WEBGL_CONFIG.wave.mainAmplitude)}
+                  + sin(uv.x * ${f(WEBGL_CONFIG.wave.secondaryFreq)} - T * ${f(WEBGL_CONFIG.wave.secondarySpeed)}) * ${f(WEBGL_CONFIG.wave.secondaryAmp)};
 
-      float xOffset = sin(T * ${f(CONFIG.wave.horizontalSpeed)} + uv.y * ${f(CONFIG.wave.horizontalFrequency)}) * ${f(CONFIG.wave.horizontalAmount)};
+      float xOffset = sin(T * ${f(WEBGL_CONFIG.wave.horizontalSpeed)} + uv.y * ${f(WEBGL_CONFIG.wave.horizontalFrequency)}) * ${f(WEBGL_CONFIG.wave.horizontalAmount)};
 
-      float stretch = ${f(CONFIG.thickness.stretchMin)} +
-                      ${f(CONFIG.thickness.stretchMax - CONFIG.thickness.stretchMin)} * sin(T * ${f(CONFIG.thickness.stretchSpeed)} + uv.x * ${f(CONFIG.thickness.stretchFrequency)});
+      float stretch = ${f(WEBGL_CONFIG.thickness.stretchMin)} +
+                      ${f(WEBGL_CONFIG.thickness.stretchMax - WEBGL_CONFIG.thickness.stretchMin)} * sin(T * ${f(WEBGL_CONFIG.thickness.stretchSpeed)} + uv.x * ${f(WEBGL_CONFIG.thickness.stretchFrequency)});
 
       float bandThickness = BASE_THICKNESS * stretch;
-      float offset = (uv.y - yWave) + xOffset * ${f(CONFIG.wave.offsetBlend)};
+      float offset = (uv.y - yWave) + xOffset * ${f(WEBGL_CONFIG.wave.offsetBlend)};
 
       // --- Twist Logic ---
       ${twistEnabled ? `
-        float twistPeriod = ${f(CONFIG.twist.period)};
+        float twistPeriod = ${f(WEBGL_CONFIG.twist.period)};
         float tPhase = floor(T / twistPeriod);
         float localT = fract(T / twistPeriod);
-        float twistAngle = smoothstep(0.0, ${f(CONFIG.twist.duration)}, localT) * 3.14159;
-        float randDir = mix(-1.0, 1.0, step(0.5, hashf(tPhase + ${f(CONFIG.twist.randomSeed)})));
+        float twistAngle = smoothstep(0.0, ${f(WEBGL_CONFIG.twist.duration)}, localT) * 3.14159;
+        float randDir = mix(-1.0, 1.0, step(0.5, hashf(tPhase + ${f(WEBGL_CONFIG.twist.randomSeed)})));
         twistAngle *= randDir;
-        uv *= rot(twistAngle * ${f(CONFIG.twist.intensity)});
+        uv *= rot(twistAngle * ${f(WEBGL_CONFIG.twist.intensity)});
       ` : ''}
 
       // --- Mapping ---
-      float s = (offset + ${f(CONFIG.positioning.verticalOffset)}) / bandThickness;
+      float s = (offset + ${f(WEBGL_CONFIG.positioning.verticalOffset)}) / bandThickness;
 
       ${hasDerivatives ? `
-      float aaw = max(fwidth(s) * ${f(CONFIG.appearance.aaSharpness)}, ${f(CONFIG.appearance.aaFallback)});
+      float aaw = max(fwidth(s) * ${f(WEBGL_CONFIG.appearance.aaSharpness)}, ${f(WEBGL_CONFIG.appearance.aaFallback)});
       ` : `
-      float aaw = ${f(CONFIG.appearance.aaFallback)};
+      float aaw = ${f(WEBGL_CONFIG.appearance.aaFallback)};
       `}
 
       float xi = floor(s);
@@ -347,26 +347,26 @@ function initWebGL() {
       // --- Lighting / Plastic Effect ---
       vec3 shaded = bandCol;
 
-      ${CONFIG.appearance.plasticEffect ? `
+      ${WEBGL_CONFIG.appearance.plasticEffect ? `
         float dEdge = min(xf, 1.0 - xf);
-        float centerFactor = smoothstep(0.0, ${f(CONFIG.appearance.centerSoftness)}, dEdge);
+        float centerFactor = smoothstep(0.0, ${f(WEBGL_CONFIG.appearance.centerSoftness)}, dEdge);
 
         // Brightness
-        shaded = bandCol * mix(${f(CONFIG.appearance.brightness)}, 1.0, centerFactor);
+        shaded = bandCol * mix(${f(WEBGL_CONFIG.appearance.brightness)}, 1.0, centerFactor);
 
         // Specular
-        float highlight = pow(centerFactor, ${f(CONFIG.appearance.specularPower)});
-        shaded = mix(shaded, vec3(1.0), highlight * ${f(CONFIG.appearance.specularIntensity)});
+        float highlight = pow(centerFactor, ${f(WEBGL_CONFIG.appearance.specularPower)});
+        shaded = mix(shaded, vec3(1.0), highlight * ${f(WEBGL_CONFIG.appearance.specularIntensity)});
 
         // Drop Shadow
-        float edgeShadow = 1.0 - smoothstep(0.0, max(aaw * ${f(CONFIG.appearance.shadowWidth)}, 0.002), xf);
-        shaded *= 1.0 - edgeShadow * ${f(CONFIG.appearance.shadowStrength)};
+        float edgeShadow = 1.0 - smoothstep(0.0, max(aaw * ${f(WEBGL_CONFIG.appearance.shadowWidth)}, 0.002), xf);
+        shaded *= 1.0 - edgeShadow * ${f(WEBGL_CONFIG.appearance.shadowStrength)};
       ` : `
-        shaded = bandCol * ${f(CONFIG.appearance.brightness)};
+        shaded = bandCol * ${f(WEBGL_CONFIG.appearance.brightness)};
       `}
 
       // Masking
-      float inRangeAA = smoothstep(-aaw, 0.0, s) * (1.0 - smoothstep(${f(CONFIG.positioning.bandCount)}, ${f(CONFIG.positioning.bandCount)} + aaw, s));
+      float inRangeAA = smoothstep(-aaw, 0.0, s) * (1.0 - smoothstep(${f(WEBGL_CONFIG.positioning.bandCount)}, ${f(WEBGL_CONFIG.positioning.bandCount)} + aaw, s));
       col = mix(bg, shaded, inRangeAA);
 
       gl_FragColor = vec4(col, 1.0);
@@ -458,10 +458,10 @@ function initWebGL() {
 
   // Re-evaluate supersample factor on every resize [P2]
   function computeSuperSampleFactor() {
-    const isMobile = window.innerWidth <= CONFIG.performance.mobileBreakpoint;
-    let ss = isMobile ? CONFIG.performance.supersampleMobile : CONFIG.performance.supersampleDesktop;
+    const isMobile = window.innerWidth <= WEBGL_CONFIG.performance.mobileBreakpoint;
+    let ss = isMobile ? WEBGL_CONFIG.performance.supersampleMobile : WEBGL_CONFIG.performance.supersampleDesktop;
     // Reduce supersample on very-high-DPR screens [v4: P2]
-    if (CONFIG.performance.respectDPR) {
+    if (WEBGL_CONFIG.performance.respectDPR) {
       const dpr = Math.max(1, window.devicePixelRatio || 1);
       if (dpr > 2) ss = Math.max(1.0, ss / (dpr / 2));
     }
@@ -516,7 +516,7 @@ function initWebGL() {
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbTex, 0);
 
-    if (CONFIG.performance.debugMode) {
+    if (WEBGL_CONFIG.performance.debugMode) {
       const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
       if (status !== gl.FRAMEBUFFER_COMPLETE) {
         console.error('[WebGL] Framebuffer incomplete:', status);
@@ -551,7 +551,7 @@ function initWebGL() {
     resizePending = false;
     const cssW = Math.max(1, canvas.clientWidth);
     const cssH = Math.max(1, canvas.clientHeight);
-    const dpr  = CONFIG.performance.respectDPR ? Math.max(1, window.devicePixelRatio || 1) : 1;
+    const dpr  = WEBGL_CONFIG.performance.respectDPR ? Math.max(1, window.devicePixelRatio || 1) : 1;
 
     // Compute ssFactor BEFORE canvas resize [P1 order fix]
     ssFactor = computeSuperSampleFactor();
@@ -576,7 +576,7 @@ function initWebGL() {
   let firstFrame = true;
 
   // ── Visibility API: pause when tab hidden [P1 + P3] ──
-  if (CONFIG.performance.pauseWhenHidden) {
+  if (WEBGL_CONFIG.performance.pauseWhenHidden) {
     initWebGL._onVisibilityChange = () => {
       isVisible = !document.hidden;
       if (isVisible) {
@@ -596,7 +596,7 @@ function initWebGL() {
   const header = document.querySelector('header');
   if (header) {
     initWebGL._headerEl = header;
-    initWebGL._onHeaderEnter = () => targetSpeed = CONFIG.interaction.hoverSlowdown;
+    initWebGL._onHeaderEnter = () => targetSpeed = WEBGL_CONFIG.interaction.hoverSlowdown;
     initWebGL._onHeaderLeave = () => targetSpeed = reduceMotion ? 0.3 : 1.0;
     header.addEventListener('pointerenter', initWebGL._onHeaderEnter);
     header.addEventListener('pointerleave', initWebGL._onHeaderLeave);
@@ -604,13 +604,13 @@ function initWebGL() {
 
   // ── Debug helper [P3] ──
   function checkGLError(label) {
-    if (!CONFIG.performance.debugMode) return;
+    if (!WEBGL_CONFIG.performance.debugMode) return;
     const err = gl.getError();
     if (err !== gl.NO_ERROR) console.error(`[WebGL] GL error at ${label}:`, err);
   }
 
-  // ── Clear color (set once — matches CONFIG background) [P1] ──
-  const bgC = CONFIG.colors.background;
+  // ── Clear color (set once — matches WEBGL_CONFIG background) [P1] ──
+  const bgC = WEBGL_CONFIG.colors.background;
   gl.clearColor(bgC.r, bgC.g, bgC.b, 1.0);
 
   // ── Render loop ──
@@ -618,7 +618,7 @@ function initWebGL() {
     // Stale closure check — stop if a newer initWebGL() has run [P1]
     if (generation !== initWebGL._generation) return;
 
-    if (!isVisible && CONFIG.performance.pauseWhenHidden) {
+    if (!isVisible && WEBGL_CONFIG.performance.pauseWhenHidden) {
       // Pause loop; visibility handler will restart it when visible again.
       initWebGL._rafId = null;
       return;
@@ -628,11 +628,11 @@ function initWebGL() {
     if (resizePending) processResize();
 
     const now = performance.now() * 0.001;
-    let dt = Math.min(now - lastTime, CONFIG.performance.maxDeltaTime);
+    let dt = Math.min(now - lastTime, WEBGL_CONFIG.performance.maxDeltaTime);
     lastTime = now;
 
     // Smooth speed transition
-    const tau = Math.max(0.0001, CONFIG.interaction.smoothTime);
+    const tau = Math.max(0.0001, WEBGL_CONFIG.interaction.smoothTime);
     curSpeed += (targetSpeed - curSpeed) * (1.0 - Math.exp(-dt / tau));
     animTime = (animTime + dt * curSpeed) % 10000.0;  // [v4: P1] prevent precision decay
 
@@ -692,7 +692,7 @@ function initWebGL() {
     }
 
     // ── Debug FPS [v4: P5] ──
-    if (CONFIG.performance.debugMode) {
+    if (WEBGL_CONFIG.performance.debugMode) {
       initWebGL._dbgFrames = (initWebGL._dbgFrames || 0) + 1;
       if (now - (initWebGL._dbgLastLog || 0) >= 1.0) {
         const elapsed = now - (initWebGL._dbgLastLog || now);

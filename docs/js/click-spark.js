@@ -22,6 +22,13 @@ class ClickSpark {
     this._onResize = null;
     this._onVisChange = null;
     this.cleanup = null;
+
+    // Cache prefers-reduced-motion preference
+    this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.motionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
+    this.motionMedia.addEventListener('change', (e) => {
+      this.prefersReducedMotion = e.matches;
+    });
   }
   
   init(container) {
@@ -117,6 +124,9 @@ class ClickSpark {
   
   handleClick(e) {
     if (!this.canvas) return;
+    
+    // Skip sparks if user prefers reduced motion
+    if (this.prefersReducedMotion) return;
     
     // Get coordinates relative to viewport (fixed positioning)
     const x = e.clientX;

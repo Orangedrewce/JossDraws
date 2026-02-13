@@ -18,7 +18,12 @@
   <link rel="dns-prefetch" href="https://pciubbwphwpnptgawgok.supabase.co">
   
   <!-- Defer Supabase — not needed until reviews tab is opened -->
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- SRI: Pin version and add integrity hash for supply chain security -->
+  <!-- Generate hash: curl https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js | openssl dgst -sha384 -binary | openssl base64 -A -->
+  <script defer 
+          src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js" 
+          integrity="sha384-jcHlOs+JEl1ILfBk4uEKJY7vxvhLbLWNJwe6FGU4A5fVnjvhKBmJ/CFrBz5s+W8Z"
+          crossorigin="anonymous"></script>
   
   <link rel="stylesheet" href="css/Styles.css">
   
@@ -142,7 +147,7 @@
   <input type="radio" name="tabs" id="tab-contact" aria-label="Contact tab" hidden aria-hidden="true">
   <input type="radio" name="tabs" id="tab-reviews" aria-label="Reviews tab" hidden aria-hidden="true">
 
-  <script src="js/page-inline.js"></script>
+  <script defer src="js/page-inline.js"></script>
 
   <!-- Header -->
   <header role="banner">
@@ -155,13 +160,13 @@
       </h1>
       
       <nav aria-label="Main navigation">
-        <ul>
-          <li><label for="tab-home" tabindex="0"><strong>Home</strong></label></li>
-          <li><label for="tab-gallery" tabindex="0"><strong>Gallery</strong></label></li>
-          <li><label for="tab-about" tabindex="0"><strong>About</strong></label></li>
-          <li><label for="tab-shop" tabindex="0"><strong>Shop</strong></label></li>
-          <li><label for="tab-contact" tabindex="0"><strong>Contact</strong></label></li>
-          <li><label for="tab-reviews" tabindex="0"><strong>Reviews</strong></label></li>
+        <ul role="tablist">
+          <li role="presentation"><label for="tab-home" role="tab" aria-controls="panel-home" tabindex="0"><strong>Home</strong></label></li>
+          <li role="presentation"><label for="tab-gallery" role="tab" aria-controls="panel-gallery" tabindex="0"><strong>Gallery</strong></label></li>
+          <li role="presentation"><label for="tab-about" role="tab" aria-controls="panel-about" tabindex="0"><strong>About</strong></label></li>
+          <li role="presentation"><label for="tab-shop" role="tab" aria-controls="panel-shop" tabindex="0"><strong>Shop</strong></label></li>
+          <li role="presentation"><label for="tab-contact" role="tab" aria-controls="panel-contact" tabindex="0"><strong>Contact</strong></label></li>
+          <li role="presentation"><label for="tab-reviews" role="tab" aria-controls="panel-reviews" tabindex="0"><strong>Reviews</strong></label></li>
         </ul>
       </nav>
     </div>
@@ -171,7 +176,7 @@
   <main id="main" role="main">
     
     <!-- Home Tab -->
-    <section class="tab-home hero" aria-labelledby="hero-heading">
+    <section id="panel-home" class="tab-home hero" role="tabpanel" aria-labelledby="hero-heading">
       <h2 id="hero-heading" class="sr-only">Welcome</h2>
       <a href="#contact-heading" class="hero-image-link" data-tab-target="contact" aria-label="Contact for commissions">
         <div class="hero-slideshow">
@@ -184,7 +189,7 @@
     </section>
 
     <!-- Gallery Tab -->
-    <section class="tab-gallery" aria-labelledby="gallery-title">
+    <section id="panel-gallery" class="tab-gallery" role="tabpanel" aria-labelledby="gallery-title">
       <div class="hero">
         <h2 id="gallery-heading">Joslynn Losee</h2>
       </div>
@@ -211,7 +216,7 @@
     </section>
 
     <!-- About Tab -->
-    <section class="tab-about container" aria-labelledby="about-heading">
+    <section id="panel-about" class="tab-about container" role="tabpanel" aria-labelledby="about-heading">
       <h2 id="about-heading">About</h2>
       
       <div class="grid grid-2">
@@ -230,7 +235,7 @@
     </section>
 
     <!-- Shop Tab -->
-    <section class="tab-shop container" aria-labelledby="shop-heading">
+    <section id="panel-shop" class="tab-shop container" role="tabpanel" aria-labelledby="shop-heading">
       <h2 id="shop-heading">Shop</h2>
 
       <!-- Page title — updated dynamically per pagination page -->
@@ -249,7 +254,7 @@
     </section>
 
     <!-- Reviews Tab -->
-    <section class="tab-reviews container" aria-labelledby="reviews-heading">
+    <section id="panel-reviews" class="tab-reviews container" role="tabpanel" aria-labelledby="reviews-heading">
       <h2 id="reviews-heading">Client Love</h2>
       <p class="muted-center section-subtitle">Kind words from happy customers.</p>
       
@@ -263,11 +268,11 @@
     </section>
 
     <!-- Contact Tab -->
-    <section class="tab-contact container" aria-labelledby="contact-heading">
+    <section id="panel-contact" class="tab-contact container" role="tabpanel" aria-labelledby="contact-heading">
       <h2 id="contact-heading">Contact</h2>
       
       <div class="grid grid-2">
-        <form id="contact-form" action="https://formspree.io/f/xeopkjyk" method="POST">
+        <form id="contact-form" action="https://formspree.io/f/mqaglzrb" method="POST">
           <div id="form-message" role="alert" aria-live="polite"></div>
           
           <div>
@@ -321,13 +326,13 @@
     <p class="ai-notice"><strong>None</strong> of this work is authorized to be used in AI-generated content or training.</p>
   </footer>
 
-<script src="js/hero-slideshow.js"></script>
-<script src="js/click-spark.js"></script>
-<script src="js/tabs-router.js"></script>
-<script src="js/masonry-gallery.js"></script>
-<script src="js/shop-renderer.js"></script>
-<script async src="js/FormSubmission.js"></script>
-<script src="js/webgl.js"></script>
+<script defer src="js/hero-slideshow.js"></script>
+<script defer src="js/click-spark.js"></script>
+<script defer src="js/tabs-router.js"></script>
+<script defer src="js/masonry-gallery.js"></script>
+<script defer src="js/shop-renderer.js"></script>
+<script defer src="js/FormSubmission.js"></script>
+<script defer src="js/webgl.js"></script>
 
 </body>
 </html>

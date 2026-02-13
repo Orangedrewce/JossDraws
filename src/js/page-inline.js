@@ -19,8 +19,12 @@
     }
 
     var SUPABASE_URL = "https://pciubbwphwpnptgawgok.supabase.co";
-    var SUPABASE_KEY = "sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv"; 
-    var db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    var SUPABASE_KEY = "sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv";
+    // Use shared client instance to avoid multiple HTTP connection pools
+    if (!window.__supabaseClient) {
+      window.__supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+    var db = window.__supabaseClient;
 
     // --- MAPPING: The text that shows up on the badge ---
     var sourceMap = {
@@ -134,12 +138,34 @@
             if (intervalId) { clearInterval(intervalId); intervalId = null; }
           }
 
-          // Pause carousel when page is hidden
-          document.addEventListener("visibilitychange", function () {
-            if (document.hidden) { stopCarousel(); } else { startCarousel(); }
-          });
+          // Pause carousel when page is hidden (guarded against duplicate listeners)
+          if (!window.__carouselVisListenerAdded) {
+            window.__carouselVisListenerAdded = true;
+            document.addEventListener("visibilitychange", function () {
+              if (document.hidden) { stopCarousel(); } else { startCarousel(); }
+            });
+          }
 
-          startCarousel();
+          // Stop carousel when switching away from reviews tab
+          var reviewsTab = document.getElementById("tab-reviews");
+          if (reviewsTab) {
+            var allTabs = document.querySelectorAll('input[name="tabs"]');
+            allTabs.forEach(function(tab) {
+              tab.addEventListener("change", function() {
+                if (this.checked && this.id === "tab-reviews") {
+                  startCarousel();
+                } else if (this.checked && this.id !== "tab-reviews") {
+                  stopCarousel();
+                }
+              });
+            });
+          }
+
+          // Only start if reviews tab is currently active
+          var isReviewsActive = reviewsTab && reviewsTab.checked;
+          if (isReviewsActive) {
+            startCarousel();
+          }
         }
 
       } catch (e) {
@@ -165,7 +191,11 @@
 
     var SUPABASE_URL = "https://pciubbwphwpnptgawgok.supabase.co";
     var SUPABASE_KEY = "sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv";
-    var db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Use shared client instance to avoid multiple HTTP connection pools
+    if (!window.__supabaseClient) {
+      window.__supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+    var db = window.__supabaseClient;
 
     (async function () {
       try {
@@ -177,7 +207,8 @@
           photoEl.src = data.photo_url;
         }
         if (data.bio_text) {
-          textEl.innerHTML = data.bio_text;
+          // Use textContent to prevent XSS from compromised admin data
+          textEl.textContent = data.bio_text;
         }
       } catch (e) {
         // Silently fail — hardcoded fallback remains visible

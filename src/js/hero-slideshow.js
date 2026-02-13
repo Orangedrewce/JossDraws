@@ -25,34 +25,45 @@
   }
 
   function injectImage(heroSlideshow, imageData) {
-    heroSlideshow.innerHTML = '';
+    // Try to reuse existing structure
+    let wrapper = heroSlideshow.querySelector('.img-loading-wrapper.hero-img-wrapper');
+    let img = wrapper ? wrapper.querySelector('img') : null;
     
-    const wrapper = document.createElement('div');
-    wrapper.className = 'img-loading-wrapper hero-img-wrapper';
+    if (!wrapper || !img) {
+      // First-time setup: create structure
+      heroSlideshow.innerHTML = '';
+      
+      wrapper = document.createElement('div');
+      wrapper.className = 'img-loading-wrapper hero-img-wrapper';
+      
+      img = document.createElement('img');
+      img.loading = 'eager';
+      
+      // Attach load handlers once
+      img.addEventListener('load', () => {
+        wrapper.classList.add('loaded');
+      });
+      img.addEventListener('error', () => {
+        wrapper.classList.add('loaded');
+      });
+      
+      wrapper.appendChild(img);
+      heroSlideshow.appendChild(wrapper);
+    }
     
-    const img = document.createElement('img');
+    // Reset loading state
+    wrapper.classList.remove('loaded');
+    
+    // Update image source and alt
     img.src = imageData.src;
     img.alt = imageData.alt || 'Featured Photograph';
-    img.loading = 'eager';
     
-    // Always start without loaded class to show spinner
-    // Handle image load
-    img.addEventListener('load', () => {
-      wrapper.classList.add('loaded');
-    });
-    img.addEventListener('error', () => {
-      wrapper.classList.add('loaded');
-    });
-    
-    // Even if cached, delay the loaded class slightly to show spinner briefly on tab switch
+    // Handle cached images
     setTimeout(() => {
       if (img.complete && img.naturalWidth > 0) {
         wrapper.classList.add('loaded');
       }
     }, 50);
-    
-    wrapper.appendChild(img);
-    heroSlideshow.appendChild(wrapper);
   }
 
   async function fetchSlidesFromDB() {
@@ -60,7 +71,11 @@
     if (typeof supabase === 'undefined') return null;
 
     try {
-      const db = supabase.createClient(HERO_SUPABASE_URL, HERO_SUPABASE_KEY);
+      // Use shared client instance to avoid multiple HTTP connection pools
+      if (!window.__supabaseClient) {
+        window.__supabaseClient = supabase.createClient(HERO_SUPABASE_URL, HERO_SUPABASE_KEY);
+      }
+      const db = window.__supabaseClient;
       const { data, error } = await db
         .from('hero_slides')
         .select('img_url')

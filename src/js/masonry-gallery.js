@@ -50,6 +50,21 @@ class MasonryGallery {
       try { this.motionMedia.addListener(this.boundHandleMotionChange); } catch (_) {}
     }
 
+    // Cache mobile detection (updated on resize)
+    this.isMobile = window.matchMedia('(max-width: 768px)').matches;
+    this.mobileMedia = window.matchMedia('(max-width: 768px)');
+    this.boundHandleMobileChange = (e) => {
+      this.isMobile = e.matches;
+    };
+    try {
+      this.mobileMedia.addEventListener('change', this.boundHandleMobileChange);
+    } catch (_) {
+      try { this.mobileMedia.addListener(this.boundHandleMobileChange); } catch (_) {}
+    }
+
+    // Cache browser detection (never changes during session)
+    this.isChrome = /Chrome/i.test(navigator.userAgent) && !/Edg/i.test(navigator.userAgent);
+
     // Grid memoization — version counter replaces O(N) string hashing.
     // Bumped by _invalidateGrid() whenever items, ratios, focus, or dimensions change.
     this._gridVersion = 0;
@@ -700,8 +715,8 @@ class MasonryGallery {
       
       const initialPos = this.getInitialPosition(item, index);
       
-      // Enable transitions for animation
-      element.style.transition = `all 0.8s cubic-bezier(0.22, 1, 0.36, 1)`;
+      // Enable transitions for animation (specific properties only — avoids layout thrash)
+      element.style.transition = `transform 0.8s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), filter 0.8s cubic-bezier(0.22, 1, 0.36, 1)`;
       
       // Set initial state (off-screen)
       element.style.opacity = '0';
@@ -789,7 +804,7 @@ class MasonryGallery {
       this.focusCard(element, item);
       this.focusedCard = element;
 
-      const isMobile = window.matchMedia('(max-width: 768px)').matches;
+      const isMobile = this.isMobile;
       const scrollBehavior = this.reduceMotion ? 'auto' : 'smooth';
 
       this.lastFocusWasMobile = isMobile;
@@ -808,7 +823,7 @@ class MasonryGallery {
       // Mobile needs more time — layout transitions are 0.6s (600ms),
       // so we wait long enough for the element to reach its final position.
       const scrollDelay = isMobile ? 350 : 80;
-      const isChrome = /Chrome/i.test(navigator.userAgent) && !/Edg/i.test(navigator.userAgent);
+      const isChrome = this.isChrome;
       
       // Helper: force-scroll to the focused element's current position
       const forceScrollToElement = (smooth) => {
@@ -1373,7 +1388,10 @@ const GalleryManager = {
     // Unique non-null mediums
     const mediums = [...new Set(this.allRows.map(r => r.medium).filter(Boolean))].sort();
     mediumSelect.innerHTML = '<option value="">All Mediums</option>' +
-      mediums.map(m => `<option value="${m}">${m}</option>`).join('');
+      mediums.map(m => {
+        const escaped = m.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        return `<option value="${escaped}">${escaped}</option>`;
+      }).join('');
 
     // Unique non-null years, descending
     const years = [...new Set(this.allRows.map(r => r.year_created).filter(Boolean))].sort((a,b) => b - a);
@@ -1481,7 +1499,11 @@ const GalleryManager = {
         return;
       }
 
-      const db = supabase.createClient(GALLERY_SUPABASE_URL, GALLERY_SUPABASE_KEY);
+      // Use shared client instance to avoid multiple HTTP connection pools
+      if (!window.__supabaseClient) {
+        window.__supabaseClient = supabase.createClient(GALLERY_SUPABASE_URL, GALLERY_SUPABASE_KEY);
+      }
+      const db = window.__supabaseClient;
       const { data, error } = await db
         .from('gallery_items')
         .select('id, img_url, title, medium, year_created, sort_order, created_at, width, height')
