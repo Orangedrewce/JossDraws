@@ -58,7 +58,7 @@ const WEBGL_CONFIG = {
 
   // 4. World Rotation (continuous rigid rotation of the entire ribbon)
   twist: {
-    enabled: true,           // Set false to disable world rotation
+    enabled: false,          // Set false to disable world rotation
     intensity: 0.5           // Rotation speed in rad/s (negative = counter-clockwise)
   },
 

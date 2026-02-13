@@ -4781,7 +4781,7 @@
                     offsetBlend: 0.3
                 },
                 twist: {
-                    enabled: true,
+                    enabled: false,
                     intensity: 0.5
                 },
                 appearance: {
