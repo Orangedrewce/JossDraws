@@ -4891,7 +4891,8 @@
                 gl: null, program: null, buffer: null,
                 resLoc: null, timeLoc: null,
                 animTime: 0, lastTime: 0,
-                rafId: null, running: false
+                rafId: null, running: false,
+                curSpeed: 1.0, targetSpeed: 1.0
             };
 
             const fmtF = (num) => {
@@ -5117,7 +5118,11 @@
                 const t = now * 0.001;
                 const dt = Math.min(t - previewState.lastTime, 0.05);
                 previewState.lastTime = t;
-                previewState.animTime = (previewState.animTime + dt) % 10000.0;
+
+                // Smooth speed transition (hover slowdown)
+                const tau = Math.max(0.0001, liveConfig.interaction.smoothTime);
+                previewState.curSpeed += (previewState.targetSpeed - previewState.curSpeed) * (1.0 - Math.exp(-dt / tau));
+                previewState.animTime = (previewState.animTime + dt * previewState.curSpeed) % 10000.0;
 
                 gl.useProgram(previewState.program);
                 if (previewState.timeLoc) gl.uniform1f(previewState.timeLoc, previewState.animTime);
@@ -5300,6 +5305,16 @@
             window.addEventListener('resize', () => {
                 if (previewState.running) resizePreviewCanvas();
             });
+
+            // Hover slowdown on preview canvas (mirrors webgl.js behavior)
+            if (bEl.canvas) {
+                bEl.canvas.addEventListener('pointerenter', () => {
+                    previewState.targetSpeed = liveConfig.interaction.hoverSlowdown;
+                });
+                bEl.canvas.addEventListener('pointerleave', () => {
+                    previewState.targetSpeed = 1.0;
+                });
+            }
 
             Trace.log('BANNER_PARAMS_READY');
             Trace.groupEnd();

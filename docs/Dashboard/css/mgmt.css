@@ -1285,14 +1285,39 @@ body.is-dragging ::-moz-selection {
     border: 1px solid var(--color-border-soft);
 }
 
-.param-category-title {
+summary.param-category-title {
     font-size: 0.85rem;
     font-weight: 700;
     letter-spacing: 0.02em;
     color: var(--color-text);
-    margin: 0 0 0.5rem;
-    padding-bottom: 0.4rem;
-    border-bottom: 1px solid var(--color-border-soft);
+    margin: 0;
+    padding: 0.35rem 0;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    user-select: none;
+}
+
+summary.param-category-title::-webkit-details-marker { display: none; }
+
+summary.param-category-title::after {
+    content: '▼';
+    font-size: 0.65rem;
+    opacity: 0.35;
+    transition: transform 0.3s;
+    display: inline-block;
+    margin-left: auto;
+}
+
+details.param-category:not([open]) summary.param-category-title::after {
+    transform: rotate(-90deg);
+}
+
+details.param-category[open] > .param-grid {
+    margin-top: 0.5rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid var(--color-border-soft);
 }
 
 .param-grid {

@@ -300,8 +300,8 @@
                 </div>
 
                 <!-- Geometry & Physics -->
-                <div class="param-category">
-                    <h3 class="param-category-title">Geometry &amp; Physics</h3>
+                <details class="param-category" open>
+                    <summary class="param-category-title">Ribbon Thickness &amp; Stretch</summary>
                     <div class="param-grid">
                         <div class="param-control">
                             <label for="thickness-base">Base Thickness</label>
@@ -329,11 +329,11 @@
                             <input type="number" id="thickness-stretchFrequency-num" min="1.0" max="5.0" step="0.1" value="2.5">
                         </div>
                     </div>
-                </div>
+                </details>
 
                 <!-- Wave Dynamics -->
-                <div class="param-category">
-                    <h3 class="param-category-title">Wave Dynamics</h3>
+                <details class="param-category">
+                    <summary class="param-category-title">Wave Motion &amp; Undulation</summary>
                     <div class="param-grid">
                         <div class="param-control">
                             <label for="wave-mainSpeed">Main Speed</label>
@@ -386,11 +386,11 @@
                             <input type="number" id="wave-offsetBlend-num" min="0.0" max="1.0" step="0.05" value="0.3">
                         </div>
                     </div>
-                </div>
+                </details>
 
                 <!-- Twist Effect -->
-                <div class="param-category">
-                    <h3 class="param-category-title">Twist Effect</h3>
+                <details class="param-category">
+                    <summary class="param-category-title">180° Twist &amp; Rotation</summary>
                     <div class="param-grid">
                         <div class="param-control param-toggle">
                             <label for="twist-enabled">Enable Twist</label>
@@ -416,11 +416,11 @@
                             <input type="number" id="twist-randomSeed" min="0" max="1000" step="0.001" value="12.345">
                         </div>
                     </div>
-                </div>
+                </details>
 
                 <!-- Visual Styling -->
-                <div class="param-category">
-                    <h3 class="param-category-title">Visual Styling</h3>
+                <details class="param-category">
+                    <summary class="param-category-title">Lighting, Gloss &amp; Shadows</summary>
                     <div class="param-grid">
                         <div class="param-control">
                             <label for="appearance-brightness">Brightness</label>
@@ -466,11 +466,11 @@
                             <input type="number" id="appearance-aaFallback" min="0.0001" max="0.01" step="0.0001" value="0.001">
                         </div>
                     </div>
-                </div>
+                </details>
 
                 <!-- Positioning -->
-                <div class="param-category">
-                    <h3 class="param-category-title">Positioning</h3>
+                <details class="param-category">
+                    <summary class="param-category-title">Vertical Position &amp; Band Count</summary>
                     <div class="param-grid">
                         <div class="param-control">
                             <label for="positioning-verticalOffset">Vertical Offset</label>
@@ -482,11 +482,11 @@
                             <input type="number" id="positioning-bandCount" min="1" max="10" step="1" value="5">
                         </div>
                     </div>
-                </div>
+                </details>
 
                 <!-- Interaction -->
-                <div class="param-category">
-                    <h3 class="param-category-title">Interaction</h3>
+                <details class="param-category">
+                    <summary class="param-category-title">Hover Slowdown &amp; Smoothing</summary>
                     <div class="param-grid">
                         <div class="param-control">
                             <label for="interaction-hoverSlowdown">Hover Slowdown</label>
@@ -499,11 +499,11 @@
                             <input type="number" id="interaction-smoothTime-num" min="0.05" max="1.0" step="0.05" value="0.25">
                         </div>
                     </div>
-                </div>
+                </details>
 
                 <!-- Performance -->
-                <div class="param-category">
-                    <h3 class="param-category-title">Performance</h3>
+                <details class="param-category">
+                    <summary class="param-category-title">Supersampling &amp; Render Options</summary>
                     <div class="param-grid">
                         <div class="param-control">
                             <label for="performance-supersampleDesktop">Supersample Desktop</label>
@@ -537,7 +537,7 @@
                             <input type="checkbox" id="performance-debugMode">
                         </div>
                     </div>
-                </div>
+                </details>
 
                 <!-- Actions -->
                 <div class="param-actions">
