@@ -525,9 +525,39 @@
                     </div>
                 </details>
 
+                <!-- Saved Profiles -->
+                <div class="saved-profiles-section">
+                    <h4 class="saved-profiles-heading">Saved Profiles</h4>
+                    <p class="description saved-profiles-description">
+                        Save your current settings as a named profile, or load a previously saved configuration.
+                    </p>
+
+                    <div id="profilesList" class="profiles-list">
+                        <p class="text-muted-2 text-xs profiles-empty">No saved profiles yet. Click “💾 Save as Profile” below to create one.</p>
+                    </div>
+
+                    <div id="saveProfileForm" class="save-profile-form is-hidden">
+                        <label for="profileNameInput">Profile Name</label>
+                        <input
+                            type="text"
+                            id="profileNameInput"
+                            placeholder="e.g. Calm Waves, Energetic Flow, Night Mode"
+                            maxlength="50"
+                            autocomplete="off"
+                        >
+                        <div class="save-profile-actions">
+                            <button type="button" id="confirmSaveProfile" class="btn-secondary">Save</button>
+                            <button type="button" id="cancelSaveProfile" class="btn-reset">Cancel</button>
+                        </div>
+                    </div>
+
+                    <div id="profilesMessage" class="gallery-msg is-hidden" role="status" aria-live="polite"></div>
+                </div>
+
                 <!-- Actions -->
                 <div class="param-actions">
                     <button type="button" id="reset-params" class="btn-reset">Reset to Defaults</button>
+                    <button type="button" id="save-profile-btn" class="btn-secondary">💾 Save as Profile</button>
                     <button type="button" id="export-params" class="btn-apply">Publish to Site</button>
                 </div>
 
