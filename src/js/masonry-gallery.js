@@ -13,7 +13,9 @@ class MasonryGallery {
       scaleOnHover: options.scaleOnHover !== false,
       hoverScale: options.hoverScale || 0.95,
       blurToFocus: options.blurToFocus !== false,
-      colorShiftOnHover: options.colorShiftOnHover || false
+      colorShiftOnHover: options.colorShiftOnHover || false,
+      initialBatchSize: options.initialBatchSize || 20,
+      batchSize: options.batchSize || 12
     };
     
     this.items = [];
@@ -22,6 +24,8 @@ class MasonryGallery {
     this.width = 0;
     this.hasMounted = false;
     this._relayoutTimer = null;
+    this._lastRelayoutTime = 0;
+    this._relayoutMaxWait = 800; // Force layout update every 800ms max during image load bursts
     this.resizeTimeout = null;
     // Track focused item for reflowing the grid
     this.focusedItemId = null;
@@ -56,7 +60,7 @@ class MasonryGallery {
 
     // Pre-computed transition strings (avoid rebuilding per-item)
     const d = this.options.duration;
-    this._transitionMove = `transform ${d}s cubic-bezier(0.22, 1, 0.36, 1), width ${d}s, height ${d}s, filter ${d}s, z-index 0s`;
+    this._transitionMove = `transform ${d}s cubic-bezier(0.22, 1, 0.36, 1), filter ${d}s, opacity ${d}s`;
     this._transitionNone = 'none';
 
     // Cancellation / teardown safety for rapid filter changes
@@ -72,12 +76,20 @@ class MasonryGallery {
     this._videoMetaLoaders = [];
     // Animation timeout IDs for cleanup on destroy
     this._animateTimeouts = [];
+    // Progressive loading (Peer 1) — render items in batches
+    this._allItems = [];
+    this.renderedCount = 0;
+    this._sentinel = null;
+    this._scrollObserver = null;
+    this._isLoadingBatch = false;
+    // Accessibility (Peer 4) — live region + focus tracking
+    this.liveRegion = null;
+    this.lastFocusedId = null;
   }
   
   async init(items) {
     this.isDestroyed = false;
     const runId = ++this.initRunId;
-    this.items = items;
     
     // Manager already shows spinner, so we don't need to show it again here
 
@@ -90,20 +102,24 @@ class MasonryGallery {
 
     // Assign initial aspect ratios — videos get real dimensions from metadata,
     // images get a sensible default (updated progressively via <img> onload).
-    this.items = this.items.map(i => {
+    const processedItems = items.map(i => {
       const src = i.video || i.img;
       const meta = this.imageMeta[src];
       if (meta) {
-        // Video with known dimensions
         const ratio = meta.naturalHeight / meta.naturalWidth;
         return { ...i, naturalWidth: meta.naturalWidth, naturalHeight: meta.naturalHeight, ratio };
       }
-      // Image — use 1:1 default; real ratio arrives via <img> onload
       const naturalWidth = i.width || 1000;
       const naturalHeight = i.height || 1000;
       const ratio = naturalHeight / naturalWidth;
       return { ...i, naturalWidth, naturalHeight, ratio };
     });
+
+    // Progressive loading (Peer 1): store full dataset, render initial batch only.
+    // Remaining items load via IntersectionObserver as user scrolls.
+    this._allItems = processedItems;
+    this.items = processedItems.slice(0, this.options.initialBatchSize);
+    this.renderedCount = this.items.length;
     
     // Calculate responsive columns
     this.updateColumns();
@@ -129,6 +145,12 @@ class MasonryGallery {
     
     // Set up window resize
     window.addEventListener('resize', this.boundHandleResize);
+
+    // Progressive loading: sentinel-based IntersectionObserver for batch loading
+    this._setupProgressiveLoading();
+
+    // Accessibility (Peer 4): live region for screen reader announcements
+    this._setupLiveRegion();
   }
   
   // Non-blocking video metadata — each video updates layout independently as it arrives
@@ -144,7 +166,7 @@ class MasonryGallery {
         const w = video.videoWidth || 1000;
         const h = video.videoHeight || 1000;
         this.imageMeta[src] = { naturalWidth: w, naturalHeight: h, isVideo: true };
-        // Update the item's ratio and trigger relayout (same path as image onload)
+        // Update rendered items' ratio and trigger relayout
         const i = this.items.find(x => (x.video || x.img) === src);
         if (i) {
           const newRatio = h / w;
@@ -155,6 +177,9 @@ class MasonryGallery {
             this.debouncedRelayout();
           }
         }
+        // Also update in _allItems so future batches get correct dimensions
+        const ai = this._allItems.find(x => (x.video || x.img) === src);
+        if (ai) { ai.ratio = h / w; ai.naturalWidth = w; ai.naturalHeight = h; }
       };
       
       const onError = () => {};
@@ -184,21 +209,39 @@ class MasonryGallery {
     item.ratio = newRatio;
     item.naturalWidth = naturalWidth;
     item.naturalHeight = naturalHeight;
+    // Also update in _allItems so future batches get correct dimensions
+    const allItem = this._allItems.find(i => i.id === itemId);
+    if (allItem) { allItem.ratio = newRatio; allItem.naturalWidth = naturalWidth; allItem.naturalHeight = naturalHeight; }
     this.debouncedRelayout();
   }
 
-  // Batches multiple image-load relayouts into a single frame
+  // Coalesces image-load relayouts with a leading+trailing hybrid debounce.
+  // First image triggers an immediate update (leading edge). Subsequent loads
+  // within 300ms are batched (trailing edge). A maxWait of 800ms guarantees
+  // periodic progress if images keep trickling in for seconds.
   debouncedRelayout() {
-    if (this._relayoutTimer) return;
-    this._relayoutTimer = requestAnimationFrame(() => {
-      this._relayoutTimer = null;
-      if (this.isDestroyed) return;
-      this.calculateGrid();
-      // Only update layout if we've finished mounting (prevents fighting entry animation)
-      if (this.hasMounted) {
-        this.updateLayout();
-      }
-    });
+    const now = Date.now();
+    if (this._relayoutTimer) clearTimeout(this._relayoutTimer);
+
+    // Leading edge / maxWait: force run if it's been too long since last relayout
+    if (now - this._lastRelayoutTime > this._relayoutMaxWait) {
+      this._executeRelayout();
+    } else {
+      // Trailing edge: wait for load burst to settle
+      this._relayoutTimer = setTimeout(() => {
+        this._executeRelayout();
+      }, 300);
+    }
+  }
+
+  _executeRelayout() {
+    this._relayoutTimer = null;
+    this._lastRelayoutTime = Date.now();
+    if (this.isDestroyed) return;
+    this.calculateGrid();
+    if (this.hasMounted) {
+      this.updateLayout();
+    }
   }
   
   updateColumns() {
@@ -359,7 +402,7 @@ class MasonryGallery {
       }
 
       // Mutable state update (runs for both new and cached nodes)
-      wrapper.setAttribute('aria-pressed', item.focused ? 'true' : 'false');
+      wrapper.setAttribute('aria-expanded', item.focused ? 'true' : 'false');
       if (item.focused) {
         wrapper.classList.add('card-focused');
         wrapper.style.zIndex = '20';
@@ -372,7 +415,7 @@ class MasonryGallery {
       // Set initial absolute positions immediately to prevent stacking on mobile
       // This ensures images have position/dimensions before they start loading
       wrapper.style.position = 'absolute';
-      wrapper.style.transform = `translate(${item.x}px, ${item.y}px)`;
+      wrapper.style.transform = `translate3d(${item.x}px, ${item.y}px, 0)`;
       wrapper.style.width = `${item.w}px`;
       wrapper.style.height = `${item.h}px`;
       
@@ -386,6 +429,8 @@ class MasonryGallery {
     });
 
     this.container.style.height = `${this._cachedMaxHeight}px`;
+    this._updateSentinelPosition();
+    this._restoreFocus();
   }
 
   // Extracted element factory — called once per item, then cached in nodeMap
@@ -395,6 +440,7 @@ class MasonryGallery {
     wrapper.dataset.key = item.id;
     wrapper.setAttribute('tabindex', '0');
     wrapper.setAttribute('role', 'button');
+    wrapper.setAttribute('aria-expanded', 'false');
     wrapper.style.cssText = `
       position: absolute;
       cursor: pointer;
@@ -404,8 +450,8 @@ class MasonryGallery {
       top: 0;
       width: ${item.w}px;
       height: ${item.h}px;
-      transform: translate(${item.x}px, ${item.y}px);
-      transition: ${this.reduceMotion ? 'none' : 'transform 0.3s ease, z-index 0s'};
+      transform: translate3d(${item.x}px, ${item.y}px, 0);
+      transition: ${this.reduceMotion ? 'none' : 'transform 0.3s ease'};
     `;
 
     // Media rendering (image or video)
@@ -571,11 +617,13 @@ class MasonryGallery {
     };
     const onMouseEnter = () => this.handleMouseEnter(wrapper, item);
     const onMouseLeave = () => this.handleMouseLeave(wrapper, item);
+    const onFocus = () => { this.lastFocusedId = item.id; };
 
     wrapper.addEventListener('click', onClick);
     wrapper.addEventListener('keydown', onKeyDown);
     wrapper.addEventListener('mouseenter', onMouseEnter, { passive: true });
     wrapper.addEventListener('mouseleave', onMouseLeave, { passive: true });
+    wrapper.addEventListener('focus', onFocus, { passive: true });
 
     // Store a single cleanup function for deterministic listener removal
     wrapper._mvcCleanup = () => {
@@ -583,6 +631,7 @@ class MasonryGallery {
       wrapper.removeEventListener('keydown', onKeyDown);
       wrapper.removeEventListener('mouseenter', onMouseEnter);
       wrapper.removeEventListener('mouseleave', onMouseLeave);
+      wrapper.removeEventListener('focus', onFocus);
       // Also clean up video handlers if present
       const v = wrapper.querySelector('video');
       if (v && v._mvcHandlers) {
@@ -608,7 +657,7 @@ class MasonryGallery {
         if (!element) return;
         element.style.transition = 'none';
         element.style.opacity = '1';
-        element.style.transform = `translate(${item.x}px, ${item.y}px)`;
+        element.style.transform = `translate3d(${item.x}px, ${item.y}px, 0)`;
         element.style.width = `${item.w}px`;
         element.style.height = `${item.h}px`;
         element.style.filter = 'none';
@@ -629,7 +678,7 @@ class MasonryGallery {
       
       // Set initial state (off-screen)
       element.style.opacity = '0';
-      element.style.transform = `translate(${initialPos.x}px, ${initialPos.y}px)`;
+      element.style.transform = `translate3d(${initialPos.x}px, ${initialPos.y}px, 0)`;
       element.style.width = `${item.w}px`;
       element.style.height = `${item.h}px`;
       if (this.options.blurToFocus) {
@@ -651,7 +700,7 @@ class MasonryGallery {
         if (this.isDestroyed || !this.nodeMap.has(item.id)) return;
         // Animate to final position
         element.style.opacity = '1';
-        element.style.transform = `translate(${item.x}px, ${item.y}px)`;
+        element.style.transform = `translate3d(${item.x}px, ${item.y}px, 0)`;
         if (this.options.blurToFocus) {
           element.style.filter = 'blur(0px)';
         }
@@ -678,7 +727,7 @@ class MasonryGallery {
       if (!element) return;
 
       element.style.transition = transition;
-      element.style.transform = `translate(${item.x}px, ${item.y}px)`;
+      element.style.transform = `translate3d(${item.x}px, ${item.y}px, 0)`;
       element.style.width = `${item.w}px`;
       element.style.height = `${item.h}px`;
       element.style.opacity = '1'; // ensure items are always visible after mount
@@ -686,6 +735,7 @@ class MasonryGallery {
     });
 
     this.container.style.height = `${this._cachedMaxHeight}px`;
+    this._updateSentinelPosition();
   }
   
   toggleFocus(element, item) {
@@ -806,7 +856,8 @@ class MasonryGallery {
     // Set focused id and reflow grid to push others away
     this.focusedItemId = item.id;
     element.classList.add('card-focused');
-    element.setAttribute('aria-pressed', 'true');
+    element.setAttribute('aria-expanded', 'true');
+    this._say(`Expanded: ${item.caption || 'artwork'}`);
     this.calculateGrid();
     this.updateLayout();
     // Play videos when focused (muted, inline)
@@ -820,7 +871,7 @@ class MasonryGallery {
   
   unfocusCard(element, { restoreScroll = true, skipLayout = false } = {}) {
     element.classList.remove('card-focused');
-    element.setAttribute('aria-pressed', 'false');
+    element.setAttribute('aria-expanded', 'false');
     const v = element.querySelector('video');
     if (v) {
       v.pause();
@@ -890,7 +941,7 @@ class MasonryGallery {
     
     const latest = this.gridIndex.get(item.id) || item;
     if (this.options.scaleOnHover && this.focusedItemId !== item.id) {
-      element.style.transform = `translate(${latest.x}px, ${latest.y}px) scale(${this.options.hoverScale})`;
+      element.style.transform = `translate3d(${latest.x}px, ${latest.y}px, 0) scale(${this.options.hoverScale})`;
     }
     
     if (this.options.colorShiftOnHover) {
@@ -907,7 +958,7 @@ class MasonryGallery {
     
     const latest = this.gridIndex.get(item.id) || item;
     if (this.options.scaleOnHover && this.focusedItemId !== item.id) {
-      element.style.transform = `translate(${latest.x}px, ${latest.y}px) scale(1)`;
+      element.style.transform = `translate3d(${latest.x}px, ${latest.y}px, 0) scale(1)`;
     }
     
     if (this.options.colorShiftOnHover) {
@@ -980,11 +1031,17 @@ class MasonryGallery {
       return { ...i, naturalWidth, naturalHeight, ratio };
     });
 
-    this.items = normalizedItems;
+    // Progressive loading: store full set, render initial batch
+    this._allItems = normalizedItems;
+    this.items = normalizedItems.slice(0, this.options.initialBatchSize);
+    this.renderedCount = this.items.length;
     this._gridHash = ''; // Invalidate cache
     this.calculateGrid();
     this.render();
     this.updateLayout();
+    // Reset progressive loading observer for new filtered/sorted set
+    this._setupProgressiveLoading();
+    this._restoreFocus();
   }
 
   hideLoading() {
@@ -1020,7 +1077,7 @@ class MasonryGallery {
       }
     }
     if (this._relayoutTimer) {
-      cancelAnimationFrame(this._relayoutTimer);
+      clearTimeout(this._relayoutTimer);
       this._relayoutTimer = null;
     }
     // Clear any in-flight animation stagger timeouts
@@ -1039,6 +1096,24 @@ class MasonryGallery {
       });
       this._videoMetaLoaders = [];
     }
+    // Clean up progressive loading
+    if (this._scrollObserver) {
+      this._scrollObserver.disconnect();
+      this._scrollObserver = null;
+    }
+    if (this._sentinel && this._sentinel.parentNode) {
+      this._sentinel.remove();
+    }
+    this._sentinel = null;
+    this._allItems = [];
+    this.renderedCount = 0;
+    this._isLoadingBatch = false;
+    // Clean up live region
+    if (this.liveRegion && this.liveRegion.parentNode) {
+      this.liveRegion.remove();
+    }
+    this.liveRegion = null;
+    this.lastFocusedId = null;
     this.nodeMap.clear();
     this.gridIndex.clear();
     this.container.innerHTML = '';
@@ -1047,6 +1122,121 @@ class MasonryGallery {
     this.savedScrollY = null;
     this.focusScrollTargetY = null;
     this.lastFocusWasMobile = false;
+  }
+
+  // ===========================================================================
+  // PROGRESSIVE BATCH LOADING (Peer 1 — adapted)
+  // Renders items in batches via IntersectionObserver sentinel,
+  // preventing DOM stampede on galleries with 50+ items.
+  // ===========================================================================
+
+  _setupProgressiveLoading() {
+    // Disconnect previous observer (e.g., after filter change)
+    if (this._scrollObserver) {
+      this._scrollObserver.disconnect();
+      this._scrollObserver = null;
+    }
+
+    // All items already rendered — nothing to observe
+    if (this.renderedCount >= this._allItems.length) {
+      if (this._sentinel && this._sentinel.parentNode) this._sentinel.remove();
+      return;
+    }
+
+    // Create or reuse invisible sentinel element at bottom of grid
+    if (!this._sentinel) {
+      this._sentinel = document.createElement('div');
+      this._sentinel.className = 'masonry-sentinel';
+      this._sentinel.setAttribute('aria-hidden', 'true');
+      this._sentinel.style.cssText = 'position:absolute;left:0;width:100%;height:1px;pointer-events:none;';
+    }
+    this._updateSentinelPosition();
+    if (!this._sentinel.parentNode) {
+      this.container.appendChild(this._sentinel);
+    }
+
+    // Fallback for browsers without IntersectionObserver
+    if (!('IntersectionObserver' in window)) {
+      const loadAllGradually = () => {
+        if (this.renderedCount < this._allItems.length && !this.isDestroyed) {
+          this._loadNextBatch();
+          setTimeout(loadAllGradually, 100);
+        }
+      };
+      loadAllGradually();
+      return;
+    }
+
+    this._scrollObserver = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !this.isDestroyed && !this._isLoadingBatch) {
+        this._loadNextBatch();
+      }
+    }, { rootMargin: '600px' });
+
+    this._scrollObserver.observe(this._sentinel);
+  }
+
+  _loadNextBatch() {
+    if (this.renderedCount >= this._allItems.length) {
+      if (this._scrollObserver) this._scrollObserver.disconnect();
+      if (this._sentinel && this._sentinel.parentNode) this._sentinel.remove();
+      return;
+    }
+
+    this._isLoadingBatch = true;
+    const nextEnd = Math.min(this.renderedCount + this.options.batchSize, this._allItems.length);
+    this.items = this._allItems.slice(0, nextEnd);
+    this.renderedCount = nextEnd;
+    this._gridHash = ''; // Force recalculation
+    this.calculateGrid();
+    this.render();
+    if (this.hasMounted) this.updateLayout();
+    this._updateSentinelPosition();
+    this._isLoadingBatch = false;
+
+    // Announce when all items are loaded
+    if (this.renderedCount >= this._allItems.length) {
+      this._say(`All ${this._allItems.length} items loaded`);
+    }
+  }
+
+  _updateSentinelPosition() {
+    if (this._sentinel) {
+      this._sentinel.style.top = `${this._cachedMaxHeight}px`;
+    }
+  }
+
+  // ===========================================================================
+  // ACCESSIBILITY HELPERS (Peer 4)
+  // Live region announcements, focus tracking, screen reader support.
+  // ===========================================================================
+
+  _setupLiveRegion() {
+    if (this.liveRegion) return;
+    this.liveRegion = document.createElement('div');
+    this.liveRegion.className = 'sr-only';
+    this.liveRegion.setAttribute('role', 'status');
+    this.liveRegion.setAttribute('aria-live', 'polite');
+    this.liveRegion.setAttribute('aria-atomic', 'true');
+    if (this.container.parentNode) {
+      this.container.parentNode.insertBefore(this.liveRegion, this.container);
+    }
+  }
+
+  _say(message) {
+    if (!this.liveRegion) return;
+    this.liveRegion.textContent = '';
+    requestAnimationFrame(() => {
+      if (this.liveRegion) this.liveRegion.textContent = message;
+    });
+  }
+
+  _restoreFocus() {
+    if (!this.lastFocusedId) return;
+    const wrapper = this.nodeMap.get(this.lastFocusedId);
+    if (wrapper && document.activeElement !== wrapper) {
+      wrapper.focus({ preventScroll: true });
+    }
   }
 }
 
@@ -1088,7 +1278,9 @@ const GalleryManager = {
     return {
       id: row.id,
       img: row.img_url,
-      height: 500,
+      // Use DB dimensions if backfilled, otherwise fall back to defaults
+      width: row.width || 1000,
+      height: row.height || 1000,
       caption: this.buildCaption(row.title, row.medium, row.year_created),
       url: null,
       // keep metadata for filtering
@@ -1155,6 +1347,7 @@ const GalleryManager = {
     const items = this.getFilteredItems();
     if (items.length === 0) {
       if (this.gallery) {
+        this.gallery._say('No artwork matches your filters');
         this.gallery.destroy();
         this.gallery = null;
       }
@@ -1166,6 +1359,7 @@ const GalleryManager = {
     if (this.gallery && !this.gallery.isDestroyed) {
       // Reuse the existing gallery instance — use setItems to properly handle video metadata
       this.gallery.setItems(items);
+      this.gallery._say(`Showing ${items.length} items`);
       return;
     }
 
@@ -1218,7 +1412,7 @@ const GalleryManager = {
       const db = supabase.createClient(GALLERY_SUPABASE_URL, GALLERY_SUPABASE_KEY);
       const { data, error } = await db
         .from('gallery_items')
-        .select('*')
+        .select('id, img_url, title, medium, year_created, sort_order, created_at, width, height')
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: false });

@@ -1157,6 +1157,14 @@ footer a:focus-visible {
 }
 
 /* =============================================================================
+   MASONRY GALLERY CARD WRAPPER
+   - Isolate reflows so image-load ratio changes don't trigger full-page layout
+   ============================================================================= */
+.masonry-item-wrapper {
+  contain: layout paint;
+}
+
+/* =============================================================================
    MASONRY GALLERY CAPTIONS
    - Subtle caption that fades away on hover or when focused
    ============================================================================= */
@@ -1189,8 +1197,55 @@ footer a:focus-visible {
 }
 
 .masonry-item-wrapper:focus-visible {
-  outline: 2px solid var(--color-text);
+  outline: 3px solid #0078d7;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgba(0, 120, 215, 0.2);
+  z-index: 10;
+}
+
+.mvc-btn:focus-visible {
+  outline: 3px solid #0078d7;
   outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgba(0, 120, 215, 0.25);
+}
+
+/* Screen-reader-only utility (Peer 4 a11y) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* IntersectionObserver sentinel — invisible trigger element */
+.masonry-sentinel {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Windows High Contrast Mode (Peer 4 a11y) */
+@media (forced-colors: active) {
+  .masonry-item-wrapper {
+    border: 2px solid CanvasText;
+  }
+  .masonry-caption {
+    background: Canvas;
+    color: CanvasText;
+    border-top: 1px solid CanvasText;
+  }
+  .mvc-btn {
+    border: 1px solid ButtonText;
+    background: ButtonFace;
+    color: ButtonText;
+  }
+  .masonry-item-wrapper:focus-visible {
+    outline: 3px solid Highlight;
+  }
 }
 
 /* Masonry video styling */
