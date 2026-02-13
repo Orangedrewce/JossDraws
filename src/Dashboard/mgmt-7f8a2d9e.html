@@ -280,6 +280,275 @@
             </div>
         </details>
 
+        <!-- ================================================ -->
+        <!-- BANNER PARAMETER ADJUSTMENT -->
+        <!-- ================================================ -->
+        <details class="recent-links" id="bannerParamsSection">
+            <summary class="section-summary">
+                <span>Banner Parameters</span>
+            </summary>
+
+            <div class="gallery-section-content">
+                <p class="description section-description">Fine-tune the animated banner's visual and motion parameters in real-time.</p>
+
+                <!-- Live Preview -->
+                <div class="banner-preview-wrapper" id="bannerPreviewWrapper">
+                    <canvas id="bannerPreviewCanvas"></canvas>
+                    <div class="banner-preview-overlay" id="bannerPreviewOverlay">
+                        <span class="text-muted-2 text-xs">Open section to load preview...</span>
+                    </div>
+                </div>
+
+                <!-- Geometry & Physics -->
+                <div class="param-category">
+                    <h3 class="param-category-title">Geometry &amp; Physics</h3>
+                    <div class="param-grid">
+                        <div class="param-control">
+                            <label for="thickness-base">Base Thickness</label>
+                            <input type="range" id="thickness-base" min="0.05" max="0.3" step="0.01" value="0.10">
+                            <input type="number" id="thickness-base-num" min="0.05" max="0.3" step="0.01" value="0.10">
+                        </div>
+                        <div class="param-control">
+                            <label for="thickness-stretchMin">Stretch Min</label>
+                            <input type="range" id="thickness-stretchMin" min="0.5" max="1.0" step="0.05" value="0.8">
+                            <input type="number" id="thickness-stretchMin-num" min="0.5" max="1.0" step="0.05" value="0.8">
+                        </div>
+                        <div class="param-control">
+                            <label for="thickness-stretchMax">Stretch Max</label>
+                            <input type="range" id="thickness-stretchMax" min="1.0" max="1.5" step="0.05" value="1.2">
+                            <input type="number" id="thickness-stretchMax-num" min="1.0" max="1.5" step="0.05" value="1.2">
+                        </div>
+                        <div class="param-control">
+                            <label for="thickness-stretchSpeed">Stretch Speed</label>
+                            <input type="range" id="thickness-stretchSpeed" min="0.5" max="3.0" step="0.1" value="1.3">
+                            <input type="number" id="thickness-stretchSpeed-num" min="0.5" max="3.0" step="0.1" value="1.3">
+                        </div>
+                        <div class="param-control">
+                            <label for="thickness-stretchFrequency">Stretch Frequency</label>
+                            <input type="range" id="thickness-stretchFrequency" min="1.0" max="5.0" step="0.1" value="2.5">
+                            <input type="number" id="thickness-stretchFrequency-num" min="1.0" max="5.0" step="0.1" value="2.5">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Wave Dynamics -->
+                <div class="param-category">
+                    <h3 class="param-category-title">Wave Dynamics</h3>
+                    <div class="param-grid">
+                        <div class="param-control">
+                            <label for="wave-mainSpeed">Main Speed</label>
+                            <input type="range" id="wave-mainSpeed" min="0.1" max="3.0" step="0.1" value="1.0">
+                            <input type="number" id="wave-mainSpeed-num" min="0.1" max="3.0" step="0.1" value="1.0">
+                        </div>
+                        <div class="param-control">
+                            <label for="wave-mainFrequency">Main Frequency</label>
+                            <input type="range" id="wave-mainFrequency" min="1.0" max="6.0" step="0.1" value="3.0">
+                            <input type="number" id="wave-mainFrequency-num" min="1.0" max="6.0" step="0.1" value="3.0">
+                        </div>
+                        <div class="param-control">
+                            <label for="wave-mainAmplitude">Main Amplitude</label>
+                            <input type="range" id="wave-mainAmplitude" min="0.05" max="0.5" step="0.05" value="0.25">
+                            <input type="number" id="wave-mainAmplitude-num" min="0.05" max="0.5" step="0.05" value="0.25">
+                        </div>
+                        <div class="param-control">
+                            <label for="wave-secondarySpeed">Secondary Speed</label>
+                            <input type="range" id="wave-secondarySpeed" min="0.1" max="3.0" step="0.1" value="1.8">
+                            <input type="number" id="wave-secondarySpeed-num" min="0.1" max="3.0" step="0.1" value="1.8">
+                        </div>
+                        <div class="param-control">
+                            <label for="wave-secondaryFreq">Secondary Frequency</label>
+                            <input type="range" id="wave-secondaryFreq" min="0.5" max="3.0" step="0.1" value="1.1">
+                            <input type="number" id="wave-secondaryFreq-num" min="0.5" max="3.0" step="0.1" value="1.1">
+                        </div>
+                        <div class="param-control">
+                            <label for="wave-secondaryAmp">Secondary Amplitude</label>
+                            <input type="range" id="wave-secondaryAmp" min="0.01" max="0.3" step="0.01" value="0.1">
+                            <input type="number" id="wave-secondaryAmp-num" min="0.01" max="0.3" step="0.01" value="0.1">
+                        </div>
+                        <div class="param-control">
+                            <label for="wave-horizontalSpeed">Horizontal Speed</label>
+                            <input type="range" id="wave-horizontalSpeed" min="0.1" max="2.0" step="0.1" value="0.7">
+                            <input type="number" id="wave-horizontalSpeed-num" min="0.1" max="2.0" step="0.1" value="0.7">
+                        </div>
+                        <div class="param-control">
+                            <label for="wave-horizontalFrequency">Horizontal Frequency</label>
+                            <input type="range" id="wave-horizontalFrequency" min="0.5" max="4.0" step="0.1" value="2.0">
+                            <input type="number" id="wave-horizontalFrequency-num" min="0.5" max="4.0" step="0.1" value="2.0">
+                        </div>
+                        <div class="param-control">
+                            <label for="wave-horizontalAmount">Horizontal Amount</label>
+                            <input type="range" id="wave-horizontalAmount" min="0.05" max="0.5" step="0.05" value="0.25">
+                            <input type="number" id="wave-horizontalAmount-num" min="0.05" max="0.5" step="0.05" value="0.25">
+                        </div>
+                        <div class="param-control">
+                            <label for="wave-offsetBlend">Offset Blend</label>
+                            <input type="range" id="wave-offsetBlend" min="0.0" max="1.0" step="0.05" value="0.3">
+                            <input type="number" id="wave-offsetBlend-num" min="0.0" max="1.0" step="0.05" value="0.3">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Twist Effect -->
+                <div class="param-category">
+                    <h3 class="param-category-title">Twist Effect</h3>
+                    <div class="param-grid">
+                        <div class="param-control param-toggle">
+                            <label for="twist-enabled">Enable Twist</label>
+                            <input type="checkbox" id="twist-enabled" checked>
+                        </div>
+                        <div class="param-control">
+                            <label for="twist-period">Twist Period (s)</label>
+                            <input type="range" id="twist-period" min="2.0" max="15.0" step="0.5" value="6.0">
+                            <input type="number" id="twist-period-num" min="2.0" max="15.0" step="0.5" value="6.0">
+                        </div>
+                        <div class="param-control">
+                            <label for="twist-duration">Twist Duration (0–1)</label>
+                            <input type="range" id="twist-duration" min="0.0" max="1.0" step="0.05" value="0.9">
+                            <input type="number" id="twist-duration-num" min="0.0" max="1.0" step="0.05" value="0.9">
+                        </div>
+                        <div class="param-control">
+                            <label for="twist-intensity">Twist Intensity</label>
+                            <input type="range" id="twist-intensity" min="0.0" max="1.5" step="0.05" value="0.5">
+                            <input type="number" id="twist-intensity-num" min="0.0" max="1.5" step="0.05" value="0.5">
+                        </div>
+                        <div class="param-control">
+                            <label for="twist-randomSeed">Random Seed</label>
+                            <input type="number" id="twist-randomSeed" min="0" max="1000" step="0.001" value="12.345">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visual Styling -->
+                <div class="param-category">
+                    <h3 class="param-category-title">Visual Styling</h3>
+                    <div class="param-grid">
+                        <div class="param-control">
+                            <label for="appearance-brightness">Brightness</label>
+                            <input type="range" id="appearance-brightness" min="0.5" max="2.0" step="0.025" value="1.125">
+                            <input type="number" id="appearance-brightness-num" min="0.5" max="2.0" step="0.025" value="1.125">
+                        </div>
+                        <div class="param-control param-toggle">
+                            <label for="appearance-plasticEffect">Plastic Effect</label>
+                            <input type="checkbox" id="appearance-plasticEffect" checked>
+                        </div>
+                        <div class="param-control">
+                            <label for="appearance-centerSoftness">Center Softness</label>
+                            <input type="range" id="appearance-centerSoftness" min="1.0" max="20.0" step="0.5" value="10.0">
+                            <input type="number" id="appearance-centerSoftness-num" min="1.0" max="20.0" step="0.5" value="10.0">
+                        </div>
+                        <div class="param-control">
+                            <label for="appearance-specularPower">Specular Power</label>
+                            <input type="range" id="appearance-specularPower" min="10.0" max="100.0" step="5.0" value="50.0">
+                            <input type="number" id="appearance-specularPower-num" min="10.0" max="100.0" step="5.0" value="50.0">
+                        </div>
+                        <div class="param-control">
+                            <label for="appearance-specularIntensity">Specular Intensity</label>
+                            <input type="range" id="appearance-specularIntensity" min="0.0" max="1.5" step="0.05" value="0.75">
+                            <input type="number" id="appearance-specularIntensity-num" min="0.0" max="1.5" step="0.05" value="0.75">
+                        </div>
+                        <div class="param-control">
+                            <label for="appearance-shadowStrength">Shadow Strength</label>
+                            <input type="range" id="appearance-shadowStrength" min="0.0" max="0.5" step="0.05" value="0.1">
+                            <input type="number" id="appearance-shadowStrength-num" min="0.0" max="0.5" step="0.05" value="0.1">
+                        </div>
+                        <div class="param-control">
+                            <label for="appearance-shadowWidth">Shadow Width</label>
+                            <input type="range" id="appearance-shadowWidth" min="0.5" max="5.0" step="0.1" value="2.0">
+                            <input type="number" id="appearance-shadowWidth-num" min="0.5" max="5.0" step="0.1" value="2.0">
+                        </div>
+                        <div class="param-control">
+                            <label for="appearance-aaSharpness">AA Sharpness</label>
+                            <input type="range" id="appearance-aaSharpness" min="0.1" max="2.0" step="0.1" value="0.5">
+                            <input type="number" id="appearance-aaSharpness-num" min="0.1" max="2.0" step="0.1" value="0.5">
+                        </div>
+                        <div class="param-control">
+                            <label for="appearance-aaFallback">AA Fallback</label>
+                            <input type="number" id="appearance-aaFallback" min="0.0001" max="0.01" step="0.0001" value="0.001">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Positioning -->
+                <div class="param-category">
+                    <h3 class="param-category-title">Positioning</h3>
+                    <div class="param-grid">
+                        <div class="param-control">
+                            <label for="positioning-verticalOffset">Vertical Offset</label>
+                            <input type="range" id="positioning-verticalOffset" min="-0.5" max="0.5" step="0.005" value="0.205">
+                            <input type="number" id="positioning-verticalOffset-num" min="-0.5" max="0.5" step="0.005" value="0.205">
+                        </div>
+                        <div class="param-control">
+                            <label for="positioning-bandCount">Band Count</label>
+                            <input type="number" id="positioning-bandCount" min="1" max="10" step="1" value="5">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interaction -->
+                <div class="param-category">
+                    <h3 class="param-category-title">Interaction</h3>
+                    <div class="param-grid">
+                        <div class="param-control">
+                            <label for="interaction-hoverSlowdown">Hover Slowdown</label>
+                            <input type="range" id="interaction-hoverSlowdown" min="0.0" max="1.0" step="0.05" value="0.1">
+                            <input type="number" id="interaction-hoverSlowdown-num" min="0.0" max="1.0" step="0.05" value="0.1">
+                        </div>
+                        <div class="param-control">
+                            <label for="interaction-smoothTime">Smooth Time (s)</label>
+                            <input type="range" id="interaction-smoothTime" min="0.05" max="1.0" step="0.05" value="0.25">
+                            <input type="number" id="interaction-smoothTime-num" min="0.05" max="1.0" step="0.05" value="0.25">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance -->
+                <div class="param-category">
+                    <h3 class="param-category-title">Performance</h3>
+                    <div class="param-grid">
+                        <div class="param-control">
+                            <label for="performance-supersampleDesktop">Supersample Desktop</label>
+                            <input type="range" id="performance-supersampleDesktop" min="1.0" max="4.0" step="0.1" value="2.5">
+                            <input type="number" id="performance-supersampleDesktop-num" min="1.0" max="4.0" step="0.1" value="2.5">
+                        </div>
+                        <div class="param-control">
+                            <label for="performance-supersampleMobile">Supersample Mobile</label>
+                            <input type="range" id="performance-supersampleMobile" min="1.0" max="2.0" step="0.1" value="1.0">
+                            <input type="number" id="performance-supersampleMobile-num" min="1.0" max="2.0" step="0.1" value="1.0">
+                        </div>
+                        <div class="param-control">
+                            <label for="performance-mobileBreakpoint">Mobile Breakpoint (px)</label>
+                            <input type="number" id="performance-mobileBreakpoint" min="320" max="1024" step="1" value="768">
+                        </div>
+                        <div class="param-control param-toggle">
+                            <label for="performance-respectDPR">Respect DPR</label>
+                            <input type="checkbox" id="performance-respectDPR" checked>
+                        </div>
+                        <div class="param-control param-toggle">
+                            <label for="performance-pauseWhenHidden">Pause When Hidden</label>
+                            <input type="checkbox" id="performance-pauseWhenHidden" checked>
+                        </div>
+                        <div class="param-control">
+                            <label for="performance-maxDeltaTime">Max Delta Time (s)</label>
+                            <input type="range" id="performance-maxDeltaTime" min="0.01" max="0.2" step="0.01" value="0.05">
+                            <input type="number" id="performance-maxDeltaTime-num" min="0.01" max="0.2" step="0.01" value="0.05">
+                        </div>
+                        <div class="param-control param-toggle">
+                            <label for="performance-debugMode">Debug Mode</label>
+                            <input type="checkbox" id="performance-debugMode">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="param-actions">
+                    <button type="button" id="reset-params" class="btn-reset">Reset to Defaults</button>
+                    <button type="button" id="export-params" class="btn-apply">Publish to Site</button>
+                </div>
+
+                <div id="bannerParamsMessage" class="gallery-msg is-hidden" role="status" aria-live="polite"></div>
+            </div>
+        </details>
+
         <details class="recent-links" id="settingsSection">
             <summary class="section-summary">
                 <span>Settings</span>

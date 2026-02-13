@@ -89,6 +89,40 @@ const WEBGL_CONFIG = {
  * CORE ENGINE  
  * ============================================================================
  */
+
+/**
+ * Fetch published banner config from Supabase and merge over WEBGL_CONFIG.
+ * Non-blocking: if fetch fails, hardcoded defaults are used silently.
+ */
+async function loadBannerConfig() {
+  try {
+    // Wait for Supabase client (may not be available immediately if deferred)
+    if (typeof supabase === 'undefined' || typeof supabase.createClient !== 'function') return;
+
+    const SUPABASE_URL = 'https://pciubbwphwpnptgawgok.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv';
+    const db = window.__supabaseClient || supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    if (!window.__supabaseClient) window.__supabaseClient = db;
+
+    const { data, error } = await db.rpc('get_banner_config');
+    if (error || !data || !data.success || !data.config) return;
+
+    const saved = data.config;
+    // Merge each group's keys over WEBGL_CONFIG (colors are never overwritten)
+    for (const group of ['thickness', 'wave', 'twist', 'appearance', 'positioning', 'interaction', 'performance']) {
+      if (saved[group] && typeof saved[group] === 'object' && WEBGL_CONFIG[group]) {
+        for (const key in saved[group]) {
+          if (key in WEBGL_CONFIG[group]) {
+            WEBGL_CONFIG[group][key] = saved[group][key];
+          }
+        }
+      }
+    }
+  } catch (_) {
+    // Silently fail — hardcoded defaults remain
+  }
+}
+
 function initWebGL() {
   // ── Double-init guard [P2] ──
   if (initWebGL._initialized) return;
@@ -733,8 +767,15 @@ function initWebGL() {
 }
 
 // Ensure DOM is ready before initializing
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initWebGL);
-} else {
+// Fetch published config from Supabase, then start the WebGL engine.
+// If the fetch fails or Supabase isn't loaded yet, hardcoded defaults are used.
+async function bootWebGL() {
+  await loadBannerConfig();
   initWebGL();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootWebGL);
+} else {
+  bootWebGL();
 }
