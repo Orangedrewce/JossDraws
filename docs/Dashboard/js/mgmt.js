@@ -4786,7 +4786,7 @@
                 },
                 appearance: {
                     brightness: 1.125,
-                    plasticEffect: true,
+                    plasticEffect: false,
                     centerSoftness: 0.35,
                     specularPower: 50.0,
                     specularIntensity: 0.75,
@@ -4961,6 +4961,24 @@
             // ================================================
             // SELF-CONTAINED WEBGL PREVIEW ENGINE
             // ================================================
+
+            /* ── Dynamic LCM loop time (survives config changes) ── */
+            function computeLoopTime(cfg) {
+                const speeds = [
+                    Math.abs(cfg.wave.mainSpeed),
+                    Math.abs(cfg.wave.secondarySpeed),
+                    Math.abs(cfg.wave.horizontalSpeed),
+                    Math.abs(cfg.thickness.stretchSpeed)
+                ].filter(s => s > 1e-6);
+                if (speeds.length === 0) return 6283.1853;
+                const scale = 10;
+                const ints = speeds.map(s => Math.round(s * scale));
+                const gcd = (a, b) => { while (b) { [a, b] = [b, a % b]; } return a; };
+                const lcm = (a, b) => a / gcd(a, b) * b;
+                const L = ints.reduce(lcm);
+                return (2 * Math.PI * L) / scale;
+            }
+
             const previewState = {
                 gl: null,
                 program: null,
@@ -4971,7 +4989,8 @@
                 lastTime: 0,
                 curSpeed: 1.0,
                 targetSpeed: 1.0,
-                running: false
+                running: false,
+                loopTime: 62.831853
             };
 
             /* ── GLSL float formatter ── */
@@ -5231,6 +5250,7 @@ void main() {
                 previewState.timeLoc = gl.getUniformLocation(newProg, 'iTime');
 
                 resizePreviewCanvas();
+                previewState.loopTime = computeLoopTime(liveConfig);
             }
 
             /* ── Resize canvas to CSS dimensions ── */
@@ -5262,7 +5282,7 @@ void main() {
                 const tau = Math.max(0.0001, liveConfig.interaction.smoothTime);
                 previewState.curSpeed += (previewState.targetSpeed - previewState.curSpeed)
                     * (1.0 - Math.exp(-dt / tau));
-                previewState.animTime = (previewState.animTime + dt * previewState.curSpeed) % 62.831853; // 20π seamless loop
+                previewState.animTime = (previewState.animTime + dt * previewState.curSpeed) % previewState.loopTime;
 
                 gl.clear(gl.COLOR_BUFFER_BIT);
                 if (previewState.timeLoc) gl.uniform1f(previewState.timeLoc, previewState.animTime);

@@ -65,7 +65,7 @@ const WEBGL_CONFIG = {
   // 5. Visual Styling
   appearance: {
     brightness: 1.125,       // Global brightness multiplier
-    plasticEffect: true,     // Enable specular highlights (glossy look)
+    plasticEffect: false,    // Enable specular highlights (glossy look)
     centerSoftness: 0.35,    // Specular falloff threshold (domain: 0–0.5, matches dEdge range)
     specularPower: 50.0,     // Sharpness of the gloss (higher = sharper)
     specularIntensity: 0.75, // Strength of specular highlight
@@ -285,6 +285,24 @@ function initWebGL() {
   const maxRibbonHalfHeight = maxWaveAbs
                             + (WEBGL_CONFIG.thickness.base * WEBGL_CONFIG.thickness.stretchMax * WEBGL_CONFIG.positioning.bandCount)
                             + WEBGL_CONFIG.appearance.aaFallback;
+
+  // ── Seamless loop time — dynamic LCM of all wave periods (survives Supabase overrides) ──
+  const loopTime = (() => {
+    const speeds = [
+      Math.abs(WEBGL_CONFIG.wave.mainSpeed),
+      Math.abs(WEBGL_CONFIG.wave.secondarySpeed),
+      Math.abs(WEBGL_CONFIG.wave.horizontalSpeed),
+      Math.abs(WEBGL_CONFIG.thickness.stretchSpeed)
+    ].filter(s => s > 1e-6);   // ignore zero/near-zero speeds
+    if (speeds.length === 0) return 6283.1853;  // fallback: 1000×2π
+    // Rational approximation: round each speed to nearest 1/10, compute integer LCM
+    const scale = 10;
+    const ints = speeds.map(s => Math.round(s * scale));
+    const gcd = (a, b) => { while (b) { [a, b] = [b, a % b]; } return a; };
+    const lcm = (a, b) => a / gcd(a, b) * b;
+    const L = ints.reduce(lcm);
+    return (2 * Math.PI * L) / scale;  // exact seamless loop duration
+  })();
 
   // ── Dynamic Fragment Shader Source (all magic numbers from WEBGL_CONFIG) [P3] ──
   const createFragmentShader = () => `
@@ -683,7 +701,7 @@ function initWebGL() {
     // Smooth speed transition
     const tau = Math.max(0.0001, WEBGL_CONFIG.interaction.smoothTime);
     curSpeed += (targetSpeed - curSpeed) * (1.0 - Math.exp(-dt / tau));
-    animTime = (animTime + dt * curSpeed) % 62.831853;  // 20π — LCM of all wave periods for seamless looping
+    animTime = (animTime + dt * curSpeed) % loopTime;  // dynamic LCM-based seamless loop
 
     // ── FBO bypass when supersampling disabled [v4: P1, P4] ──
     const directRender = (ssFactor <= 1.0);
