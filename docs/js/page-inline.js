@@ -1,3 +1,28 @@
+// =============================================================================
+// PAGE INLINE — Reviews carousel, about content, image loading, tab loaders
+// =============================================================================
+// Orchestrates four independent concerns that share the Supabase client:
+//
+//   1. Reviews Carousel   — fetches approved reviews via RPC, renders cards
+//                            into #track, auto-rotates every 6 s. Pauses on
+//                            visibility-hidden or tab-away. Falls back to a
+//                            static card if the DB is empty or unreachable.
+//
+//   2. About Content      — fetches bio text + photo URL via RPC, injects
+//                            into #about-photo / #about-text with a strict
+//                            HTML sanitiser (DOMParser). Silent fallback.
+//
+//   3. Image Loading       — wires .img-loading-wrapper spinners to img
+//                            load/error events at DOMContentLoaded.
+//
+//   4. Decorative Loaders — shows a brief spinner overlay on first visit
+//                            to each tab (except home, handled by
+//                            hero-slideshow.js).
+//
+// All radio-change listeners attach at DOMContentLoaded independently.
+// Supabase client is shared via window.__supabaseClient.
+// =============================================================================
+
 (function () {
   "use strict";
 

@@ -1,3 +1,7 @@
+/* =============================================================================
+   MANAGEMENT DASHBOARD STYLES — Admin CMS for JossDraws.com
+   ============================================================================= */
+
 * { box-sizing: border-box; }
 
 .is-hidden { display: none !important; }
@@ -50,6 +54,10 @@
     --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
     --shadow-lg: 0 4px 15px rgba(0,0,0,0.05);
     --shadow-xl: 0 4px 12px rgba(0,0,0,0.15);
+
+    /* Z-Index Scale */
+    --z-modal: 9999;           /* Edit modals, overlays */
+    --z-lockout: 100000;       /* Auth lockout (must sit above everything) */
 }
 
 body { 
@@ -584,7 +592,7 @@ select:focus-visible,
 .auth-lockout {
     position: fixed;
     inset: 0;
-    z-index: 100000;
+    z-index: var(--z-lockout);
 }
 
 .auth-screen.auth-screen--danger {
@@ -852,7 +860,7 @@ body.is-dragging ::-moz-selection {
 
 /* Edit Modal */
 .gallery-edit-overlay {
-    position: fixed; inset: 0; z-index: 9999;
+    position: fixed; inset: 0; z-index: var(--z-modal);
     background: rgba(0,0,0,0.5); display: flex;
     align-items: center; justify-content: center;
     padding: 1rem; animation: fadeIn 0.15s ease;

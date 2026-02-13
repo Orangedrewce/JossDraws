@@ -1,3 +1,18 @@
+// =============================================================================
+// TABS ROUTER — Single-page tab navigation via hidden radio inputs
+// =============================================================================
+// Phase 1 of the app lifecycle. Runs at DOMContentLoaded, selects the
+// initial tab from the URL hash (with fuzzy matching), wires nav labels
+// and [data-tab-target] links, and manages browser history (pushState /
+// hashchange). Updates ARIA selected state on every switch.
+//
+// After the initial tab is stable, broadcasts `tabs:ready` on window so
+// downstream modules (carousel, decorative loaders, shop) can safely
+// attach radio-change listeners without missing the first activation.
+//
+// Guard: double-init protected via window.__tabsRouterActive.
+// =============================================================================
+
 (function () {
   if (window.__tabsRouterActive) return;
   window.__tabsRouterActive = true;

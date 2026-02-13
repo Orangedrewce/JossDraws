@@ -1,3 +1,33 @@
+// =============================================================================
+// MANAGEMENT DASHBOARD — Admin CMS for JossDraws.com
+// =============================================================================
+// Prompt-gated IIFE: asks for an admin code on load, which is sent to
+// Postgres on every RPC call and verified server-side against a bcrypt
+// hash (reading source code does not grant access).
+//
+// Manages five content areas, each lazy-loaded on <details> toggle:
+//
+//   1. Review Links  — generate token URLs, view/filter/delete tokens,
+//                       infinite-scroll pagination via IntersectionObserver.
+//   2. Gallery       — CRUD gallery items with Google Drive URL conversion,
+//                       inline sort-order editing, drag-and-drop reorder
+//                       (mouse + touch), edit modals, and filter dropdowns.
+//   3. Hero Slides   — CRUD hero slideshow images with the same drag/sort
+//                       and Drive-URL patterns as the gallery manager.
+//   4. Shop          — CRUD products with multi-media URLs, price display,
+//                       Etsy link, active toggle, page-title editor, and
+//                       drag-and-drop reorder.
+//   5. Reviews       — approve / reject / soft-delete submitted reviews,
+//                       tabbed view (pending / approved / deleted), and
+//                       drag-and-drop sort for approved reviews.
+//
+// Also includes: admin code change form, banner config editor (WebGL
+// ribbon), about-page editor (photo + bio), visibility-change refresh
+// with cooldown, and global cleanup on beforeunload.
+//
+// Boot: IIFE runs immediately; prompt blocks until code is entered.
+// =============================================================================
+
 (function () {
         'use strict';
         // ============================================

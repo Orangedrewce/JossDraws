@@ -1,6 +1,20 @@
 // =============================================================================
-// CLICK SPARK EFFECT
+// CLICK SPARK — Decorative radial burst on every click
 // =============================================================================
+// Renders short-lived spark lines on a fixed, full-viewport <canvas>
+// overlaying the page (pointer-events: none). Each click spawns N evenly
+// spaced lines that radiate outward and fade over the configured duration.
+//
+//   ClickSpark (class)     — manages canvas sizing (DPR-aware), click→spark
+//       creation, eased animation loop (requestAnimationFrame), and
+//       visibility-API pause/resume. Loop goes idle when no sparks exist.
+//
+//   ClickSparkManager      — singleton that creates a body-level instance
+//       with teal (#89e6e3) sparks on DOMContentLoaded.
+//
+// Respects prefers-reduced-motion (cached via matchMedia listener).
+// =============================================================================
+
 class ClickSpark {
   constructor(options = {}) {
     this.sparkColor = options.sparkColor || '#fff';

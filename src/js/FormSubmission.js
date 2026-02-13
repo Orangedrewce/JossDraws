@@ -1,4 +1,24 @@
 // =============================================================================
+// FORM SUBMISSION — Contact form handling via Formspree
+// =============================================================================
+// Self-initialising module: validates name / email / message fields with
+// inline error display, submits to Formspree endpoint, and shows
+// success / error feedback with auto-clear timeout.
+//
+//   FormManager    — form init, field validation (length + pattern),
+//                    async fetch POST, aria-invalid toggling, and
+//                    character counter for the message textarea.
+//
+//   Logger         — conditional console logging (disabled by default).
+//
+//   PerformanceMonitor — optional navigation-timing metrics on load.
+//
+// Also installs global error / unhandledrejection listeners for logging.
+//
+// Boot: initializeApp() → DOMContentLoaded → FormManager.init().
+// =============================================================================
+
+// =============================================================================
 // CONSTANTS & CONFIGURATION
 // =============================================================================
 const FORM_CONFIG = {

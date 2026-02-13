@@ -1,3 +1,7 @@
+/* =============================================================================
+   REVIEW FORM STYLES — Token-gated review submission page
+   ============================================================================= */
+
 * { box-sizing: border-box; }
 
 :root {
@@ -31,6 +35,9 @@
   --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
   --shadow-lg: 0 4px 15px rgba(0,0,0,0.05);
   --shadow-xl: 0 4px 12px rgba(0,0,0,0.15);
+
+  /* Z-Index Scale */
+  --z-toast: 1000;           /* Toast notifications */
 }
 
 body {
@@ -177,7 +184,7 @@ textarea { resize: vertical; min-height: 120px; max-height: 300px; }
   opacity: 0;
   transform: translateY(20px);
   transition: opacity 0.3s, transform 0.3s;
-  z-index: 1000;
+  z-index: var(--z-toast);
   pointer-events: none;
   font-size: 0.9rem;
   backdrop-filter: blur(8px);

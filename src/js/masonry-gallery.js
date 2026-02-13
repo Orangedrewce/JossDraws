@@ -1,5 +1,23 @@
 // =============================================================================
-// MASONRY GALLERY
+// MASONRY GALLERY — Responsive grid with focus-expand & progressive loading
+// =============================================================================
+// Two-part architecture:
+//
+//   MasonryGallery (class)  — layout engine. Computes column counts from
+//       container width, positions items via absolute transforms, handles
+//       focus/unfocus expansion (keyboard + click-outside), progressive
+//       batch loading via IntersectionObserver sentinel, and per-item
+//       image/video dimension updates that trigger async relayout.
+//       Supports reduced-motion, responsive column breakpoints, and
+//       DOM-reconciled rendering (nodeMap) to avoid full reflows.
+//
+//   GalleryManager (object) — data layer. Fetches gallery rows from
+//       Supabase RPC (get_gallery_items), manages filter/sort dropdowns
+//       (medium, year, date), converts rows to items, and lazy-inits
+//       the MasonryGallery on first visit to the gallery tab.
+//
+// Boot: DOMContentLoaded → checkAndInit() + tab-change listener.
+//       If the gallery tab is already active, init runs immediately.
 // =============================================================================
 
 class MasonryGallery {

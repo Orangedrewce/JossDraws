@@ -1,4 +1,18 @@
-// Hero slideshow - Fetches active slides from Supabase, picks one at random
+// =============================================================================
+// HERO SLIDESHOW — Random hero image from Supabase or local fallback
+// =============================================================================
+// Self-contained IIFE: queries `hero_slides` (is_active = true, ordered by
+// sort_order), caches the result for the page session, and picks one slide
+// at random. On every switch back to the home tab, a new random image is
+// injected into .hero-slideshow using the img-loading-wrapper pattern.
+//
+// Fallback: if Supabase is unavailable or returns no rows, a hardcoded
+// array of Google Drive image URLs is used instead.
+//
+// Boot: DOMContentLoaded → loadRandomHeroImage().
+//       Also re-fires on tab-home radio change.
+// =============================================================================
+
 (function() {
   // Supabase config (anon key is safe to expose — RLS restricts to active slides only)
   const HERO_SUPABASE_URL = 'https://pciubbwphwpnptgawgok.supabase.co';

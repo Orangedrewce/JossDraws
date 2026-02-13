@@ -1,3 +1,21 @@
+// =============================================================================
+// WEBGL RIBBON BANNER — Animated header background via fragment shader
+// =============================================================================
+// Renders a five-color undulating ribbon in the <header> canvas using a
+// custom GLSL fragment shader compiled from WEBGL_CONFIG design tokens.
+//
+//   Boot: DOMContentLoaded → loadBannerConfig() (Supabase RPC, non-blocking)
+//         → initWebGL(). Hardcoded defaults used if fetch fails.
+//
+//   Features: configurable wave dynamics, twist animation, plastic/specular
+//   lighting, supersampled FBO with box-filter downsample pass, hover
+//   slowdown on <header>, visibility-API pause, context-loss recovery,
+//   reduced-motion support, and ResizeObserver-driven resize.
+//
+//   Guard: double-init via initWebGL._initialized; stale-RAF protection
+//   via generation counter.
+// =============================================================================
+
 /**
  * ============================================================================
  * ENGINEERING CONFIGURATION DASHBOARD
