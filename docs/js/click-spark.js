@@ -262,7 +262,7 @@ const ClickSparkManager = {
     bodySpark.init(document.body);
     this.instances.push(bodySpark);
     
-    console.log('✨ Click Spark Effects Initialized');
+    console.log('Click Spark Initialized');
   },
   
   destroy() {
