@@ -780,9 +780,21 @@
                 return;
             }
 
-            // Two-click confirm (console-only)
+            // Two-click confirm
             if (!pendingDeletes.has(tokenId)) {
                 armDeleteConfirmation(tokenId);
+                // Visual feedback: show confirmation state on button
+                if (buttonEl) {
+                    const origText = buttonEl.textContent;
+                    buttonEl.textContent = '⚠️ Sure?';
+                    buttonEl.classList.add('confirm-armed');
+                    const revertTimer = setTimeout(() => {
+                        buttonEl.textContent = origText;
+                        buttonEl.classList.remove('confirm-armed');
+                    }, DELETE_CONFIRM_MS);
+                    // Store revert timer so we can cancel it on actual delete
+                    buttonEl._revertTimer = revertTimer;
+                }
                 Trace.log('DELETE_CONFIRM_ARMED', { ttlMs: DELETE_CONFIRM_MS });
                 Trace.groupEnd();
                 return;
@@ -795,6 +807,8 @@
 
             const originalText = buttonEl?.textContent;
             if (buttonEl) {
+                if (buttonEl._revertTimer) clearTimeout(buttonEl._revertTimer);
+                buttonEl.classList.remove('confirm-armed');
                 buttonEl.disabled = true;
                 buttonEl.textContent = 'Deleting...';
             }
