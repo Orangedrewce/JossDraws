@@ -207,8 +207,22 @@
           photoEl.src = data.photo_url;
         }
         if (data.bio_text) {
-          // Use textContent to prevent XSS from compromised admin data
-          textEl.textContent = data.bio_text;
+          // Sanitize HTML: allow safe formatting tags, strip dangerous ones
+          var doc = new DOMParser().parseFromString(data.bio_text, 'text/html');
+          // Remove all script, iframe, object, embed, form, and event-handler-bearing elements
+          doc.querySelectorAll('script,iframe,object,embed,form,link,style,meta').forEach(function(el) { el.remove(); });
+          // Strip event handler attributes (onclick, onerror, onload, etc.) from all elements
+          doc.body.querySelectorAll('*').forEach(function(el) {
+            Array.from(el.attributes).forEach(function(attr) {
+              if (attr.name.startsWith('on') || attr.name === 'srcdoc') el.removeAttribute(attr.name);
+            });
+            // Strip javascript: from href/src
+            ['href', 'src', 'action'].forEach(function(a) {
+              var val = el.getAttribute(a);
+              if (val && /^\s*(javascript|data|vbscript):/i.test(val)) el.removeAttribute(a);
+            });
+          });
+          textEl.innerHTML = doc.body.innerHTML;
         }
       } catch (e) {
         // Silently fail — hardcoded fallback remains visible
