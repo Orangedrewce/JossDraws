@@ -66,7 +66,7 @@ const WEBGL_CONFIG = {
   appearance: {
     brightness: 1.125,       // Global brightness multiplier
     plasticEffect: true,     // Enable specular highlights (glossy look)
-    centerSoftness: 10.0,    // Smoothness of center highlight
+    centerSoftness: 0.35,    // Specular falloff threshold (domain: 0–0.5, matches dEdge range)
     specularPower: 50.0,     // Sharpness of the gloss (higher = sharper)
     specularIntensity: 0.75, // Strength of specular highlight
     shadowStrength: 0.1,     // Intensity of drop shadow
@@ -325,13 +325,14 @@ function initWebGL() {
 
     void main() {
       vec2 fragCoord = gl_FragCoord.xy;
-      vec2 uv = (fragCoord - 0.5 * R.xy) / R.y;
+      vec2 uv = (fragCoord - 0.5 * R.xy) / min(R.x, R.y);
       vec3 col = bg;
 
-      // --- Early Ribbon Rejection (skip when rotation enabled — ribbon sweeps all angles) ---
+      // --- Early Ribbon Rejection (aspect-corrected for min(R.x,R.y) UV normalization) ---
       ${twistEnabled ? '' : `
-      float ribbonMinY = ${f(WEBGL_CONFIG.positioning.verticalOffset)} - ${f(maxRibbonHalfHeight)};
-      float ribbonMaxY = ${f(WEBGL_CONFIG.positioning.verticalOffset)} + ${f(maxRibbonHalfHeight)};
+      float halfH = ${f(maxRibbonHalfHeight)} * R.y / min(R.x, R.y);
+      float ribbonMinY = ${f(WEBGL_CONFIG.positioning.verticalOffset)} - halfH;
+      float ribbonMaxY = ${f(WEBGL_CONFIG.positioning.verticalOffset)} + halfH;
       if (uv.y < ribbonMinY || uv.y > ribbonMaxY) {
         gl_FragColor = vec4(bg, 1.0);
         return;
@@ -349,8 +350,11 @@ function initWebGL() {
 
       float xOffset = sin(T * ${f(WEBGL_CONFIG.wave.horizontalSpeed)} + uv.y * ${f(WEBGL_CONFIG.wave.horizontalFrequency)}) * ${f(WEBGL_CONFIG.wave.horizontalAmount)};
 
-      float stretch = ${f(WEBGL_CONFIG.thickness.stretchMin)} +
-                      ${f(WEBGL_CONFIG.thickness.stretchMax - WEBGL_CONFIG.thickness.stretchMin)} * sin(T * ${f(WEBGL_CONFIG.thickness.stretchSpeed)} + uv.x * ${f(WEBGL_CONFIG.thickness.stretchFrequency)});
+      float stretch = mix(
+        ${f(WEBGL_CONFIG.thickness.stretchMin)},
+        ${f(WEBGL_CONFIG.thickness.stretchMax)},
+        0.5 + 0.5 * sin(T * ${f(WEBGL_CONFIG.thickness.stretchSpeed)} + uv.x * ${f(WEBGL_CONFIG.thickness.stretchFrequency)})
+      );
 
       float bandThickness = BASE_THICKNESS * stretch;
       float offset = (uv.y - yWave) + xOffset * ${f(WEBGL_CONFIG.wave.offsetBlend)};
@@ -679,7 +683,7 @@ function initWebGL() {
     // Smooth speed transition
     const tau = Math.max(0.0001, WEBGL_CONFIG.interaction.smoothTime);
     curSpeed += (targetSpeed - curSpeed) * (1.0 - Math.exp(-dt / tau));
-    animTime = (animTime + dt * curSpeed) % 10000.0;  // [v4: P1] prevent precision decay
+    animTime = (animTime + dt * curSpeed) % 62.831853;  // 20π — LCM of all wave periods for seamless looping
 
     // ── FBO bypass when supersampling disabled [v4: P1, P4] ──
     const directRender = (ssFactor <= 1.0);
@@ -733,6 +737,7 @@ function initWebGL() {
       }
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       if (vaoExt) vaoExt.bindVertexArrayOES(null);
+      gl.bindTexture(gl.TEXTURE_2D, null);  // unbind to prevent stale state on mobile GPUs
       checkGLError('downsample pass');
     }
 

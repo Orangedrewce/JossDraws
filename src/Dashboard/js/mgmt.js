@@ -4787,7 +4787,7 @@
                 appearance: {
                     brightness: 1.125,
                     plasticEffect: true,
-                    centerSoftness: 10.0,
+                    centerSoftness: 0.35,
                     specularPower: 50.0,
                     specularIntensity: 0.75,
                     shadowStrength: 0.1,
@@ -5033,13 +5033,14 @@ float hashf(float p){
 
 void main() {
   vec2 fragCoord = gl_FragCoord.xy;
-  vec2 uv = (fragCoord - 0.5 * R.xy) / R.y;
+  vec2 uv = (fragCoord - 0.5 * R.xy) / min(R.x, R.y);
   vec3 col = bg;
 
-  // Early ribbon rejection (skipped when rotation enabled — ribbon sweeps all angles)
+  // Early ribbon rejection (aspect-corrected for min(R.x,R.y) UV normalization)
   ${twistEnabled ? '' : `
-  float ribbonMinY = ${fmtF(cfg.positioning.verticalOffset)} - ${fmtF(maxRibbonHalfHeight)};
-  float ribbonMaxY = ${fmtF(cfg.positioning.verticalOffset)} + ${fmtF(maxRibbonHalfHeight)};
+  float halfH = ${fmtF(maxRibbonHalfHeight)} * R.y / min(R.x, R.y);
+  float ribbonMinY = ${fmtF(cfg.positioning.verticalOffset)} - halfH;
+  float ribbonMaxY = ${fmtF(cfg.positioning.verticalOffset)} + halfH;
   if (uv.y < ribbonMinY || uv.y > ribbonMaxY) {
     gl_FragColor = vec4(bg, 1.0);
     return;
@@ -5057,8 +5058,11 @@ void main() {
 
   float xOffset = sin(T * ${fmtF(cfg.wave.horizontalSpeed)} + uv.y * ${fmtF(cfg.wave.horizontalFrequency)}) * ${fmtF(cfg.wave.horizontalAmount)};
 
-  float stretch = ${fmtF(cfg.thickness.stretchMin)} +
-                  ${fmtF(cfg.thickness.stretchMax - cfg.thickness.stretchMin)} * sin(T * ${fmtF(cfg.thickness.stretchSpeed)} + uv.x * ${fmtF(cfg.thickness.stretchFrequency)});
+  float stretch = mix(
+    ${fmtF(cfg.thickness.stretchMin)},
+    ${fmtF(cfg.thickness.stretchMax)},
+    0.5 + 0.5 * sin(T * ${fmtF(cfg.thickness.stretchSpeed)} + uv.x * ${fmtF(cfg.thickness.stretchFrequency)})
+  );
 
   float bandThickness = BASE_THICKNESS * stretch;
   float offset = (uv.y - yWave) + xOffset * ${fmtF(cfg.wave.offsetBlend)};
@@ -5258,7 +5262,7 @@ void main() {
                 const tau = Math.max(0.0001, liveConfig.interaction.smoothTime);
                 previewState.curSpeed += (previewState.targetSpeed - previewState.curSpeed)
                     * (1.0 - Math.exp(-dt / tau));
-                previewState.animTime = (previewState.animTime + dt * previewState.curSpeed) % 10000.0;
+                previewState.animTime = (previewState.animTime + dt * previewState.curSpeed) % 62.831853; // 20π seamless loop
 
                 gl.clear(gl.COLOR_BUFFER_BIT);
                 if (previewState.timeLoc) gl.uniform1f(previewState.timeLoc, previewState.animTime);
