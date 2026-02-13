@@ -286,23 +286,16 @@ function initWebGL() {
                             + (WEBGL_CONFIG.thickness.base * WEBGL_CONFIG.thickness.stretchMax * WEBGL_CONFIG.positioning.bandCount)
                             + WEBGL_CONFIG.appearance.aaFallback;
 
-  // ── Seamless loop time — dynamic LCM of all wave periods (survives Supabase overrides) ──
-  const loopTime = (() => {
-    const speeds = [
-      Math.abs(WEBGL_CONFIG.wave.mainSpeed),
-      Math.abs(WEBGL_CONFIG.wave.secondarySpeed),
-      Math.abs(WEBGL_CONFIG.wave.horizontalSpeed),
-      Math.abs(WEBGL_CONFIG.thickness.stretchSpeed)
-    ].filter(s => s > 1e-6);   // ignore zero/near-zero speeds
-    if (speeds.length === 0) return 6283.1853;  // fallback: 1000×2π
-    // Rational approximation: round each speed to nearest 1/10, compute integer LCM
-    const scale = 10;
-    const ints = speeds.map(s => Math.round(s * scale));
-    const gcd = (a, b) => { while (b) { [a, b] = [b, a % b]; } return a; };
-    const lcm = (a, b) => a / gcd(a, b) * b;
-    const L = ints.reduce(lcm);
-    return (2 * Math.PI * L) / scale;  // exact seamless loop duration
-  })();
+  // ── Master Loop Duration (phase-space: shader receives 0→1 phase, multiplied by TAU inside) ──
+  const LOOP_SECONDS = 12.0;
+
+  // Force all speed multipliers to integers — guarantees sin(t*N) = sin(t*N + TAU*N)
+  // at every loop boundary, regardless of Supabase overrides.
+  const speedMain    = Math.round(WEBGL_CONFIG.wave.mainSpeed);
+  const speedSec     = Math.round(WEBGL_CONFIG.wave.secondarySpeed);
+  const speedHoriz   = Math.round(WEBGL_CONFIG.wave.horizontalSpeed);
+  const speedStretch = Math.round(WEBGL_CONFIG.thickness.stretchSpeed);
+  const speedTwist   = Math.round(WEBGL_CONFIG.twist.intensity);
 
   // ── Dynamic Fragment Shader Source (all magic numbers from WEBGL_CONFIG) [P3] ──
   const createFragmentShader = () => `
@@ -333,18 +326,15 @@ function initWebGL() {
     }
 
     mat2 rot(float a){float s=sin(a),c=cos(a);return mat2(c,-s,s,c);}
-    // Trig-less float hash (stable across vendors)
-    float hashf(float p){
-      p = fract(p * 0.1031);
-      p *= p + 33.33;
-      p *= p + p;
-      return fract(p);
-    }
 
     void main() {
       vec2 fragCoord = gl_FragCoord.xy;
       vec2 uv = (fragCoord - 0.5 * R.xy) / min(R.x, R.y);
       vec3 col = bg;
+
+      // Phase-space time: T is normalized 0→1 phase, convert to radians
+      #define TAU 6.28318530718
+      float t = T * TAU;
 
       // --- Early Ribbon Rejection (aspect-corrected for min(R.x,R.y) UV normalization) ---
       ${twistEnabled ? '' : `
@@ -359,19 +349,19 @@ function initWebGL() {
 
       // --- World Rotation (rotate entire coordinate space, then build ribbon inside it) ---
       ${twistEnabled ? `
-        uv *= rot(T * ${f(WEBGL_CONFIG.twist.intensity)});
+        uv *= rot(t * ${f(speedTwist)});
       ` : ''}
 
-      // --- Wave Motion (computed on twisted UVs) ---
-      float yWave = sin(uv.x * ${f(WEBGL_CONFIG.wave.mainFrequency)} + T * ${f(WEBGL_CONFIG.wave.mainSpeed)}) * ${f(WEBGL_CONFIG.wave.mainAmplitude)}
-                  + sin(uv.x * ${f(WEBGL_CONFIG.wave.secondaryFreq)} - T * ${f(WEBGL_CONFIG.wave.secondarySpeed)}) * ${f(WEBGL_CONFIG.wave.secondaryAmp)};
+      // --- Wave Motion (integer speeds × phase radians = guaranteed seamless loop) ---
+      float yWave = sin(uv.x * ${f(WEBGL_CONFIG.wave.mainFrequency)} + t * ${f(speedMain)}) * ${f(WEBGL_CONFIG.wave.mainAmplitude)}
+                  + sin(uv.x * ${f(WEBGL_CONFIG.wave.secondaryFreq)} - t * ${f(speedSec)}) * ${f(WEBGL_CONFIG.wave.secondaryAmp)};
 
-      float xOffset = sin(T * ${f(WEBGL_CONFIG.wave.horizontalSpeed)} + uv.y * ${f(WEBGL_CONFIG.wave.horizontalFrequency)}) * ${f(WEBGL_CONFIG.wave.horizontalAmount)};
+      float xOffset = sin(t * ${f(speedHoriz)} + uv.y * ${f(WEBGL_CONFIG.wave.horizontalFrequency)}) * ${f(WEBGL_CONFIG.wave.horizontalAmount)};
 
       float stretch = mix(
         ${f(WEBGL_CONFIG.thickness.stretchMin)},
         ${f(WEBGL_CONFIG.thickness.stretchMax)},
-        0.5 + 0.5 * sin(T * ${f(WEBGL_CONFIG.thickness.stretchSpeed)} + uv.x * ${f(WEBGL_CONFIG.thickness.stretchFrequency)})
+        0.5 + 0.5 * sin(t * ${f(speedStretch)} + uv.x * ${f(WEBGL_CONFIG.thickness.stretchFrequency)})
       );
 
       float bandThickness = BASE_THICKNESS * stretch;
@@ -699,9 +689,12 @@ function initWebGL() {
     lastTime = now;
 
     // Smooth speed transition
-    const tau = Math.max(0.0001, WEBGL_CONFIG.interaction.smoothTime);
-    curSpeed += (targetSpeed - curSpeed) * (1.0 - Math.exp(-dt / tau));
-    animTime = (animTime + dt * curSpeed) % loopTime;  // dynamic LCM-based seamless loop
+    const smoothTau = Math.max(0.0001, WEBGL_CONFIG.interaction.smoothTime);
+    curSpeed += (targetSpeed - curSpeed) * (1.0 - Math.exp(-dt / smoothTau));
+
+    // Phase-space: accumulate real seconds, normalize to 0→1 phase for shader
+    animTime = (animTime + dt * curSpeed) % LOOP_SECONDS;
+    const loopPhase = animTime / LOOP_SECONDS;
 
     // ── FBO bypass when supersampling disabled [v4: P1, P4] ──
     const directRender = (ssFactor <= 1.0);
@@ -712,7 +705,7 @@ function initWebGL() {
       gl.useProgram(program);
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clear(gl.COLOR_BUFFER_BIT);
-      if (timeLoc) gl.uniform1f(timeLoc, animTime);
+      if (timeLoc) gl.uniform1f(timeLoc, loopPhase);
 
       if (vaoExt && mainVAO) {
         vaoExt.bindVertexArrayOES(mainVAO);
@@ -733,7 +726,7 @@ function initWebGL() {
       gl.useProgram(program);
       gl.viewport(0, 0, fbWidth, fbHeight);
       gl.clear(gl.COLOR_BUFFER_BIT);  // [P1] required for tile-based mobile GPUs
-      if (timeLoc) gl.uniform1f(timeLoc, animTime);
+      if (timeLoc) gl.uniform1f(timeLoc, loopPhase);
 
       if (vaoExt && mainVAO) {
         vaoExt.bindVertexArrayOES(mainVAO);

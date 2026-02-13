@@ -4962,22 +4962,8 @@
             // SELF-CONTAINED WEBGL PREVIEW ENGINE
             // ================================================
 
-            /* ── Dynamic LCM loop time (survives config changes) ── */
-            function computeLoopTime(cfg) {
-                const speeds = [
-                    Math.abs(cfg.wave.mainSpeed),
-                    Math.abs(cfg.wave.secondarySpeed),
-                    Math.abs(cfg.wave.horizontalSpeed),
-                    Math.abs(cfg.thickness.stretchSpeed)
-                ].filter(s => s > 1e-6);
-                if (speeds.length === 0) return 6283.1853;
-                const scale = 10;
-                const ints = speeds.map(s => Math.round(s * scale));
-                const gcd = (a, b) => { while (b) { [a, b] = [b, a % b]; } return a; };
-                const lcm = (a, b) => a / gcd(a, b) * b;
-                const L = ints.reduce(lcm);
-                return (2 * Math.PI * L) / scale;
-            }
+            /* ── Master Loop Duration (phase-space) ── */
+            const PREVIEW_LOOP_SECONDS = 12.0;
 
             const previewState = {
                 gl: null,
@@ -4989,8 +4975,7 @@
                 lastTime: 0,
                 curSpeed: 1.0,
                 targetSpeed: 1.0,
-                running: false,
-                loopTime: 62.831853
+                running: false
             };
 
             /* ── GLSL float formatter ── */
@@ -5014,6 +4999,13 @@
 
                 const twistEnabled = cfg.twist.enabled;
                 const hasDerivatives = true; // dashboard always has OES_standard_derivatives
+
+                // Integer-snapped speeds for seamless phase loop
+                const speedMain    = Math.round(cfg.wave.mainSpeed);
+                const speedSec     = Math.round(cfg.wave.secondarySpeed);
+                const speedHoriz   = Math.round(cfg.wave.horizontalSpeed);
+                const speedStretch = Math.round(cfg.thickness.stretchSpeed);
+                const speedTwist   = Math.round(cfg.twist.intensity);
 
                 return `
 precision highp float;
@@ -5043,17 +5035,15 @@ vec3 getColor(int i){
 }
 
 mat2 rot(float a){float s=sin(a),c=cos(a);return mat2(c,-s,s,c);}
-float hashf(float p){
-  p = fract(p * 0.1031);
-  p *= p + 33.33;
-  p *= p + p;
-  return fract(p);
-}
 
 void main() {
   vec2 fragCoord = gl_FragCoord.xy;
   vec2 uv = (fragCoord - 0.5 * R.xy) / min(R.x, R.y);
   vec3 col = bg;
+
+  // Phase-space time: T is normalized 0→1 phase, convert to radians
+  #define TAU 6.28318530718
+  float t = T * TAU;
 
   // Early ribbon rejection (aspect-corrected for min(R.x,R.y) UV normalization)
   ${twistEnabled ? '' : `
@@ -5068,19 +5058,19 @@ void main() {
 
   // World rotation (rotate entire coordinate space, then build ribbon inside it)
   ${twistEnabled ? `
-    uv *= rot(T * ${fmtF(cfg.twist.intensity)});
+    uv *= rot(t * ${fmtF(speedTwist)});
   ` : ''}
 
-  // Wave motion (computed on twisted UVs)
-  float yWave = sin(uv.x * ${fmtF(cfg.wave.mainFrequency)} + T * ${fmtF(cfg.wave.mainSpeed)}) * ${fmtF(cfg.wave.mainAmplitude)}
-              + sin(uv.x * ${fmtF(cfg.wave.secondaryFreq)} - T * ${fmtF(cfg.wave.secondarySpeed)}) * ${fmtF(cfg.wave.secondaryAmp)};
+  // Wave motion (integer speeds × phase radians = guaranteed seamless loop)
+  float yWave = sin(uv.x * ${fmtF(cfg.wave.mainFrequency)} + t * ${fmtF(speedMain)}) * ${fmtF(cfg.wave.mainAmplitude)}
+              + sin(uv.x * ${fmtF(cfg.wave.secondaryFreq)} - t * ${fmtF(speedSec)}) * ${fmtF(cfg.wave.secondaryAmp)};
 
-  float xOffset = sin(T * ${fmtF(cfg.wave.horizontalSpeed)} + uv.y * ${fmtF(cfg.wave.horizontalFrequency)}) * ${fmtF(cfg.wave.horizontalAmount)};
+  float xOffset = sin(t * ${fmtF(speedHoriz)} + uv.y * ${fmtF(cfg.wave.horizontalFrequency)}) * ${fmtF(cfg.wave.horizontalAmount)};
 
   float stretch = mix(
     ${fmtF(cfg.thickness.stretchMin)},
     ${fmtF(cfg.thickness.stretchMax)},
-    0.5 + 0.5 * sin(T * ${fmtF(cfg.thickness.stretchSpeed)} + uv.x * ${fmtF(cfg.thickness.stretchFrequency)})
+    0.5 + 0.5 * sin(t * ${fmtF(speedStretch)} + uv.x * ${fmtF(cfg.thickness.stretchFrequency)})
   );
 
   float bandThickness = BASE_THICKNESS * stretch;
@@ -5250,7 +5240,6 @@ void main() {
                 previewState.timeLoc = gl.getUniformLocation(newProg, 'iTime');
 
                 resizePreviewCanvas();
-                previewState.loopTime = computeLoopTime(liveConfig);
             }
 
             /* ── Resize canvas to CSS dimensions ── */
@@ -5282,10 +5271,13 @@ void main() {
                 const tau = Math.max(0.0001, liveConfig.interaction.smoothTime);
                 previewState.curSpeed += (previewState.targetSpeed - previewState.curSpeed)
                     * (1.0 - Math.exp(-dt / tau));
-                previewState.animTime = (previewState.animTime + dt * previewState.curSpeed) % previewState.loopTime;
+
+                // Phase-space: accumulate real seconds, normalize to 0→1 phase for shader
+                previewState.animTime = (previewState.animTime + dt * previewState.curSpeed) % PREVIEW_LOOP_SECONDS;
+                const loopPhase = previewState.animTime / PREVIEW_LOOP_SECONDS;
 
                 gl.clear(gl.COLOR_BUFFER_BIT);
-                if (previewState.timeLoc) gl.uniform1f(previewState.timeLoc, previewState.animTime);
+                if (previewState.timeLoc) gl.uniform1f(previewState.timeLoc, loopPhase);
                 gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
                 previewState.rafId = requestAnimationFrame(renderPreviewFrame);
