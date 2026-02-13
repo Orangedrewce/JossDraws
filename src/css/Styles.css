@@ -60,13 +60,22 @@
   /* Arrow */
   --arrow-font-size: 1.5rem;
 
+  /* Z-Index Scale */
+  --z-base: 0;           /* Background elements */
+  --z-elevated: 1;       /* Slightly elevated content */
+  --z-content: 2;        /* Main content layer */
+  --z-ui: 3;             /* UI elements (arrows, controls) */
+  --z-elevated-card: 10; /* Focused/expanded cards */
+  --z-sticky: 50;        /* Sticky elements (future use) */
+  --z-overlay: 100;      /* Overlays, spinners */
+  --z-modal: 200;        /* Modals, skip links */
+  --z-dropdown: 300;     /* Dropdowns (future use) */
+
   /* Spinner Positioning */
   --spinner-y-position: 30%;        /* Vertical position (0% = top, 50% = middle, 100% = bottom) */
   --spinner-x-position: 50%;        /* Horizontal position (0% = left, 50% = center, 100% = right) */
   --spinner-translate-x: -50%;      /* X-axis centering offset */
   --spinner-translate-y: -50%;      /* Y-axis centering offset */
-  --spinner-z-image: 1;             /* Z-index for image spinners */
-  --spinner-z-decorative: 100;      /* Z-index for decorative tab spinners */
 }
 
 /* =============================================================================
@@ -133,7 +142,7 @@ button {
   background: var(--color-text);
   color: var(--color-bg);
   padding: var(--spacing-sm) var(--spacing-md);
-  z-index: 200;
+  z-index: var(--z-modal);
   transition: top var(--transition-speed);
 }
 
@@ -267,7 +276,7 @@ header {
 .header-background {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: var(--z-base);
   pointer-events: none;
   width: 100%;
   height: 100%;
@@ -290,7 +299,7 @@ canvas.header-background {
 
 .header-container {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-elevated);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -448,7 +457,7 @@ nav label:focus-visible {
   max-width: 90%;
   box-sizing: border-box;
   word-break: break-word;
-  z-index: 2;
+  z-index: var(--z-content);
 }
 
 .hero-image-link:hover .hero-overlay-text {
@@ -530,7 +539,7 @@ nav label:focus-visible {
   grid-column: 1 / -1;
   border-color: var(--color-text);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  z-index: 10;
+  z-index: var(--z-elevated-card);
   max-height: 80vh;
   display: flex;
   align-items: center;
@@ -728,7 +737,7 @@ nav label:focus-visible {
   font-weight: 600;
   cursor: pointer;
   opacity: 0;
-  z-index: 3;
+  z-index: var(--z-ui);
   transition: opacity var(--transition-speed-slow), background var(--transition-speed);
   color: var(--color-text);
   display: flex;
@@ -892,13 +901,13 @@ footer {
 .footer-background {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: var(--z-base);
   pointer-events: none;
 }
 
 footer nav {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-elevated);
   display: flex;
   justify-content: center;
 }
@@ -912,7 +921,7 @@ footer ul {
 
 footer p {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-elevated);
   font-size: 0.875rem;
 }
 
@@ -941,7 +950,7 @@ footer a:focus-visible {
   padding: var(--spacing-md) 0;
   border-top: 1px solid var(--color-border);
   box-shadow: 0 -2px 8px var(--color-shadow);
-  z-index: 10;
+  z-index: var(--z-elevated-card);
   margin-top: auto;
 }
 
@@ -1171,7 +1180,7 @@ footer a:focus-visible {
   text-align: left;
   border-radius: 0 0 var(--border-radius) var(--border-radius);
   opacity: 0.9;
-  z-index: 2; /* ensure caption sits above the image layer */
+  z-index: var(--z-content); /* ensure caption sits above the image layer */
   transition: opacity var(--transition-speed), transform var(--transition-speed);
   pointer-events: none; /* don’t block clicks */
 }
@@ -1190,7 +1199,7 @@ footer a:focus-visible {
   outline: 3px solid #0078d7;
   outline-offset: 3px;
   box-shadow: 0 0 0 6px rgba(0, 120, 215, 0.2);
-  z-index: 10;
+  z-index: var(--z-elevated-card);
 }
 
 .mvc-btn:focus-visible {
@@ -1271,7 +1280,7 @@ footer a:focus-visible {
   bottom: 8px;
   display: flex;
   gap: 6px;
-  z-index: 3;
+  z-index: var(--z-ui);
   opacity: 0.0;
   transition: opacity var(--transition-speed);
 }
@@ -1308,7 +1317,7 @@ footer a:focus-visible {
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  z-index: 10;
+  z-index: var(--z-elevated-card);
   padding: var(--spacing-xl);
   display: flex;
   flex-direction: column;
@@ -1371,7 +1380,7 @@ footer a:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
+  z-index: var(--z-content);
   pointer-events: none;
 }
 
@@ -1423,7 +1432,7 @@ footer a:focus-visible {
   animation: spinner-rotate 0.8s linear infinite;
   opacity: 1;
   transition: opacity 0.3s;
-  z-index: var(--spinner-z-image);
+  z-index: var(--z-elevated);
   background: rgba(255, 255, 255, 0.9);
   padding: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -1435,7 +1444,7 @@ footer a:focus-visible {
 
 .img-loading-wrapper img {
   position: relative;
-  z-index: 2;
+  z-index: var(--z-content);
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -1557,7 +1566,7 @@ footer a:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: var(--spinner-z-decorative);
+  z-index: var(--z-overlay);
   opacity: 1;
   transition: opacity 0.3s;
   pointer-events: none;

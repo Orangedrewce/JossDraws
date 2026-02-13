@@ -133,6 +133,10 @@
       const next = pickTabFromHash();
       selectTab(next, { replace: true, scroll: false });
     });
+
+    // Signal to other modules that tab state is stable
+    window.__tabsReady = true;
+    window.dispatchEvent(new Event("tabs:ready"));
   }
 
   if (document.readyState === "loading") {

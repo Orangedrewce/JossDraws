@@ -109,10 +109,10 @@
     const dbSlides = await fetchSlidesFromDB();
     if (dbSlides && dbSlides.length > 0) {
       cachedSlides = dbSlides;
-      console.log(`🖼️ Hero slideshow: loaded ${dbSlides.length} slides from database`);
+      console.log(`Hero slideshow: loaded ${dbSlides.length} slides from database`);
     } else {
       cachedSlides = fallbackImages;
-      console.log('🖼️ Hero slideshow: using fallback images');
+      console.log('Hero slideshow: using fallback images');
     }
 
     injectImage(heroSlideshow, pickRandom(cachedSlides));

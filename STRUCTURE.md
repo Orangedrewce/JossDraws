@@ -20,7 +20,7 @@ git push origin dev:main
 
 # 6) Pull main back to dev (keeps things in sync)
 git fetch
-git pull origin main
+git pull origin main #oh fuck go back git push origin dev:main --force
 ```
 
 ## If Push Is Rejected
