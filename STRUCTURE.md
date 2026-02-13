@@ -16,6 +16,7 @@ git add -A
 git commit -m "Your message"
 
 # 5) Publish to live site
+git push origin dev:main
 
 
 # 6) Pull main back to dev (keeps things in sync)

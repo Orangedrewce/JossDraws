@@ -102,7 +102,7 @@
         const CONFIG = {
             SUPABASE_URL: 'https://pciubbwphwpnptgawgok.supabase.co',
             SUPABASE_KEY: 'sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv',
-            SITE_URL: 'https://www.jossdraws.com/review.html',
+            SITE_URL: 'https://www.jossdraws.com/Dashboard/review.html',
             MAX_RETRIES: 3,
             RETRY_DELAY: 1000
         };
@@ -4247,13 +4247,13 @@
                     const key = `${action}-${id}`;
                     if (!reviewDeletePending.has(key)) {
                         reviewDeletePending.set(key, true);
-                        btn.textContent = action === 'delete' ? '⚠️ Sure?' : '⚠️ Purge forever?';
+                        btn.textContent = action === 'delete' ? '⚠️ U Sure?' : '⚠️ Purge forever?';
                         btn.classList.remove('danger');
                         btn.classList.add('confirm-armed');
                         setTimeout(() => {
                             if (reviewDeletePending.has(key)) {
                                 reviewDeletePending.delete(key);
-                                btn.textContent = action === 'delete' ? '🗑️ Delete' : '💀 Purge';
+                                btn.textContent = action === 'delete' ? '🗑️ Delete' : 'Purge';
                                 btn.classList.remove('confirm-armed');
                                 btn.classList.add('danger');
                             }
@@ -4719,6 +4719,693 @@
                     loadAboutContent();
                 }
             });
+        }
+
+        // ============================================
+        // BANNER PARAMETERS
+        // ============================================
+        {
+            Trace.group('BANNER_PARAMS');
+
+            const bEl = {
+                section:   document.getElementById('bannerParamsSection'),
+                canvas:    document.getElementById('shaderCanvas'),
+                overlay:   document.getElementById('bannerPreviewOverlay'),
+                wrapper:   document.getElementById('bannerPreviewWrapper'),
+                resetBtn:  document.getElementById('reset-params'),
+                exportBtn: document.getElementById('export-params'),
+                message:   document.getElementById('bannerParamsMessage')
+            };
+
+            /* ── Default values (mirror of WEBGL_CONFIG in webgl.js) ── */
+            const BANNER_DEFAULTS = {
+                colors: {
+                    c0: { r: 0.004, g: 0.569, b: 0.663 },
+                    c1: { r: 0.482, g: 0.804, b: 0.796 },
+                    c2: { r: 0.988, g: 0.855, b: 0.024 },
+                    c3: { r: 0.973, g: 0.561, b: 0.173 },
+                    c4: { r: 0.937, g: 0.341, b: 0.553 },
+                    background: { r: 1.0, g: 1.0, b: 1.0 }
+                },
+                thickness: {
+                    base: 0.10,
+                    stretchMin: 0.8,
+                    stretchMax: 1.2,
+                    stretchSpeed: 1.3,
+                    stretchFrequency: 2.5
+                },
+                wave: {
+                    mainSpeed: 1.0,
+                    mainFrequency: 3.0,
+                    mainAmplitude: 0.25,
+                    secondarySpeed: 1.8,
+                    secondaryFreq: 1.1,
+                    secondaryAmp: 0.1,
+                    horizontalSpeed: 0.7,
+                    horizontalFrequency: 2.0,
+                    horizontalAmount: 0.25,
+                    offsetBlend: 0.3
+                },
+                twist: {
+                    enabled: true,
+                    period: 6.0,
+                    duration: 0.9,
+                    intensity: 0.5,
+                    randomSeed: 12.345
+                },
+                appearance: {
+                    brightness: 1.125,
+                    plasticEffect: true,
+                    centerSoftness: 10.0,
+                    specularPower: 50.0,
+                    specularIntensity: 0.75,
+                    shadowStrength: 0.1,
+                    shadowWidth: 2.0,
+                    aaSharpness: 0.5,
+                    aaFallback: 0.001
+                },
+                positioning: {
+                    verticalOffset: 0.205,
+                    bandCount: 5
+                },
+                interaction: {
+                    hoverSlowdown: 0.1,
+                    smoothTime: 0.25
+                },
+                performance: {
+                    supersampleDesktop: 2.5,
+                    supersampleMobile: 1.0,
+                    mobileBreakpoint: 768,
+                    respectDPR: true,
+                    pauseWhenHidden: true,
+                    maxDeltaTime: 0.05,
+                    debugMode: false
+                }
+            };
+
+            /* ── Map of every control: config path → DOM id ── */
+            const PARAM_MAP = [
+                // Thickness
+                { path: 'thickness.base',             id: 'thickness-base',             type: 'range' },
+                { path: 'thickness.stretchMin',       id: 'thickness-stretchMin',       type: 'range' },
+                { path: 'thickness.stretchMax',       id: 'thickness-stretchMax',       type: 'range' },
+                { path: 'thickness.stretchSpeed',     id: 'thickness-stretchSpeed',     type: 'range' },
+                { path: 'thickness.stretchFrequency', id: 'thickness-stretchFrequency', type: 'range' },
+                // Wave
+                { path: 'wave.mainSpeed',             id: 'wave-mainSpeed',             type: 'range' },
+                { path: 'wave.mainFrequency',         id: 'wave-mainFrequency',         type: 'range' },
+                { path: 'wave.mainAmplitude',         id: 'wave-mainAmplitude',         type: 'range' },
+                { path: 'wave.secondarySpeed',        id: 'wave-secondarySpeed',        type: 'range' },
+                { path: 'wave.secondaryFreq',         id: 'wave-secondaryFreq',         type: 'range' },
+                { path: 'wave.secondaryAmp',          id: 'wave-secondaryAmp',          type: 'range' },
+                { path: 'wave.horizontalSpeed',       id: 'wave-horizontalSpeed',       type: 'range' },
+                { path: 'wave.horizontalFrequency',   id: 'wave-horizontalFrequency',   type: 'range' },
+                { path: 'wave.horizontalAmount',      id: 'wave-horizontalAmount',      type: 'range' },
+                { path: 'wave.offsetBlend',           id: 'wave-offsetBlend',           type: 'range' },
+                // Twist
+                { path: 'twist.enabled',              id: 'twist-enabled',              type: 'checkbox' },
+                { path: 'twist.period',               id: 'twist-period',               type: 'range' },
+                { path: 'twist.duration',             id: 'twist-duration',             type: 'range' },
+                { path: 'twist.intensity',            id: 'twist-intensity',            type: 'range' },
+                { path: 'twist.randomSeed',           id: 'twist-randomSeed',           type: 'number' },
+                // Appearance
+                { path: 'appearance.brightness',         id: 'appearance-brightness',         type: 'range' },
+                { path: 'appearance.plasticEffect',      id: 'appearance-plasticEffect',      type: 'checkbox' },
+                { path: 'appearance.centerSoftness',     id: 'appearance-centerSoftness',     type: 'range' },
+                { path: 'appearance.specularPower',      id: 'appearance-specularPower',      type: 'range' },
+                { path: 'appearance.specularIntensity',  id: 'appearance-specularIntensity',  type: 'range' },
+                { path: 'appearance.shadowStrength',     id: 'appearance-shadowStrength',     type: 'range' },
+                { path: 'appearance.shadowWidth',        id: 'appearance-shadowWidth',        type: 'range' },
+                { path: 'appearance.aaSharpness',        id: 'appearance-aaSharpness',        type: 'range' },
+                { path: 'appearance.aaFallback',         id: 'appearance-aaFallback',         type: 'number' },
+                // Positioning
+                { path: 'positioning.verticalOffset',    id: 'positioning-verticalOffset',    type: 'range' },
+                { path: 'positioning.bandCount',         id: 'positioning-bandCount',         type: 'number' },
+                // Interaction
+                { path: 'interaction.hoverSlowdown',     id: 'interaction-hoverSlowdown',     type: 'range' },
+                { path: 'interaction.smoothTime',        id: 'interaction-smoothTime',        type: 'range' },
+                // Performance
+                { path: 'performance.supersampleDesktop', id: 'performance-supersampleDesktop', type: 'range' },
+                { path: 'performance.supersampleMobile',  id: 'performance-supersampleMobile',  type: 'range' },
+                { path: 'performance.mobileBreakpoint',   id: 'performance-mobileBreakpoint',   type: 'number' },
+                { path: 'performance.respectDPR',         id: 'performance-respectDPR',         type: 'checkbox' },
+                { path: 'performance.pauseWhenHidden',    id: 'performance-pauseWhenHidden',    type: 'checkbox' },
+                { path: 'performance.maxDeltaTime',       id: 'performance-maxDeltaTime',       type: 'range' },
+                { path: 'performance.debugMode',          id: 'performance-debugMode',          type: 'checkbox' }
+            ];
+
+            /* ── Helpers ── */
+            function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+            function getPath(obj, path) {
+                const parts = path.split('.');
+                let cur = obj;
+                for (const p of parts) { cur = cur?.[p]; }
+                return cur;
+            }
+            function setPath(obj, path, val) {
+                const parts = path.split('.');
+                let cur = obj;
+                for (let i = 0; i < parts.length - 1; i++) {
+                    if (cur[parts[i]] == null) cur[parts[i]] = {};
+                    cur = cur[parts[i]];
+                }
+                cur[parts[parts.length - 1]] = val;
+            }
+
+            /* ── Live config object (mutable, used by preview engine) ── */
+            let liveConfig = deepClone(BANNER_DEFAULTS);
+
+            /* ── Sync UI controls from liveConfig ── */
+            function syncControls() {
+                for (const p of PARAM_MAP) {
+                    const val = getPath(liveConfig, p.path);
+                    if (val === undefined) continue;
+                    if (p.type === 'checkbox') {
+                        const el = document.getElementById(p.id);
+                        if (el) el.checked = !!val;
+                    } else if (p.type === 'range') {
+                        const slider = document.getElementById(p.id);
+                        const num = document.getElementById(p.id + '-num');
+                        if (slider) slider.value = val;
+                        if (num) num.value = val;
+                    } else {
+                        const el = document.getElementById(p.id);
+                        if (el) el.value = val;
+                    }
+                }
+            }
+
+            /* ── Read a single control value ── */
+            function readControlValue(p) {
+                if (p.type === 'checkbox') {
+                    const el = document.getElementById(p.id);
+                    return el ? el.checked : getPath(BANNER_DEFAULTS, p.path);
+                }
+                const el = document.getElementById(p.id);
+                if (!el) return getPath(BANNER_DEFAULTS, p.path);
+                const v = parseFloat(el.value);
+                return isNaN(v) ? getPath(BANNER_DEFAULTS, p.path) : v;
+            }
+
+            /* ── Read all controls into liveConfig ── */
+            function readAllControls() {
+                for (const p of PARAM_MAP) {
+                    setPath(liveConfig, p.path, readControlValue(p));
+                }
+            }
+
+            /* ── Debounced preview rebuild ── */
+            let rebuildTimer = null;
+            function scheduleRebuild() {
+                readAllControls();
+                clearTimeout(rebuildTimer);
+                rebuildTimer = setTimeout(() => { rebuildPreview(); }, 150);
+            }
+
+            /* ── Bidirectional slider ↔ number sync ── */
+            if (bEl.section) {
+                bEl.section.addEventListener('input', (e) => {
+                    const el = e.target;
+                    if (!el || !el.id) return;
+
+                    // Slider changed → update paired number
+                    if (el.type === 'range') {
+                        const numEl = document.getElementById(el.id + '-num');
+                        if (numEl) numEl.value = el.value;
+                    }
+                    // Number changed → update paired slider
+                    else if (el.type === 'number' && el.id.endsWith('-num')) {
+                        const sliderId = el.id.replace(/-num$/, '');
+                        const sliderEl = document.getElementById(sliderId);
+                        if (sliderEl) sliderEl.value = el.value;
+                    }
+                    scheduleRebuild();
+                });
+
+                // Checkbox toggles fire 'change', not always 'input'
+                bEl.section.addEventListener('change', (e) => {
+                    if (e.target && e.target.type === 'checkbox') {
+                        scheduleRebuild();
+                    }
+                });
+            }
+
+            // ================================================
+            // SELF-CONTAINED WEBGL PREVIEW ENGINE
+            // ================================================
+            const previewState = {
+                gl: null,
+                program: null,
+                resLoc: null,
+                timeLoc: null,
+                rafId: null,
+                animTime: 0,
+                lastTime: 0,
+                curSpeed: 1.0,
+                targetSpeed: 1.0,
+                running: false
+            };
+
+            /* ── GLSL float formatter ── */
+            function fmtF(num) {
+                const n = Math.round(num * 1e6) / 1e6;
+                return Number.isInteger(n) ? `${n}.0` : `${n}`;
+            }
+            function fmtVec3(c) {
+                return `vec3(${fmtF(c.r)}, ${fmtF(c.g)}, ${fmtF(c.b)})`;
+            }
+
+            /* ── Build fragment shader from liveConfig ── */
+            function buildFragmentShader(cfg) {
+                const bandMax = cfg.positioning.bandCount - 1;
+                const maxWaveAbs = cfg.wave.mainAmplitude
+                    + cfg.wave.secondaryAmp
+                    + (cfg.wave.horizontalAmount * Math.abs(cfg.wave.offsetBlend));
+                const maxRibbonHalfHeight = maxWaveAbs
+                    + (cfg.thickness.base * cfg.thickness.stretchMax * cfg.positioning.bandCount)
+                    + cfg.appearance.aaFallback;
+
+                const twistEnabled = cfg.twist.enabled;
+                const hasDerivatives = true; // dashboard always has OES_standard_derivatives
+
+                return `
+precision highp float;
+#extension GL_OES_standard_derivatives : enable
+
+uniform vec2 iResolution;
+uniform float iTime;
+
+#define R iResolution
+#define T iTime
+#define BASE_THICKNESS ${fmtF(cfg.thickness.base)}
+
+vec3 c0 = ${fmtVec3(cfg.colors.c0)};
+vec3 c1 = ${fmtVec3(cfg.colors.c1)};
+vec3 c2 = ${fmtVec3(cfg.colors.c2)};
+vec3 c3 = ${fmtVec3(cfg.colors.c3)};
+vec3 c4 = ${fmtVec3(cfg.colors.c4)};
+vec3 bg = ${fmtVec3(cfg.colors.background)};
+
+vec3 getColor(int i){
+    if(i==0) return c0;
+    if(i==1) return c1;
+    if(i==2) return c2;
+    if(i==3) return c3;
+    if(i==4) return c4;
+    return vec3(1.0);
+}
+
+mat2 rot(float a){float s=sin(a),c=cos(a);return mat2(c,-s,s,c);}
+float hashf(float p){
+  p = fract(p * 0.1031);
+  p *= p + 33.33;
+  p *= p + p;
+  return fract(p);
+}
+
+void main() {
+  vec2 fragCoord = gl_FragCoord.xy;
+  vec2 uv = (fragCoord - 0.5 * R.xy) / R.y;
+  vec3 col = bg;
+
+  float ribbonMinY = ${fmtF(cfg.positioning.verticalOffset)} - ${fmtF(maxRibbonHalfHeight)};
+  float ribbonMaxY = ${fmtF(cfg.positioning.verticalOffset)} + ${fmtF(maxRibbonHalfHeight)};
+  if (uv.y < ribbonMinY || uv.y > ribbonMaxY) {
+    gl_FragColor = vec4(bg, 1.0);
+    return;
+  }
+
+  float yWave = sin(uv.x * ${fmtF(cfg.wave.mainFrequency)} + T * ${fmtF(cfg.wave.mainSpeed)}) * ${fmtF(cfg.wave.mainAmplitude)}
+              + sin(uv.x * ${fmtF(cfg.wave.secondaryFreq)} - T * ${fmtF(cfg.wave.secondarySpeed)}) * ${fmtF(cfg.wave.secondaryAmp)};
+
+  float xOffset = sin(T * ${fmtF(cfg.wave.horizontalSpeed)} + uv.y * ${fmtF(cfg.wave.horizontalFrequency)}) * ${fmtF(cfg.wave.horizontalAmount)};
+
+  float stretch = ${fmtF(cfg.thickness.stretchMin)} +
+                  ${fmtF(cfg.thickness.stretchMax - cfg.thickness.stretchMin)} * sin(T * ${fmtF(cfg.thickness.stretchSpeed)} + uv.x * ${fmtF(cfg.thickness.stretchFrequency)});
+
+  float bandThickness = BASE_THICKNESS * stretch;
+  float offset = (uv.y - yWave) + xOffset * ${fmtF(cfg.wave.offsetBlend)};
+
+  ${twistEnabled ? `
+    float twistPeriod = ${fmtF(cfg.twist.period)};
+    float tPhase = floor(T / twistPeriod);
+    float localT = fract(T / twistPeriod);
+    float twistAngle = smoothstep(0.0, ${fmtF(cfg.twist.duration)}, localT) * 3.14159;
+    float randDir = mix(-1.0, 1.0, step(0.5, hashf(tPhase + ${fmtF(cfg.twist.randomSeed)})));
+    twistAngle *= randDir;
+    uv *= rot(twistAngle * ${fmtF(cfg.twist.intensity)});
+  ` : ''}
+
+  float s = (offset + ${fmtF(cfg.positioning.verticalOffset)}) / bandThickness;
+
+  ${hasDerivatives ? `
+  float aaw = max(fwidth(s) * ${fmtF(cfg.appearance.aaSharpness)}, ${fmtF(cfg.appearance.aaFallback)});
+  ` : `
+  float aaw = ${fmtF(cfg.appearance.aaFallback)};
+  `}
+
+  float xi = floor(s);
+  float xf = s - xi;
+
+  int iCenter = int(xi);
+  int cCenter = int(clamp(float(iCenter), 0.0, ${fmtF(bandMax)}));
+  vec3 bandCol;
+
+  if (xf > aaw && xf < (1.0 - aaw)) {
+    bandCol = getColor(cCenter);
+  } else {
+    int cLeft   = int(clamp(float(iCenter - 1), 0.0, ${fmtF(bandMax)}));
+    int cRight  = int(clamp(float(iCenter + 1), 0.0, ${fmtF(bandMax)}));
+
+    vec3 colC = getColor(cCenter);
+    vec3 colL = getColor(cLeft);
+    vec3 colR = getColor(cRight);
+
+    float wL = 1.0 - smoothstep(0.0, aaw, xf);
+    float wR = smoothstep(1.0 - aaw, 1.0, xf);
+    float w0 = 1.0 - wL - wR;
+    bandCol = colC*w0 + colL*wL + colR*wR;
+  }
+
+  vec3 shaded = bandCol;
+
+  ${cfg.appearance.plasticEffect ? `
+    float dEdge = min(xf, 1.0 - xf);
+    float centerFactor = smoothstep(0.0, ${fmtF(cfg.appearance.centerSoftness)}, dEdge);
+    shaded = bandCol * mix(${fmtF(cfg.appearance.brightness)}, 1.0, centerFactor);
+    float highlight = pow(centerFactor, ${fmtF(cfg.appearance.specularPower)});
+    shaded = mix(shaded, vec3(1.0), highlight * ${fmtF(cfg.appearance.specularIntensity)});
+    float edgeShadow = 1.0 - smoothstep(0.0, max(aaw * ${fmtF(cfg.appearance.shadowWidth)}, 0.002), xf);
+    shaded *= 1.0 - edgeShadow * ${fmtF(cfg.appearance.shadowStrength)};
+  ` : `
+    shaded = bandCol * ${fmtF(cfg.appearance.brightness)};
+  `}
+
+  float inRangeAA = smoothstep(-aaw, 0.0, s) * (1.0 - smoothstep(${fmtF(cfg.positioning.bandCount)}, ${fmtF(cfg.positioning.bandCount)} + aaw, s));
+  col = mix(bg, shaded, inRangeAA);
+
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
+            }
+
+            /* ── Compile a single shader ── */
+            function compileShaderSrc(gl, src, type) {
+                const sh = gl.createShader(type);
+                gl.shaderSource(sh, src);
+                gl.compileShader(sh);
+                if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+                    console.error('[BannerPreview] Shader compile error:', gl.getShaderInfoLog(sh));
+                    gl.deleteShader(sh);
+                    return null;
+                }
+                return sh;
+            }
+
+            /* ── Create a WebGL program ── */
+            function createPreviewProgram(gl, vsSrc, fsSrc) {
+                const vs = compileShaderSrc(gl, vsSrc, gl.VERTEX_SHADER);
+                const fs = compileShaderSrc(gl, fsSrc, gl.FRAGMENT_SHADER);
+                if (!vs || !fs) {
+                    if (vs) gl.deleteShader(vs);
+                    if (fs) gl.deleteShader(fs);
+                    return null;
+                }
+                const prog = gl.createProgram();
+                gl.attachShader(prog, vs);
+                gl.attachShader(prog, fs);
+                gl.linkProgram(prog);
+                if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+                    console.error('[BannerPreview] Program link error:', gl.getProgramInfoLog(prog));
+                    gl.deleteProgram(prog);
+                    gl.deleteShader(vs);
+                    gl.deleteShader(fs);
+                    return null;
+                }
+                gl.deleteShader(vs);
+                gl.deleteShader(fs);
+                return prog;
+            }
+
+            /* ── Init WebGL context on the preview canvas ── */
+            function initPreview() {
+                if (!bEl.canvas) return false;
+
+                const glOpts = { alpha: false, antialias: false, powerPreference: 'default' };
+                const gl = bEl.canvas.getContext('webgl', glOpts)
+                        || bEl.canvas.getContext('experimental-webgl', glOpts);
+                if (!gl) {
+                    console.warn('[BannerPreview] WebGL not supported');
+                    return false;
+                }
+                gl.getExtension('OES_standard_derivatives');
+
+                previewState.gl = gl;
+
+                // Fullscreen quad
+                const buf = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+                gl.enableVertexAttribArray(0);
+                gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+                previewState.buffer = buf;
+
+                // Build initial program
+                const vsSrc = 'attribute vec2 a_position; void main(){ gl_Position = vec4(a_position,0.0,1.0); }';
+                const fsSrc = buildFragmentShader(liveConfig);
+                const prog = createPreviewProgram(gl, vsSrc, fsSrc);
+                if (!prog) return false;
+
+                previewState.program = prog;
+                gl.useProgram(prog);
+                previewState.resLoc  = gl.getUniformLocation(prog, 'iResolution');
+                previewState.timeLoc = gl.getUniformLocation(prog, 'iTime');
+
+                const bgC = liveConfig.colors.background;
+                gl.clearColor(bgC.r, bgC.g, bgC.b, 1.0);
+
+                resizePreviewCanvas();
+
+                // Hide overlay
+                if (bEl.overlay) {
+                    bEl.overlay.style.opacity = '0';
+                    bEl.overlay.style.pointerEvents = 'none';
+                }
+
+                Trace.log('BANNER_PREVIEW_INIT');
+                return true;
+            }
+
+            /* ── Rebuild shader program (hot-swap) ── */
+            function rebuildShader() {
+                const gl = previewState.gl;
+                if (!gl) return;
+                const vsSrc = 'attribute vec2 a_position; void main(){ gl_Position = vec4(a_position,0.0,1.0); }';
+                const fsSrc = buildFragmentShader(liveConfig);
+                const newProg = createPreviewProgram(gl, vsSrc, fsSrc);
+                if (!newProg) return;
+                if (previewState.program) gl.deleteProgram(previewState.program);
+                previewState.program = newProg;
+                gl.useProgram(newProg);
+
+                // Re-bind attribute (location 0 = a_position)
+                gl.bindBuffer(gl.ARRAY_BUFFER, previewState.buffer);
+                gl.enableVertexAttribArray(0);
+                gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+                previewState.resLoc  = gl.getUniformLocation(newProg, 'iResolution');
+                previewState.timeLoc = gl.getUniformLocation(newProg, 'iTime');
+
+                resizePreviewCanvas();
+            }
+
+            /* ── Resize canvas to CSS dimensions ── */
+            function resizePreviewCanvas() {
+                const gl = previewState.gl;
+                if (!gl || !bEl.canvas) return;
+                const dpr = window.devicePixelRatio || 1;
+                const w = Math.max(1, Math.floor(bEl.canvas.clientWidth * dpr));
+                const h = Math.max(1, Math.floor(bEl.canvas.clientHeight * dpr));
+                if (bEl.canvas.width !== w || bEl.canvas.height !== h) {
+                    bEl.canvas.width = w;
+                    bEl.canvas.height = h;
+                }
+                gl.viewport(0, 0, w, h);
+                if (previewState.resLoc) gl.uniform2f(previewState.resLoc, w, h);
+            }
+
+            /* ── Render one frame with hover slowdown ── */
+            function renderPreviewFrame(timestamp) {
+                if (!previewState.running) return;
+                const gl = previewState.gl;
+                if (!gl) return;
+
+                const now = timestamp * 0.001;
+                const dt = Math.min(now - previewState.lastTime, 0.05);
+                previewState.lastTime = now;
+
+                // Smooth speed transition for hover slowdown
+                const tau = Math.max(0.0001, liveConfig.interaction.smoothTime);
+                previewState.curSpeed += (previewState.targetSpeed - previewState.curSpeed)
+                    * (1.0 - Math.exp(-dt / tau));
+                previewState.animTime = (previewState.animTime + dt * previewState.curSpeed) % 10000.0;
+
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                if (previewState.timeLoc) gl.uniform1f(previewState.timeLoc, previewState.animTime);
+                gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+                previewState.rafId = requestAnimationFrame(renderPreviewFrame);
+            }
+
+            /* ── Start / stop / rebuild helpers ── */
+            function startPreview() {
+                if (previewState.running) return;
+                previewState.running = true;
+                previewState.lastTime = performance.now() * 0.001;
+                previewState.rafId = requestAnimationFrame(renderPreviewFrame);
+            }
+            function stopPreview() {
+                previewState.running = false;
+                if (previewState.rafId) {
+                    cancelAnimationFrame(previewState.rafId);
+                    previewState.rafId = null;
+                }
+            }
+            function rebuildPreview() {
+                if (!previewState.gl) return;
+                rebuildShader();
+            }
+
+            /* ── Message flash ── */
+            function showBannerMsg(text, type) {
+                if (!bEl.message) return;
+                bEl.message.textContent = text;
+                bEl.message.className = 'gallery-msg ' + (type === 'error' ? 'is-error' : 'is-success');
+                bEl.message.classList.remove('is-hidden');
+                setTimeout(() => { bEl.message.classList.add('is-hidden'); }, 4000);
+            }
+
+            /* ── Build config for publishing (colors excluded) ── */
+            function buildPublishConfig() {
+                const out = {};
+                const groups = ['thickness', 'wave', 'twist', 'appearance', 'positioning', 'interaction', 'performance'];
+                for (const g of groups) {
+                    if (liveConfig[g]) out[g] = deepClone(liveConfig[g]);
+                }
+                return out;
+            }
+
+            /* ── Load saved config from Supabase ── */
+            async function loadBannerConfig() {
+                if (!db || !adminCode) return;
+                try {
+                    const { data, error } = await db.rpc('admin_get_banner_config', {
+                        p_admin_code: adminCode
+                    });
+                    if (error) throw error;
+                    if (data?.success && data.config) {
+                        const saved = data.config;
+                        const groups = ['thickness', 'wave', 'twist', 'appearance', 'positioning', 'interaction', 'performance'];
+                        for (const g of groups) {
+                            if (saved[g] && typeof saved[g] === 'object' && liveConfig[g]) {
+                                for (const key in saved[g]) {
+                                    if (key in liveConfig[g]) {
+                                        liveConfig[g][key] = saved[g][key];
+                                    }
+                                }
+                            }
+                        }
+                        Trace.log('BANNER_CONFIG_LOADED');
+                    }
+                } catch (err) {
+                    console.warn('[BannerParams] Failed to load config:', err);
+                }
+            }
+
+            /* ── Reset button ── */
+            if (bEl.resetBtn) {
+                bEl.resetBtn.addEventListener('click', () => {
+                    liveConfig = deepClone(BANNER_DEFAULTS);
+                    syncControls();
+                    rebuildPreview();
+                    showBannerMsg('Reset to defaults', 'success');
+                    Trace.log('BANNER_RESET');
+                });
+            }
+
+            /* ── Publish button (save to Supabase) ── */
+            if (bEl.exportBtn) {
+                bEl.exportBtn.addEventListener('click', async () => {
+                    if (!db || !adminCode) {
+                        showBannerMsg('Not authenticated', 'error');
+                        return;
+                    }
+                    bEl.exportBtn.disabled = true;
+                    bEl.exportBtn.textContent = 'Publishing…';
+                    try {
+                        const payload = buildPublishConfig();
+                        const { data, error } = await db.rpc('admin_set_banner_config', {
+                            p_admin_code: adminCode,
+                            p_config: payload
+                        });
+                        if (error) throw error;
+                        if (!data?.success) throw new Error(data?.error || 'Unknown error');
+                        showBannerMsg('Published! Live site will use new config on next load.', 'success');
+                        Trace.log('BANNER_PUBLISHED');
+
+                        // Also copy JSON to clipboard as backup
+                        try {
+                            await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+                        } catch (_) { /* clipboard optional */ }
+                    } catch (err) {
+                        showBannerMsg('Publish failed: ' + (err.message || err), 'error');
+                        Trace.log('BANNER_PUBLISH_FAILED', { error: err.message || String(err) });
+                    } finally {
+                        bEl.exportBtn.disabled = false;
+                        bEl.exportBtn.textContent = 'Publish to Site';
+                    }
+                });
+            }
+
+            /* ── Lazy-init on section open ── */
+            let bannerInited = false;
+            if (bEl.section) {
+                bEl.section.addEventListener('toggle', async () => {
+                    if (!bEl.section.open) {
+                        stopPreview();
+                        return;
+                    }
+                    if (!bannerInited && db && adminCode) {
+                        bannerInited = true;
+                        await loadBannerConfig();
+                        syncControls();
+                        if (initPreview()) {
+                            startPreview();
+                        }
+                    } else if (previewState.gl) {
+                        startPreview();
+                    }
+                });
+            }
+
+            /* ── Resize listener ── */
+            window.addEventListener('resize', () => {
+                if (previewState.running) resizePreviewCanvas();
+            });
+
+            /* ── Pointer hover slowdown on preview canvas ── */
+            if (bEl.wrapper) {
+                bEl.wrapper.addEventListener('pointerenter', () => {
+                    previewState.targetSpeed = liveConfig.interaction.hoverSlowdown;
+                });
+                bEl.wrapper.addEventListener('pointerleave', () => {
+                    previewState.targetSpeed = 1.0;
+                });
+            }
+
+            Trace.log('BANNER_PARAMS_READY');
+            Trace.groupEnd();
         }
 
         // Event Delegation for generated links
