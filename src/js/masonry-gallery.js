@@ -50,13 +50,19 @@ class MasonryGallery {
       try { this.motionMedia.addListener(this.boundHandleMotionChange); } catch (_) {}
     }
 
-    // Grid memoization — skip recalc when inputs haven't changed
-    this._gridHash = '';
+    // Grid memoization — version counter replaces O(N) string hashing.
+    // Bumped by _invalidateGrid() whenever items, ratios, focus, or dimensions change.
+    this._gridVersion = 0;
+    this._lastComputedGridVersion = -1;
     this._cachedMaxHeight = 0;
 
     // DOM reconciliation — cache element references for O(1) lookups
     this.nodeMap = new Map();   // item.id → wrapper DOM element
     this.gridIndex = new Map(); // item.id → grid layout entry
+
+    // O(1) item lookups — avoids O(N) .find() in hot paths (image load storms)
+    this.itemMap = new Map();     // item.id → item in this.items
+    this._allItemMap = new Map(); // item.id → item in this._allItems
 
     // Pre-computed transition strings (avoid rebuilding per-item)
     const d = this.options.duration;
@@ -76,6 +82,8 @@ class MasonryGallery {
     this._videoMetaLoaders = [];
     // Animation timeout IDs for cleanup on destroy
     this._animateTimeouts = [];
+    // Cached container offset — avoids getBoundingClientRect() forced reflow in render()
+    this._containerOffsetTop = null;
     // Progressive loading (Peer 1) — render items in batches
     this._allItems = [];
     this.renderedCount = 0;
@@ -118,7 +126,9 @@ class MasonryGallery {
     // Progressive loading (Peer 1): store full dataset, render initial batch only.
     // Remaining items load via IntersectionObserver as user scrolls.
     this._allItems = processedItems;
+    this._allItemMap = new Map(processedItems.map(i => [i.id, i]));
     this.items = processedItems.slice(0, this.options.initialBatchSize);
+    this.itemMap = new Map(this.items.map(i => [i.id, i]));
     this.renderedCount = this.items.length;
     
     // Calculate responsive columns
@@ -129,6 +139,7 @@ class MasonryGallery {
     
     // Initial layout — renders immediately with placeholder ratios.
     // Each card shows its own spinner; photos appear as they load.
+    this._invalidateGrid();
     this.calculateGrid();
     if (this.isDestroyed || runId !== this.initRunId) return;
     this.render();
@@ -166,19 +177,20 @@ class MasonryGallery {
         const w = video.videoWidth || 1000;
         const h = video.videoHeight || 1000;
         this.imageMeta[src] = { naturalWidth: w, naturalHeight: h, isVideo: true };
-        // Update rendered items' ratio and trigger relayout
-        const i = this.items.find(x => (x.video || x.img) === src);
+        // Update rendered items' ratio and trigger relayout (O(1) via itemMap)
+        const i = this.itemMap.get(item.id);
         if (i) {
           const newRatio = h / w;
           if (Math.abs((i.ratio || 1) - newRatio) >= 0.03) {
             i.ratio = newRatio;
             i.naturalWidth = w;
             i.naturalHeight = h;
+            this._invalidateGrid();
             this.debouncedRelayout();
           }
         }
-        // Also update in _allItems so future batches get correct dimensions
-        const ai = this._allItems.find(x => (x.video || x.img) === src);
+        // Also update in _allItems so future batches get correct dimensions (O(1))
+        const ai = this._allItemMap.get(item.id);
         if (ai) { ai.ratio = h / w; ai.naturalWidth = w; ai.naturalHeight = h; }
       };
       
@@ -195,7 +207,7 @@ class MasonryGallery {
   // Called by <img> onload — updates ratio and triggers a batched relayout
   handleImageLoaded(itemId, naturalWidth, naturalHeight) {
     if (this.isDestroyed) return;
-    const item = this.items.find(i => i.id === itemId);
+    const item = this.itemMap.get(itemId); // O(1) lookup
     if (!item) return;
     const newRatio = naturalHeight / naturalWidth;
 
@@ -209,9 +221,10 @@ class MasonryGallery {
     item.ratio = newRatio;
     item.naturalWidth = naturalWidth;
     item.naturalHeight = naturalHeight;
-    // Also update in _allItems so future batches get correct dimensions
-    const allItem = this._allItems.find(i => i.id === itemId);
+    // Also update in _allItems so future batches get correct dimensions (O(1))
+    const allItem = this._allItemMap.get(itemId);
     if (allItem) { allItem.ratio = newRatio; allItem.naturalWidth = naturalWidth; allItem.naturalHeight = naturalHeight; }
+    this._invalidateGrid();
     this.debouncedRelayout();
   }
 
@@ -265,6 +278,7 @@ class MasonryGallery {
       this._lastObservedWidth = w;
       this._lastObservedHeight = h;
       this.width = w;
+      this._invalidateGrid();
       this.calculateGrid();
       // Only update layout if we've finished mounting
       if (this.hasMounted) {
@@ -275,65 +289,75 @@ class MasonryGallery {
     this.resizeObserver = ro;
   }
   
+  // Bumps the grid version to signal that inputs have changed.
+  // Call this whenever items, ratios, focus, columns, or width change.
+  _invalidateGrid() {
+    this._gridVersion++;
+  }
+
   calculateGrid() {
     this.width = this.container.offsetWidth;
     if (!this.width) return;
 
-    // Hash check: skip full recalc if inputs haven't changed
-    // Include item IDs to ensure different items aren't skipped if count/ratios match
-    const idKey = this.items.map(i => i.id).join(',');
-    const ratioKey = this.items.map(i => (i.ratio || 1).toFixed(3)).join(',');
-    const hash = `${this.columns}|${this.width}|${this.focusedItemId || ''}|${idKey}|${ratioKey}`;
-    if (hash === this._gridHash) return;
-    this._gridHash = hash;
+    // Version check: skip full recalc if nothing has been invalidated (O(1))
+    if (this._gridVersion === this._lastComputedGridVersion) return;
+    this._lastComputedGridVersion = this._gridVersion;
 
-    const colHeights = new Array(this.columns).fill(0);
-    const columnWidth = this.width / this.columns;
+    const cols = this.columns;
+    const colHeights = new Array(cols).fill(0);
+    const columnWidth = this.width / cols;
 
-    // Lay out focused first so it pushes others down
-    const focusedItem = this.items.find(i => i.id === this.focusedItemId);
+    // Lay out focused first so it pushes others down (O(1) via itemMap)
+    const focusedItem = this.focusedItemId ? this.itemMap.get(this.focusedItemId) : null;
     const orderedItems = focusedItem
       ? [focusedItem, ...this.items.filter(i => i.id !== this.focusedItemId)]
       : this.items;
 
     const layoutMap = new Map();
-    orderedItems.forEach(child => {
+    for (let idx = 0; idx < orderedItems.length; idx++) {
+      const child = orderedItems[idx];
       const isFocused = this.focusedItemId === child.id;
       if (isFocused) {
-        const y = Math.min(...colHeights);
+        // Manual min across colHeights (avoids spread + Math.min allocation)
+        let y = colHeights[0];
+        for (let c = 1; c < cols; c++) { if (colHeights[c] < y) y = colHeights[c]; }
         const w = this.width;
-        // Use actual ratio to compute focused height; cap at 90% of viewport
         const ratio = child.ratio || (child.naturalHeight && child.naturalWidth
           ? child.naturalHeight / child.naturalWidth
           : 1);
         const hFromRatio = Math.max(80, Math.round(w * ratio));
         const h = Math.max(300, Math.min(hFromRatio, Math.floor(window.innerHeight * 0.9)));
-        for (let i = 0; i < colHeights.length; i++) {
-          colHeights[i] = y + h;
-        }
+        for (let c = 0; c < cols; c++) colHeights[c] = y + h;
         layoutMap.set(child.id, { ...child, x: 0, y, w, h, focused: true });
-        return;
+        continue;
       }
-      const col = colHeights.indexOf(Math.min(...colHeights));
-      const x = columnWidth * col;
-      // Use natural aspect ratio to compute precise height for dense layout
+      // Find shortest column without spread operator (zero allocation)
+      let minCol = 0;
+      let minH = colHeights[0];
+      for (let c = 1; c < cols; c++) {
+        if (colHeights[c] < minH) { minH = colHeights[c]; minCol = c; }
+      }
+      const x = columnWidth * minCol;
       const ratio = child.ratio || (child.naturalHeight && child.naturalWidth
         ? child.naturalHeight / child.naturalWidth
         : 1);
       const height = Math.max(80, Math.round(columnWidth * ratio));
-      const y = colHeights[col];
-      colHeights[col] += height;
+      const y = colHeights[minCol];
+      colHeights[minCol] += height;
       layoutMap.set(child.id, { ...child, x, y, w: columnWidth, h: height, focused: false });
-    });
+    }
 
     this.grid = this.items
       .map(child => layoutMap.get(child.id))
       .filter(Boolean);
 
-    // Cache max height and build O(1) lookup index
-    this._cachedMaxHeight = this.grid.length
-      ? Math.max(...this.grid.map(g => g.y + g.h))
-      : 0;
+    // Cache max height (manual loop avoids spreading 100+ grid entries)
+    let maxH = 0;
+    for (let g = 0; g < this.grid.length; g++) {
+      const bottom = this.grid[g].y + this.grid[g].h;
+      if (bottom > maxH) maxH = bottom;
+    }
+    this._cachedMaxHeight = maxH;
     this.gridIndex = new Map(this.grid.map(g => [g.id, g]));
   }
   
@@ -370,10 +394,13 @@ class MasonryGallery {
     this.container.style.width = '100%';
     this.focusedCard = null;
 
-    // Occlusion: viewport items get eager loading, rest stay lazy
-    const containerTop = this.container.getBoundingClientRect().top + window.scrollY;
+    // Occlusion: viewport items get eager loading, rest stay lazy.
+    // Use cached offsetTop instead of getBoundingClientRect() to avoid forced reflow.
+    if (this._containerOffsetTop === null) {
+      this._containerOffsetTop = this.container.offsetTop;
+    }
     const viewportBottom = window.scrollY + window.innerHeight;
-    const visibleDepth = Math.max(0, viewportBottom - containerTop) + window.innerHeight;
+    const visibleDepth = Math.max(0, viewportBottom - this._containerOffsetTop) + window.innerHeight;
 
     // DOM reconciliation: remove nodes for items that left the grid (filter change)
     // Collect IDs to remove first to avoid mutating map during iteration
@@ -858,6 +885,7 @@ class MasonryGallery {
     element.classList.add('card-focused');
     element.setAttribute('aria-expanded', 'true');
     this._say(`Expanded: ${item.caption || 'artwork'}`);
+    this._invalidateGrid();
     this.calculateGrid();
     this.updateLayout();
     // Play videos when focused (muted, inline)
@@ -878,6 +906,7 @@ class MasonryGallery {
     }
     if (!skipLayout) {
       this.focusedItemId = null;
+      this._invalidateGrid();
       this.calculateGrid();
       this.updateLayout();
     }
@@ -975,6 +1004,8 @@ class MasonryGallery {
       this.updateColumns();
       // Always recalculate and update layout on window resize, not just on column change
       // This ensures fluid responsiveness within breakpoints (e.g., 1100px → 1300px while staying 4 cols)
+      this._invalidateGrid();
+      this._containerOffsetTop = null; // Recache after resize
       this.calculateGrid();
       // Only call render if we haven't mounted yet; otherwise use updateLayout for animation
       if (!this.hasMounted) {
@@ -1033,9 +1064,11 @@ class MasonryGallery {
 
     // Progressive loading: store full set, render initial batch
     this._allItems = normalizedItems;
+    this._allItemMap = new Map(normalizedItems.map(i => [i.id, i]));
     this.items = normalizedItems.slice(0, this.options.initialBatchSize);
+    this.itemMap = new Map(this.items.map(i => [i.id, i]));
     this.renderedCount = this.items.length;
-    this._gridHash = ''; // Invalidate cache
+    this._invalidateGrid();
     this.calculateGrid();
     this.render();
     this.updateLayout();
@@ -1106,6 +1139,7 @@ class MasonryGallery {
     }
     this._sentinel = null;
     this._allItems = [];
+    this._allItemMap.clear();
     this.renderedCount = 0;
     this._isLoadingBatch = false;
     // Clean up live region
@@ -1116,6 +1150,8 @@ class MasonryGallery {
     this.lastFocusedId = null;
     this.nodeMap.clear();
     this.gridIndex.clear();
+    this.itemMap.clear();
+    this._containerOffsetTop = null;
     this.container.innerHTML = '';
     this.focusedCard = null;
     this.focusedItemId = null;
@@ -1184,12 +1220,16 @@ class MasonryGallery {
     }
 
     this._isLoadingBatch = true;
+    const prevCount = this.renderedCount;
     const nextEnd = Math.min(this.renderedCount + this.options.batchSize, this._allItems.length);
     this.items = this._allItems.slice(0, nextEnd);
+    // Rebuild itemMap for the expanded set
+    this.itemMap = new Map(this.items.map(i => [i.id, i]));
     this.renderedCount = nextEnd;
-    this._gridHash = ''; // Force recalculation
+    this._invalidateGrid();
     this.calculateGrid();
-    this.render();
+    // Delta render: only create/position NEW items instead of re-touching all nodes
+    this._renderBatch(prevCount);
     if (this.hasMounted) this.updateLayout();
     this._updateSentinelPosition();
     this._isLoadingBatch = false;
@@ -1204,6 +1244,38 @@ class MasonryGallery {
     if (this._sentinel) {
       this._sentinel.style.top = `${this._cachedMaxHeight}px`;
     }
+  }
+
+  // Delta render: only creates DOM for newly added batch items.
+  // Existing items are untouched — avoids O(N) style writes on every batch append.
+  _renderBatch(startIndex) {
+    if (startIndex >= this.grid.length) return;
+
+    // Compute visibility threshold once (cached offsetTop, no forced reflow)
+    if (this._containerOffsetTop === null) {
+      this._containerOffsetTop = this.container.offsetTop;
+    }
+    const viewportBottom = window.scrollY + window.innerHeight;
+    const visibleDepth = Math.max(0, viewportBottom - this._containerOffsetTop) + window.innerHeight;
+
+    for (let idx = startIndex; idx < this.grid.length; idx++) {
+      const item = this.grid[idx];
+      if (this.nodeMap.has(item.id)) continue; // already in DOM (shouldn't happen, safety)
+
+      const wrapper = this._createItemElement(item, visibleDepth);
+      // Position immediately
+      wrapper.style.position = 'absolute';
+      wrapper.style.transform = `translate3d(${item.x}px, ${item.y}px, 0)`;
+      wrapper.style.width = `${item.w}px`;
+      wrapper.style.height = `${item.h}px`;
+      wrapper.style.opacity = this.hasMounted ? '1' : '0';
+      wrapper.style.zIndex = '1';
+      this.container.appendChild(wrapper);
+      this.nodeMap.set(item.id, wrapper);
+    }
+
+    this.container.style.height = `${this._cachedMaxHeight}px`;
+    this._restoreFocus();
   }
 
   // ===========================================================================
