@@ -1514,7 +1514,7 @@ const GalleryManager = {
       if (error) throw error;
 
       this.allRows = data || [];
-      console.log(`🎨 Loaded ${this.allRows.length} gallery items from database`);
+      console.log(`Loaded ${this.allRows.length} gallery items from supabase`);
 
       if (this.allRows.length === 0) {
         this._hideManagerSpinner();
@@ -1537,7 +1537,7 @@ const GalleryManager = {
       this.gallery.initEscapeToClose();
       this.initialized = true;
 
-      console.log('🎨 Masonry Gallery Initialized');
+      console.log('Gallery Initialized');
     } catch (err) {
       console.error('Failed to load gallery from database:', err);
       this._hideManagerSpinner();

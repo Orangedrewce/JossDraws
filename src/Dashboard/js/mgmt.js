@@ -4247,13 +4247,13 @@
                     const key = `${action}-${id}`;
                     if (!reviewDeletePending.has(key)) {
                         reviewDeletePending.set(key, true);
-                        btn.textContent = action === 'delete' ? '⚠️ Sure?' : '⚠️ Purge forever?';
+                        btn.textContent = action === 'delete' ? '⚠️ U Sure?' : '⚠️ Purge forever?';
                         btn.classList.remove('danger');
                         btn.classList.add('confirm-armed');
                         setTimeout(() => {
                             if (reviewDeletePending.has(key)) {
                                 reviewDeletePending.delete(key);
-                                btn.textContent = action === 'delete' ? '🗑️ Delete' : '💀 Purge';
+                                btn.textContent = action === 'delete' ? '🗑️ Delete' : 'Purge';
                                 btn.classList.remove('confirm-armed');
                                 btn.classList.add('danger');
                             }

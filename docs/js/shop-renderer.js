@@ -389,7 +389,7 @@
         pageTitles = data.page_titles || [];
         initialized = true;
         renderShop();
-        console.log('\uD83D\uDED2 Loaded ' + shopItems.length + ' shop items from database');
+        console.log('Loaded ' + shopItems.length + ' shop items from supabase');
       })
       .catch(function (err) {
         loading = false;
