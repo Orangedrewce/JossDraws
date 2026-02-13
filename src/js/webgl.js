@@ -277,8 +277,8 @@ function initWebGL() {
     ? '#extension GL_OES_standard_derivatives : enable'
     : '';
 
-  // ── Effective twist (respects reduced-motion) [P5] ──
-  const twistEnabled = WEBGL_CONFIG.twist.enabled && !reduceMotion;
+  // ── World rotation (reduced-motion slows speed but doesn't disable rotation) ──
+  const twistEnabled = WEBGL_CONFIG.twist.enabled;
   const maxWaveAbs = WEBGL_CONFIG.wave.mainAmplitude
                    + WEBGL_CONFIG.wave.secondaryAmp
                    + (WEBGL_CONFIG.wave.horizontalAmount * Math.abs(WEBGL_CONFIG.wave.offsetBlend));
