@@ -425,6 +425,7 @@ class MasonryGallery {
   render() {
     this.container.style.position = 'relative';
     this.container.style.width = '100%';
+    this.container.style.contain = 'layout paint style';
     this.focusedCard = null;
 
     // Occlusion: viewport items get eager loading, rest stay lazy.
@@ -472,9 +473,8 @@ class MasonryGallery {
         wrapper.style.zIndex = '1';
       }
 
-      // Set initial absolute positions immediately to prevent stacking on mobile
+      // Set initial positions immediately to prevent stacking on mobile
       // This ensures images have position/dimensions before they start loading
-      wrapper.style.position = 'absolute';
       wrapper.style.transform = `translate3d(${item.x}px, ${item.y}px, 0)`;
       wrapper.style.width = `${item.w}px`;
       wrapper.style.height = `${item.h}px`;
@@ -504,14 +504,16 @@ class MasonryGallery {
     wrapper.style.cssText = `
       position: absolute;
       cursor: pointer;
-      overflow: hidden;
-      border-radius: 8px;
       left: 0;
       top: 0;
-      width: ${item.w}px;
-      height: ${item.h}px;
-      transform: translate3d(${item.x}px, ${item.y}px, 0);
-      transition: ${this.reduceMotion ? 'none' : 'transform 0.3s ease'};
+
+      clip-path: inset(0 round 8px);
+
+      contain: strict;
+
+      will-change: transform;
+
+      transition: ${this.reduceMotion ? 'none' : 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), filter 0.6s, opacity 0.6s'};
     `;
 
     // Media rendering (image or video)
@@ -779,14 +781,11 @@ class MasonryGallery {
   
   updateLayout() {
     if (!this.hasMounted) return;
-
-    const transition = this.reduceMotion ? this._transitionNone : this._transitionMove;
     
     this.grid.forEach(item => {
       const element = this.nodeMap.get(item.id);
       if (!element) return;
 
-      element.style.transition = transition;
       element.style.transform = `translate3d(${item.x}px, ${item.y}px, 0)`;
       element.style.width = `${item.w}px`;
       element.style.height = `${item.h}px`;
@@ -1181,6 +1180,9 @@ class MasonryGallery {
     }
     this.liveRegion = null;
     this.lastFocusedId = null;
+    this.nodeMap.forEach(el => {
+      el.style.willChange = 'auto';
+    });
     this.nodeMap.clear();
     this.gridIndex.clear();
     this.itemMap.clear();
