@@ -125,9 +125,6 @@ class ClickSpark {
   handleClick(e) {
     if (!this.canvas) return;
     
-    // Skip sparks if user prefers reduced motion
-    if (this.prefersReducedMotion) return;
-    
     // Get coordinates relative to viewport (fixed positioning)
     const x = e.clientX;
     const y = e.clientY;
