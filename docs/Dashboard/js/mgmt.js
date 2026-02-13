@@ -4782,10 +4782,7 @@
                 },
                 twist: {
                     enabled: true,
-                    period: 6.0,
-                    duration: 0.9,
-                    intensity: 0.5,
-                    randomSeed: 12.345
+                    intensity: 0.5
                 },
                 appearance: {
                     brightness: 1.125,
@@ -4836,12 +4833,9 @@
                 { path: 'wave.horizontalFrequency',   id: 'wave-horizontalFrequency',   type: 'range' },
                 { path: 'wave.horizontalAmount',      id: 'wave-horizontalAmount',      type: 'range' },
                 { path: 'wave.offsetBlend',           id: 'wave-offsetBlend',           type: 'range' },
-                // Twist
+                // World Rotation
                 { path: 'twist.enabled',              id: 'twist-enabled',              type: 'checkbox' },
-                { path: 'twist.period',               id: 'twist-period',               type: 'range' },
-                { path: 'twist.duration',             id: 'twist-duration',             type: 'range' },
                 { path: 'twist.intensity',            id: 'twist-intensity',            type: 'range' },
-                { path: 'twist.randomSeed',           id: 'twist-randomSeed',           type: 'number' },
                 // Appearance
                 { path: 'appearance.brightness',         id: 'appearance-brightness',         type: 'range' },
                 { path: 'appearance.plasticEffect',      id: 'appearance-plasticEffect',      type: 'checkbox' },
@@ -5042,13 +5036,22 @@ void main() {
   vec2 uv = (fragCoord - 0.5 * R.xy) / R.y;
   vec3 col = bg;
 
+  // Early ribbon rejection (skipped when rotation enabled — ribbon sweeps all angles)
+  ${twistEnabled ? '' : `
   float ribbonMinY = ${fmtF(cfg.positioning.verticalOffset)} - ${fmtF(maxRibbonHalfHeight)};
   float ribbonMaxY = ${fmtF(cfg.positioning.verticalOffset)} + ${fmtF(maxRibbonHalfHeight)};
   if (uv.y < ribbonMinY || uv.y > ribbonMaxY) {
     gl_FragColor = vec4(bg, 1.0);
     return;
   }
+  `}
 
+  // World rotation (rotate entire coordinate space, then build ribbon inside it)
+  ${twistEnabled ? `
+    uv *= rot(T * ${fmtF(cfg.twist.intensity)});
+  ` : ''}
+
+  // Wave motion (computed on twisted UVs)
   float yWave = sin(uv.x * ${fmtF(cfg.wave.mainFrequency)} + T * ${fmtF(cfg.wave.mainSpeed)}) * ${fmtF(cfg.wave.mainAmplitude)}
               + sin(uv.x * ${fmtF(cfg.wave.secondaryFreq)} - T * ${fmtF(cfg.wave.secondarySpeed)}) * ${fmtF(cfg.wave.secondaryAmp)};
 
@@ -5060,20 +5063,12 @@ void main() {
   float bandThickness = BASE_THICKNESS * stretch;
   float offset = (uv.y - yWave) + xOffset * ${fmtF(cfg.wave.offsetBlend)};
 
-  ${twistEnabled ? `
-    float twistPeriod = ${fmtF(cfg.twist.period)};
-    float tPhase = floor(T / twistPeriod);
-    float localT = fract(T / twistPeriod);
-    float twistAngle = smoothstep(0.0, ${fmtF(cfg.twist.duration)}, localT) * 3.14159;
-    float randDir = mix(-1.0, 1.0, step(0.5, hashf(tPhase + ${fmtF(cfg.twist.randomSeed)})));
-    twistAngle *= randDir;
-    uv *= rot(twistAngle * ${fmtF(cfg.twist.intensity)});
-  ` : ''}
+  // Mapping (defensive clamp prevents precision blowout)
+  float s = clamp((offset + ${fmtF(cfg.positioning.verticalOffset)}) / bandThickness, -100.0, 100.0);
 
-  float s = (offset + ${fmtF(cfg.positioning.verticalOffset)}) / bandThickness;
-
+  // AA width (clamped to prevent screen-flooding tearing artifacts)
   ${hasDerivatives ? `
-  float aaw = max(fwidth(s) * ${fmtF(cfg.appearance.aaSharpness)}, ${fmtF(cfg.appearance.aaFallback)});
+  float aaw = clamp(fwidth(s) * ${fmtF(cfg.appearance.aaSharpness)}, ${fmtF(cfg.appearance.aaFallback)}, 0.35);
   ` : `
   float aaw = ${fmtF(cfg.appearance.aaFallback)};
   `}

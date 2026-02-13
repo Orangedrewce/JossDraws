@@ -1,7 +1,6 @@
 /* =============================================================================
-   CUSTOM PROPERTIES (CSS Variables)
+   CUSTOM PROPERTIES 
    - Centralized design tokens for colors, spacing, typography
-   - Makes theming and maintenance easier
    ============================================================================= */
 :root {
   /* Base Colors */

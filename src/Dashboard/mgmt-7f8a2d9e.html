@@ -388,32 +388,18 @@
                     </div>
                 </details>
 
-                <!-- Twist Effect -->
+                <!-- World Rotation -->
                 <details class="param-category">
-                    <summary class="param-category-title">180° Twist &amp; Rotation</summary>
+                    <summary class="param-category-title">World Rotation</summary>
                     <div class="param-grid">
                         <div class="param-control param-toggle">
-                            <label for="twist-enabled">Enable Twist</label>
+                            <label for="twist-enabled">Enable Rotation</label>
                             <input type="checkbox" id="twist-enabled" checked>
                         </div>
                         <div class="param-control">
-                            <label for="twist-period">Twist Period (s)</label>
-                            <input type="range" id="twist-period" min="2.0" max="15.0" step="0.5" value="6.0">
-                            <input type="number" id="twist-period-num" min="2.0" max="15.0" step="0.5" value="6.0">
-                        </div>
-                        <div class="param-control">
-                            <label for="twist-duration">Twist Duration (0–1)</label>
-                            <input type="range" id="twist-duration" min="0.0" max="1.0" step="0.05" value="0.9">
-                            <input type="number" id="twist-duration-num" min="0.0" max="1.0" step="0.05" value="0.9">
-                        </div>
-                        <div class="param-control">
-                            <label for="twist-intensity">Twist Intensity</label>
-                            <input type="range" id="twist-intensity" min="0.0" max="1.5" step="0.05" value="0.5">
-                            <input type="number" id="twist-intensity-num" min="0.0" max="1.5" step="0.05" value="0.5">
-                        </div>
-                        <div class="param-control">
-                            <label for="twist-randomSeed">Random Seed</label>
-                            <input type="number" id="twist-randomSeed" min="0" max="1000" step="0.001" value="12.345">
+                            <label for="twist-intensity">Speed (rad/s)</label>
+                            <input type="range" id="twist-intensity" min="-2.0" max="2.0" step="0.05" value="0.5">
+                            <input type="number" id="twist-intensity-num" min="-2.0" max="2.0" step="0.05" value="0.5">
                         </div>
                     </div>
                 </details>

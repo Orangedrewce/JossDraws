@@ -7,7 +7,7 @@
 //   Boot: DOMContentLoaded → loadBannerConfig() (Supabase RPC, non-blocking)
 //         → initWebGL(). Hardcoded defaults used if fetch fails.
 //
-//   Features: configurable wave dynamics, twist animation, plastic/specular
+//   Features: configurable wave dynamics, continuous world rotation, plastic/specular
 //   lighting, supersampled FBO with box-filter downsample pass, hover
 //   slowdown on <header>, visibility-API pause, context-loss recovery,
 //   reduced-motion support, and ResizeObserver-driven resize.
@@ -56,13 +56,10 @@ const WEBGL_CONFIG = {
     offsetBlend: 0.3         // How much horizontal affects vertical
   },
 
-  // 4. The Twist (180-degree rotation effect)
+  // 4. World Rotation (continuous rigid rotation of the entire ribbon)
   twist: {
-    enabled: true,           // Set false for a standard parallel ribbon
-    period: 6.0,             // Seconds between twists
-    duration: 0.9,           // 0.0–1.0 (how fast the twist happens within period)
-    intensity: 0.5,          // Strength multiplier for twist rotation
-    randomSeed: 12.345       // Seed for pseudo-random direction
+    enabled: true,           // Set false to disable world rotation
+    intensity: 0.5           // Rotation speed in rad/s (negative = counter-clockwise)
   },
 
   // 5. Visual Styling
@@ -150,9 +147,8 @@ function initWebGL() {
 
   // ── WEBGL_CONFIG validation [v4: P5] ──
   if (WEBGL_CONFIG.thickness.base <= 0 ||
-      WEBGL_CONFIG.positioning.bandCount < 1 || WEBGL_CONFIG.positioning.bandCount > 5 ||
-      WEBGL_CONFIG.twist.period <= 0) {
-    console.error('[WebGL] Invalid WEBGL_CONFIG — check thickness.base, bandCount, twist.period.');
+      WEBGL_CONFIG.positioning.bandCount < 1 || WEBGL_CONFIG.positioning.bandCount > 5) {
+    console.error('[WebGL] Invalid WEBGL_CONFIG — check thickness.base, bandCount.');
     return;
   }
 
@@ -332,15 +328,22 @@ function initWebGL() {
       vec2 uv = (fragCoord - 0.5 * R.xy) / R.y;
       vec3 col = bg;
 
-      // --- Early Ribbon Rejection (skip expensive math for background pixels) ---
+      // --- Early Ribbon Rejection (skip when rotation enabled — ribbon sweeps all angles) ---
+      ${twistEnabled ? '' : `
       float ribbonMinY = ${f(WEBGL_CONFIG.positioning.verticalOffset)} - ${f(maxRibbonHalfHeight)};
       float ribbonMaxY = ${f(WEBGL_CONFIG.positioning.verticalOffset)} + ${f(maxRibbonHalfHeight)};
       if (uv.y < ribbonMinY || uv.y > ribbonMaxY) {
         gl_FragColor = vec4(bg, 1.0);
         return;
       }
+      `}
 
-      // --- Wave Motion ---
+      // --- World Rotation (rotate entire coordinate space, then build ribbon inside it) ---
+      ${twistEnabled ? `
+        uv *= rot(T * ${f(WEBGL_CONFIG.twist.intensity)});
+      ` : ''}
+
+      // --- Wave Motion (computed on twisted UVs) ---
       float yWave = sin(uv.x * ${f(WEBGL_CONFIG.wave.mainFrequency)} + T * ${f(WEBGL_CONFIG.wave.mainSpeed)}) * ${f(WEBGL_CONFIG.wave.mainAmplitude)}
                   + sin(uv.x * ${f(WEBGL_CONFIG.wave.secondaryFreq)} - T * ${f(WEBGL_CONFIG.wave.secondarySpeed)}) * ${f(WEBGL_CONFIG.wave.secondaryAmp)};
 
@@ -352,22 +355,12 @@ function initWebGL() {
       float bandThickness = BASE_THICKNESS * stretch;
       float offset = (uv.y - yWave) + xOffset * ${f(WEBGL_CONFIG.wave.offsetBlend)};
 
-      // --- Twist Logic ---
-      ${twistEnabled ? `
-        float twistPeriod = ${f(WEBGL_CONFIG.twist.period)};
-        float tPhase = floor(T / twistPeriod);
-        float localT = fract(T / twistPeriod);
-        float twistAngle = smoothstep(0.0, ${f(WEBGL_CONFIG.twist.duration)}, localT) * 3.14159;
-        float randDir = mix(-1.0, 1.0, step(0.5, hashf(tPhase + ${f(WEBGL_CONFIG.twist.randomSeed)})));
-        twistAngle *= randDir;
-        uv *= rot(twistAngle * ${f(WEBGL_CONFIG.twist.intensity)});
-      ` : ''}
+      // --- Mapping (defensive clamp prevents precision blowout) ---
+      float s = clamp((offset + ${f(WEBGL_CONFIG.positioning.verticalOffset)}) / bandThickness, -100.0, 100.0);
 
-      // --- Mapping ---
-      float s = (offset + ${f(WEBGL_CONFIG.positioning.verticalOffset)}) / bandThickness;
-
+      // --- AA width (clamped to prevent screen-flooding tearing artifacts) ---
       ${hasDerivatives ? `
-      float aaw = max(fwidth(s) * ${f(WEBGL_CONFIG.appearance.aaSharpness)}, ${f(WEBGL_CONFIG.appearance.aaFallback)});
+      float aaw = clamp(fwidth(s) * ${f(WEBGL_CONFIG.appearance.aaSharpness)}, ${f(WEBGL_CONFIG.appearance.aaFallback)}, 0.35);
       ` : `
       float aaw = ${f(WEBGL_CONFIG.appearance.aaFallback)};
       `}
