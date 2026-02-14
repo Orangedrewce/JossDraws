@@ -299,6 +299,15 @@
                     </div>
                 </div>
 
+                <!-- Shader Mode Selector -->
+                <div class="param-control shader-mode-control">
+                    <label for="shader-active">Shader Mode</label>
+                    <select id="shader-active">
+                        <option value="ribbon_wave" selected>Ribbon Wave</option>
+                        <option value="paint_drip">Paint Drip</option>
+                    </select>
+                </div>
+
                 <!-- Geometry & Physics -->
                 <details class="param-category" open>
                     <summary class="param-category-title">Ribbon Thickness &amp; Stretch</summary>
@@ -521,6 +530,48 @@
                         <div class="param-control param-toggle">
                             <label for="performance-debugMode">Debug Mode</label>
                             <input type="checkbox" id="performance-debugMode">
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Paint Drip Dynamics -->
+                <details class="param-category">
+                    <summary class="param-category-title">Paint Drip Dynamics</summary>
+                    <div class="param-grid">
+                        <div class="param-control">
+                            <label for="drip-density">Drip Density</label>
+                            <input type="range" id="drip-density" min="0.0" max="1.0" step="0.05" value="0.75">
+                            <input type="number" id="drip-density-num" min="0.0" max="1.0" step="0.05" value="0.75">
+                        </div>
+                        <div class="param-control">
+                            <label for="drip-distance">Drip Spacing</label>
+                            <input type="range" id="drip-distance" min="0.02" max="0.5" step="0.01" value="0.1">
+                            <input type="number" id="drip-distance-num" min="0.02" max="0.5" step="0.01" value="0.1">
+                        </div>
+                        <div class="param-control">
+                            <label for="drip-sdfWidth">Drop Thickness</label>
+                            <input type="range" id="drip-sdfWidth" min="0.05" max="0.5" step="0.01" value="0.18">
+                            <input type="number" id="drip-sdfWidth-num" min="0.05" max="0.5" step="0.01" value="0.18">
+                        </div>
+                        <div class="param-control">
+                            <label for="drip-fallSpeed">Fall Speed</label>
+                            <input type="range" id="drip-fallSpeed" min="1.0" max="15.0" step="0.5" value="6.0">
+                            <input type="number" id="drip-fallSpeed-num" min="1.0" max="15.0" step="0.5" value="6.0">
+                        </div>
+                        <div class="param-control">
+                            <label for="drip-bFreq">Bounce Frequency</label>
+                            <input type="range" id="drip-bFreq" min="0.5" max="10.0" step="0.1" value="3.5">
+                            <input type="number" id="drip-bFreq-num" min="0.5" max="10.0" step="0.1" value="3.5">
+                        </div>
+                        <div class="param-control">
+                            <label for="drip-bRange">Bounce Range</label>
+                            <input type="range" id="drip-bRange" min="0.05" max="1.0" step="0.05" value="0.35">
+                            <input type="number" id="drip-bRange-num" min="0.05" max="1.0" step="0.05" value="0.35">
+                        </div>
+                        <div class="param-control">
+                            <label for="drip-viscosity">Viscosity</label>
+                            <input type="range" id="drip-viscosity" min="0.0" max="3.0" step="0.1" value="1.5">
+                            <input type="number" id="drip-viscosity-num" min="0.0" max="3.0" step="0.1" value="1.5">
                         </div>
                     </div>
                 </details>
