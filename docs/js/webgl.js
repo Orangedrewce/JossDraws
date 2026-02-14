@@ -42,18 +42,7 @@ const WEBGL_CONFIG = {
     stretchFrequency: 2.5    // Spatial frequency of stretch variation
   },
 
-  // 3. Paint Drip Dynamics
-  drip: {
-    enabled: false,          // Toggle entire effect
-    density: 0.75,           // Probability of a drip (0.0 - 1.0)
-    distance: 0.1,           // Spacing between drips
-    sdfWidth: 0.18,          // Width of the drip trail
-    fallSpeed: 6.0,          // Speed of the fall
-    bFreq: 3.5,              // Bounce frequency
-    bRange: 0.35             // Bounce range
-  },
-
-  // 4. Wave Dynamics (the sine-wave motion)
+  // 3. Wave Dynamics (the sine-wave motion)
   wave: {
     mainSpeed: 1.0,          // Speed of the primary undulation
     mainFrequency: 3.0,      // How many "humps" visible across width
@@ -135,7 +124,7 @@ async function loadBannerConfig() {
 
     const saved = data.config;
     // Merge each group's keys over WEBGL_CONFIG (colors are never overwritten)
-    for (const group of ['thickness', 'drip', 'wave', 'twist', 'appearance', 'positioning', 'interaction', 'performance']) {
+    for (const group of ['thickness', 'wave', 'twist', 'appearance', 'positioning', 'interaction', 'performance']) {
       if (saved[group] && typeof saved[group] === 'object' && WEBGL_CONFIG[group]) {
         for (const key in saved[group]) {
           if (key in WEBGL_CONFIG[group]) {
@@ -147,15 +136,6 @@ async function loadBannerConfig() {
   } catch (_) {
     // Silently fail — hardcoded defaults remain
   }
-}
-
-// ── Utility: Standard Timer Debounce (Place outside initWebGL) ──
-function debounce(fn, delay) {
-  let timer = null;
-  return function (...args) {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => fn.apply(this, args), delay);
-  };
 }
 
 function initWebGL() {
@@ -208,12 +188,6 @@ function initWebGL() {
   initWebGL._onHeaderEnter = null;
   initWebGL._onHeaderLeave = null;
 
-  if (initWebGL._onMotionChange && initWebGL._mqReduceMotion) {
-    initWebGL._mqReduceMotion.removeEventListener('change', initWebGL._onMotionChange);
-    initWebGL._onMotionChange = null;
-    initWebGL._mqReduceMotion = null;
-  }
-
   // ── Context loss/restore (attached once) [P1, P3, P4] ──
   if (!initWebGL._contextHandlers) {
     initWebGL._contextHandlers = true;
@@ -227,34 +201,16 @@ function initWebGL() {
       }
       console.warn('[WebGL] Context lost.');
     }, false);
-    canvas.addEventListener('webglcontextrestored', async (e) => {
-      console.log('[WebGL] Context restored. Fetching config and re-initializing...');
-      e.preventDefault();
+    canvas.addEventListener('webglcontextrestored', () => {
+      console.log('[WebGL] Context restored. Re-initializing...');
       initWebGL._initialized = false;
-      
-      // Re-fetch the database config to prevent loading hardcoded defaults
-      await loadBannerConfig(); 
-      
       initWebGL();
     }, false);
   }
 
   // ── Accessibility: reduced-motion [P5] ──
-  // ── Accessibility: reduced-motion [P5] ──
-  const mqReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  let reduceMotion = mqReduceMotion.matches;
-  let targetSpeed = reduceMotion ? 0.3 : 1.0;
-
-  // Attach reactive listener (survives re-entry via _onMotionChange guard)
-  if (!initWebGL._onMotionChange) {
-    initWebGL._onMotionChange = (e) => {
-      reduceMotion = e.matches;
-      targetSpeed = reduceMotion ? 0.3 : 1.0;
-    };
-    initWebGL._mqReduceMotion = mqReduceMotion;
-    // Use addEventListener for modern browser support
-    mqReduceMotion.addEventListener('change', initWebGL._onMotionChange);
-  }
+  const reduceMotion = window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ── Derived constants ──
   const bandMax = WEBGL_CONFIG.positioning.bandCount - 1;  // auto-compute [P1,P5]
@@ -455,8 +411,8 @@ function initWebGL() {
         // Brightness
         shaded = bandCol * mix(${f(WEBGL_CONFIG.appearance.brightness)}, 1.0, centerFactor);
 
-        // Specular: Replaced pow() with hardware-accelerated exp2(log2())
-        float highlight = exp2(log2(max(centerFactor, 0.0001)) * ${f(WEBGL_CONFIG.appearance.specularPower)});
+        // Specular
+        float highlight = pow(centerFactor, ${f(WEBGL_CONFIG.appearance.specularPower)});
         shaded = mix(shaded, vec3(1.0), highlight * ${f(WEBGL_CONFIG.appearance.specularIntensity)});
 
         // Drop Shadow
@@ -642,13 +598,11 @@ function initWebGL() {
   }
 
   // ── Deferred resize [P4] — process at frame boundary, not mid-frame ──
-  // ── Inside initWebGL: Replace existing resize logic ──
-  let resizePending = true;
+  let resizePending = true;  // true initially to force first resize
 
-  // Absorb rapid layout shifts; only flag for resize after 150ms of quiet time
-  const handleResize = debounce(() => {
+  function handleResize() {
     resizePending = true;
-  }, 150);
+  }
 
   function processResize() {
     resizePending = false;
@@ -674,7 +628,7 @@ function initWebGL() {
   let animTime  = 0;
   let lastTime  = performance.now() * 0.001;
   let curSpeed  = 1.0;
-  // let targetSpeed = reduceMotion ? 0.3 : 1.0; // Moved to top trigger scope
+  let targetSpeed = reduceMotion ? 0.3 : 1.0;  // [P5] slower if reduced-motion
   let isVisible = !document.hidden;
   let firstFrame = true;
 

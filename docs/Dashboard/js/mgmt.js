@@ -4748,7 +4748,15 @@
                 wrapper:   document.getElementById('bannerPreviewWrapper'),
                 resetBtn:  document.getElementById('reset-params'),
                 exportBtn: document.getElementById('export-params'),
-                message:   document.getElementById('bannerParamsMessage')
+                message:   document.getElementById('bannerParamsMessage'),
+                // Profile elements
+                profilesList:      document.getElementById('profilesList'),
+                saveProfileBtn:    document.getElementById('save-profile-btn'),
+                saveProfileForm:   document.getElementById('saveProfileForm'),
+                profileNameInput:  document.getElementById('profileNameInput'),
+                confirmSaveBtn:    document.getElementById('confirmSaveProfile'),
+                cancelSaveBtn:     document.getElementById('cancelSaveProfile'),
+                profilesMessage:   document.getElementById('profilesMessage')
             };
 
             /* ── Default values (mirror of WEBGL_CONFIG in webgl.js) ── */
@@ -4767,15 +4775,6 @@
                     stretchMax: 1.2,
                     stretchSpeed: 1.3,
                     stretchFrequency: 2.5
-                },
-                drip: {
-                    enabled: false,
-                    density: 0.75,
-                    distance: 0.1,
-                    sdfWidth: 0.18,
-                    fallSpeed: 6.0,
-                    bFreq: 3.5,
-                    bRange: 0.35
                 },
                 wave: {
                     mainSpeed: 1.0,
@@ -4831,14 +4830,6 @@
                 { path: 'thickness.stretchMax',       id: 'thickness-stretchMax',       type: 'range' },
                 { path: 'thickness.stretchSpeed',     id: 'thickness-stretchSpeed',     type: 'range' },
                 { path: 'thickness.stretchFrequency', id: 'thickness-stretchFrequency', type: 'range' },
-                // Drip
-                { path: 'drip.enabled',               id: 'drip-enabled',               type: 'checkbox' },
-                { path: 'drip.density',               id: 'drip-density',               type: 'range' },
-                { path: 'drip.distance',              id: 'drip-distance',              type: 'range' },
-                { path: 'drip.sdfWidth',              id: 'drip-sdfWidth',              type: 'range' },
-                { path: 'drip.fallSpeed',             id: 'drip-fallSpeed',             type: 'range' },
-                { path: 'drip.bFreq',                 id: 'drip-bFreq',                 type: 'range' },
-                { path: 'drip.bRange',                id: 'drip-bRange',                type: 'range' },
                 // Wave
                 { path: 'wave.mainSpeed',             id: 'wave-mainSpeed',             type: 'range' },
                 { path: 'wave.mainFrequency',         id: 'wave-mainFrequency',         type: 'range' },
@@ -5132,7 +5123,7 @@ void main() {
     float dEdge = min(xf, 1.0 - xf);
     float centerFactor = smoothstep(0.0, ${fmtF(cfg.appearance.centerSoftness)}, dEdge);
     shaded = bandCol * mix(${fmtF(cfg.appearance.brightness)}, 1.0, centerFactor);
-    float highlight = exp2(log2(centerFactor) * ${fmtF(cfg.appearance.specularPower)});
+    float highlight = pow(centerFactor, ${fmtF(cfg.appearance.specularPower)});
     shaded = mix(shaded, vec3(1.0), highlight * ${fmtF(cfg.appearance.specularIntensity)});
     float edgeShadow = 1.0 - smoothstep(0.0, max(aaw * ${fmtF(cfg.appearance.shadowWidth)}, 0.002), xf);
     shaded *= 1.0 - edgeShadow * ${fmtF(cfg.appearance.shadowStrength)};
@@ -5187,29 +5178,8 @@ void main() {
             }
 
             /* ── Init WebGL context on the preview canvas ── */
-            let _motionQuery = null;
-            let _motionListener = null;
-
             function initPreview() {
                 if (!bEl.canvas) return false;
-
-                // Context Restore / Loss handling
-                if (!bEl.canvas._cw_lost) {
-                    bEl.canvas._cw_lost = (e) => {
-                        e.preventDefault();
-                        stopPreview();
-                        console.warn('[BannerPreview] Context Lost');
-                    };
-                    bEl.canvas.addEventListener('webglcontextlost', bEl.canvas._cw_lost, false);
-                }
-                if (!bEl.canvas._cw_restored) {
-                    bEl.canvas._cw_restored = () => {
-                        console.log('[BannerPreview] Context Restored');
-                        // Ensure logic is ready before re-init
-                        setTimeout(() => initPreview(), 100);
-                    };
-                    bEl.canvas.addEventListener('webglcontextrestored', bEl.canvas._cw_restored, false);
-                }
 
                 const glOpts = { alpha: false, antialias: false, powerPreference: 'default' };
                 const gl = bEl.canvas.getContext('webgl', glOpts)
@@ -5251,26 +5221,6 @@ void main() {
                 if (bEl.overlay) {
                     bEl.overlay.style.opacity = '0';
                     bEl.overlay.style.pointerEvents = 'none';
-                }
-
-                // Debounced Resize Listener
-                if (!window._previewResize) {
-                    let timeout;
-                    window._previewResize = () => {
-                        clearTimeout(timeout);
-                        timeout = setTimeout(() => resizePreviewCanvas(), 100);
-                    };
-                    window.addEventListener('resize', window._previewResize);
-                }
-
-                // Reactive Reduced Motion
-                if (!_motionQuery) {
-                    _motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-                    _motionListener = (e) => {
-                         previewState.targetSpeed = e.matches ? 0.0 : liveConfig.interaction.smoothTime; // Using smoothTime as a proxy for speed base if needed, or just 1.0
-                         // Actually, let's just flag it for the render loop to handle
-                    };
-                    _motionQuery.addEventListener('change', _motionListener);
                 }
 
                 Trace.log('BANNER_PREVIEW_INIT');
@@ -5326,14 +5276,8 @@ void main() {
                 previewState.lastTime = now;
 
                 // Smooth speed transition for hover slowdown
-                const motionReduce = _motionQuery && _motionQuery.matches;
-                const baseSpeed = motionReduce ? 0.0 : 1.0;
-                
-                // If reduced motion is on, force target to 0, otherwise standard physics
-                const target = motionReduce ? 0.0 : previewState.targetSpeed;
-                
                 const tau = Math.max(0.0001, liveConfig.interaction.smoothTime);
-                previewState.curSpeed += (target - previewState.curSpeed)
+                previewState.curSpeed += (previewState.targetSpeed - previewState.curSpeed)
                     * (1.0 - Math.exp(-dt / tau));
 
                 // Phase-space: accumulate real seconds, normalize to 0→1 phase for shader
@@ -5456,6 +5400,215 @@ void main() {
                     }
                 });
             }
+
+            // ================================================
+            // SAVED PROFILES (localStorage)
+            // ================================================
+            const PROFILES_KEY = 'jossd_banner_profiles';
+
+            function loadProfiles() {
+                try {
+                    const raw = localStorage.getItem(PROFILES_KEY);
+                    return raw ? JSON.parse(raw) : [];
+                } catch { return []; }
+            }
+
+            function saveProfiles(profiles) {
+                localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
+            }
+
+            function showProfileMsg(text, type) {
+                if (!bEl.profilesMessage) return;
+                bEl.profilesMessage.textContent = text;
+                bEl.profilesMessage.className = 'gallery-msg ' + (type === 'error' ? 'is-error' : 'is-success');
+                bEl.profilesMessage.classList.remove('is-hidden');
+                setTimeout(() => { bEl.profilesMessage.classList.add('is-hidden'); }, 3500);
+            }
+
+            function fmtDate(ts) {
+                const d = new Date(ts);
+                return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                    + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+            }
+
+            function renderProfiles() {
+                if (!bEl.profilesList) return;
+                const profiles = loadProfiles();
+
+                if (profiles.length === 0) {
+                    bEl.profilesList.innerHTML = '<p class="text-muted-2 text-xs profiles-empty">No saved profiles yet. Click \u201c\ud83d\udcbe Save as Profile\u201d below to create one.</p>';
+                    return;
+                }
+
+                bEl.profilesList.innerHTML = profiles.map((p, i) => `
+                    <div class="profile-item" data-profile-idx="${i}">
+                        <div class="profile-item-info">
+                            <span class="profile-name">${escHTML(p.name)}</span>
+                            <span class="profile-date">${fmtDate(p.savedAt)}</span>
+                        </div>
+                        <div class="profile-item-actions">
+                            <button type="button" class="btn-load-profile" data-action="load" data-idx="${i}">Load</button>
+                            <button type="button" class="btn-rename-profile" data-action="rename" data-idx="${i}">Rename</button>
+                            <button type="button" class="btn-delete-profile" data-action="delete" data-idx="${i}">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            function escHTML(str) {
+                const d = document.createElement('div');
+                d.textContent = str;
+                return d.innerHTML;
+            }
+
+            /* ── Save Profile button → show form ── */
+            if (bEl.saveProfileBtn) {
+                bEl.saveProfileBtn.addEventListener('click', () => {
+                    if (bEl.saveProfileForm) bEl.saveProfileForm.classList.remove('is-hidden');
+                    if (bEl.profileNameInput) {
+                        bEl.profileNameInput.value = '';
+                        bEl.profileNameInput.focus();
+                    }
+                });
+            }
+
+            /* ── Cancel save ── */
+            if (bEl.cancelSaveBtn) {
+                bEl.cancelSaveBtn.addEventListener('click', () => {
+                    if (bEl.saveProfileForm) bEl.saveProfileForm.classList.add('is-hidden');
+                });
+            }
+
+            /* ── Confirm save ── */
+            if (bEl.confirmSaveBtn) {
+                bEl.confirmSaveBtn.addEventListener('click', () => {
+                    const name = (bEl.profileNameInput?.value || '').trim();
+                    if (!name) {
+                        showProfileMsg('Please enter a profile name.', 'error');
+                        return;
+                    }
+                    readAllControls();
+                    const profiles = loadProfiles();
+                    profiles.push({
+                        name,
+                        savedAt: Date.now(),
+                        config: deepClone(liveConfig)
+                    });
+                    saveProfiles(profiles);
+                    renderProfiles();
+                    if (bEl.saveProfileForm) bEl.saveProfileForm.classList.add('is-hidden');
+                    showProfileMsg(`Profile "${name}" saved.`, 'success');
+                    Trace.log('PROFILE_SAVED', { name });
+                });
+            }
+
+            /* ── Allow Enter key to confirm save ── */
+            if (bEl.profileNameInput) {
+                bEl.profileNameInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        bEl.confirmSaveBtn?.click();
+                    }
+                });
+            }
+
+            /* ── Profile list actions (delegated) ── */
+            if (bEl.profilesList) {
+                bEl.profilesList.addEventListener('click', (e) => {
+                    const btn = e.target.closest('button[data-action]');
+                    if (!btn) return;
+                    const action = btn.dataset.action;
+                    const idx = parseInt(btn.dataset.idx, 10);
+                    const profiles = loadProfiles();
+                    if (idx < 0 || idx >= profiles.length) return;
+
+                    if (action === 'load') {
+                        const saved = profiles[idx].config;
+                        const groups = ['thickness', 'wave', 'twist', 'appearance', 'positioning', 'interaction', 'performance'];
+                        for (const g of groups) {
+                            if (saved[g] && typeof saved[g] === 'object' && liveConfig[g]) {
+                                for (const key in saved[g]) {
+                                    if (key in liveConfig[g]) {
+                                        liveConfig[g][key] = saved[g][key];
+                                    }
+                                }
+                            }
+                        }
+                        // Preserve colors from saved profile if present
+                        if (saved.colors) liveConfig.colors = deepClone(saved.colors);
+                        syncControls();
+                        rebuildPreview();
+                        showProfileMsg(`Loaded "${profiles[idx].name}".`, 'success');
+                        Trace.log('PROFILE_LOADED', { name: profiles[idx].name });
+                    }
+
+                    else if (action === 'rename') {
+                        const item = btn.closest('.profile-item');
+                        const nameSpan = item?.querySelector('.profile-name');
+                        if (!nameSpan) return;
+
+                        // Replace name with inline input
+                        const currentName = profiles[idx].name;
+                        const inp = document.createElement('input');
+                        inp.type = 'text';
+                        inp.className = 'profile-rename-input';
+                        inp.value = currentName;
+                        inp.maxLength = 50;
+                        nameSpan.replaceWith(inp);
+                        inp.focus();
+                        inp.select();
+
+                        // Swap Rename button to Confirm
+                        btn.textContent = 'OK';
+                        btn.dataset.action = 'confirm-rename';
+
+                        const commit = () => {
+                            const newName = (inp.value || '').trim() || currentName;
+                            profiles[idx].name = newName;
+                            saveProfiles(profiles);
+                            renderProfiles();
+                            showProfileMsg(`Renamed to "${newName}".`, 'success');
+                            Trace.log('PROFILE_RENAMED', { oldName: currentName, newName });
+                        };
+
+                        inp.addEventListener('keydown', (ev) => {
+                            if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+                            if (ev.key === 'Escape') { renderProfiles(); }
+                        });
+                        inp.addEventListener('blur', () => {
+                         
+
+   // Slight delay so click on OK still fires
+                            setTimeout(() => {
+                                if (document.querySelector('.profile-rename-input')) commit();
+                            }, 150);
+                        });
+                    }
+
+                    else if (action === 'confirm-rename') {
+                        const item = btn.closest('.profile-item');
+                        const inp = item?.querySelector('.profile-rename-input');
+                        const newName = (inp?.value || '').trim() || profiles[idx].name;
+                        profiles[idx].name = newName;
+                        saveProfiles(profiles);
+                        renderProfiles();
+                        showProfileMsg(`Renamed to "${newName}".`, 'success');
+                    }
+
+                    else if (action === 'delete') {
+                        const name = profiles[idx].name;
+                        if (!confirm(`Delete profile "${name}"?`)) return;
+                        profiles.splice(idx, 1);
+                        saveProfiles(profiles);
+                        renderProfiles();
+                        showProfileMsg(`Deleted "${name}".`, 'success');
+                        Trace.log('PROFILE_DELETED', { name });
+                    }
+                });
+            }
+
+            /* ── Render profiles on load ── */
+            renderProfiles();
 
             /* ── Lazy-init on section open ── */
             let bannerInited = false;
