@@ -138,6 +138,15 @@ async function loadBannerConfig() {
   }
 }
 
+// ── Utility: Standard Timer Debounce (Place outside initWebGL) ──
+function debounce(fn, delay) {
+  let timer = null;
+  return function (...args) {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
 function initWebGL() {
   // ── Double-init guard [P2] ──
   if (initWebGL._initialized) return;
@@ -188,6 +197,12 @@ function initWebGL() {
   initWebGL._onHeaderEnter = null;
   initWebGL._onHeaderLeave = null;
 
+  if (initWebGL._onMotionChange && initWebGL._mqReduceMotion) {
+    initWebGL._mqReduceMotion.removeEventListener('change', initWebGL._onMotionChange);
+    initWebGL._onMotionChange = null;
+    initWebGL._mqReduceMotion = null;
+  }
+
   // ── Context loss/restore (attached once) [P1, P3, P4] ──
   if (!initWebGL._contextHandlers) {
     initWebGL._contextHandlers = true;
@@ -201,16 +216,34 @@ function initWebGL() {
       }
       console.warn('[WebGL] Context lost.');
     }, false);
-    canvas.addEventListener('webglcontextrestored', () => {
-      console.log('[WebGL] Context restored. Re-initializing...');
+    canvas.addEventListener('webglcontextrestored', async (e) => {
+      console.log('[WebGL] Context restored. Fetching config and re-initializing...');
+      e.preventDefault();
       initWebGL._initialized = false;
+      
+      // Re-fetch the database config to prevent loading hardcoded defaults
+      await loadBannerConfig(); 
+      
       initWebGL();
     }, false);
   }
 
   // ── Accessibility: reduced-motion [P5] ──
-  const reduceMotion = window.matchMedia
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // ── Accessibility: reduced-motion [P5] ──
+  const mqReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let reduceMotion = mqReduceMotion.matches;
+  let targetSpeed = reduceMotion ? 0.3 : 1.0;
+
+  // Attach reactive listener (survives re-entry via _onMotionChange guard)
+  if (!initWebGL._onMotionChange) {
+    initWebGL._onMotionChange = (e) => {
+      reduceMotion = e.matches;
+      targetSpeed = reduceMotion ? 0.3 : 1.0;
+    };
+    initWebGL._mqReduceMotion = mqReduceMotion;
+    // Use addEventListener for modern browser support
+    mqReduceMotion.addEventListener('change', initWebGL._onMotionChange);
+  }
 
   // ── Derived constants ──
   const bandMax = WEBGL_CONFIG.positioning.bandCount - 1;  // auto-compute [P1,P5]
@@ -411,8 +444,8 @@ function initWebGL() {
         // Brightness
         shaded = bandCol * mix(${f(WEBGL_CONFIG.appearance.brightness)}, 1.0, centerFactor);
 
-        // Specular
-        float highlight = pow(centerFactor, ${f(WEBGL_CONFIG.appearance.specularPower)});
+        // Specular: Replaced pow() with hardware-accelerated exp2(log2())
+        float highlight = exp2(log2(max(centerFactor, 0.0001)) * ${f(WEBGL_CONFIG.appearance.specularPower)});
         shaded = mix(shaded, vec3(1.0), highlight * ${f(WEBGL_CONFIG.appearance.specularIntensity)});
 
         // Drop Shadow
@@ -598,11 +631,13 @@ function initWebGL() {
   }
 
   // ── Deferred resize [P4] — process at frame boundary, not mid-frame ──
-  let resizePending = true;  // true initially to force first resize
+  // ── Inside initWebGL: Replace existing resize logic ──
+  let resizePending = true;
 
-  function handleResize() {
+  // Absorb rapid layout shifts; only flag for resize after 150ms of quiet time
+  const handleResize = debounce(() => {
     resizePending = true;
-  }
+  }, 150);
 
   function processResize() {
     resizePending = false;
@@ -628,7 +663,7 @@ function initWebGL() {
   let animTime  = 0;
   let lastTime  = performance.now() * 0.001;
   let curSpeed  = 1.0;
-  let targetSpeed = reduceMotion ? 0.3 : 1.0;  // [P5] slower if reduced-motion
+  // let targetSpeed = reduceMotion ? 0.3 : 1.0; // Moved to top trigger scope
   let isVisible = !document.hidden;
   let firstFrame = true;
 

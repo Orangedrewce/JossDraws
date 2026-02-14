@@ -266,10 +266,16 @@ main > section {
    ============================================================================= */
 header {
   position: relative;
-  background: var(--color-bg);
+  
+  /* Fallback background if WebGL fails or takes > 50ms to boot */
+  background: linear-gradient(135deg, var(--color-bg) 40%, var(--color-lighter-bg) 100%);
+  
   box-shadow: 0 2px 5px var(--color-shadow);
   padding: var(--spacing-xs) 0;
   overflow: hidden;
+  
+  /* Enforce strict stacking context barrier */
+  isolation: isolate;
 }
 
 .header-background {
@@ -279,9 +285,14 @@ header {
   pointer-events: none;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: center;
-  /* Avoid initial WebGL flash by fading in after first paint */
+  
+  /* Drop object-fit; it behaves inconsistently on <canvas> elements during CSS transforms */
+  
+  /* Optimize for debounced resizing: forces the GPU to scale the existing texture */
+  will-change: transform, opacity;
+  transform: translateZ(0); 
+  
+  /* Initial state before WebGL reports first successful frame */
   opacity: 0;
   transition: opacity var(--transition-speed-slow) ease;
 }
