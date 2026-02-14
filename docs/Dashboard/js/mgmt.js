@@ -4776,6 +4776,15 @@
                     stretchSpeed: 1.3,
                     stretchFrequency: 2.5
                 },
+                drip: {
+                    enabled: false,
+                    density: 0.75,
+                    distance: 0.1,
+                    sdfWidth: 0.18,
+                    fallSpeed: 6.0,
+                    bFreq: 3.5,
+                    bRange: 0.35
+                },
                 wave: {
                     mainSpeed: 1.0,
                     mainFrequency: 3.0,
@@ -4830,6 +4839,14 @@
                 { path: 'thickness.stretchMax',       id: 'thickness-stretchMax',       type: 'range' },
                 { path: 'thickness.stretchSpeed',     id: 'thickness-stretchSpeed',     type: 'range' },
                 { path: 'thickness.stretchFrequency', id: 'thickness-stretchFrequency', type: 'range' },
+                // Drip
+                { path: 'drip.enabled',               id: 'drip-enabled',               type: 'checkbox' },
+                { path: 'drip.density',               id: 'drip-density',               type: 'range' },
+                { path: 'drip.distance',              id: 'drip-distance',              type: 'range' },
+                { path: 'drip.sdfWidth',              id: 'drip-sdfWidth',              type: 'range' },
+                { path: 'drip.fallSpeed',             id: 'drip-fallSpeed',             type: 'range' },
+                { path: 'drip.bFreq',                 id: 'drip-bFreq',                 type: 'range' },
+                { path: 'drip.bRange',                id: 'drip-bRange',                type: 'range' },
                 // Wave
                 { path: 'wave.mainSpeed',             id: 'wave-mainSpeed',             type: 'range' },
                 { path: 'wave.mainFrequency',         id: 'wave-mainFrequency',         type: 'range' },
@@ -5123,7 +5140,7 @@ void main() {
     float dEdge = min(xf, 1.0 - xf);
     float centerFactor = smoothstep(0.0, ${fmtF(cfg.appearance.centerSoftness)}, dEdge);
     shaded = bandCol * mix(${fmtF(cfg.appearance.brightness)}, 1.0, centerFactor);
-    float highlight = pow(centerFactor, ${fmtF(cfg.appearance.specularPower)});
+    float highlight = exp2(log2(centerFactor) * ${fmtF(cfg.appearance.specularPower)});
     shaded = mix(shaded, vec3(1.0), highlight * ${fmtF(cfg.appearance.specularIntensity)});
     float edgeShadow = 1.0 - smoothstep(0.0, max(aaw * ${fmtF(cfg.appearance.shadowWidth)}, 0.002), xf);
     shaded *= 1.0 - edgeShadow * ${fmtF(cfg.appearance.shadowStrength)};
@@ -5178,8 +5195,29 @@ void main() {
             }
 
             /* ── Init WebGL context on the preview canvas ── */
+            let _motionQuery = null;
+            let _motionListener = null;
+
             function initPreview() {
                 if (!bEl.canvas) return false;
+
+                // Context Restore / Loss handling
+                if (!bEl.canvas._cw_lost) {
+                    bEl.canvas._cw_lost = (e) => {
+                        e.preventDefault();
+                        stopPreview();
+                        console.warn('[BannerPreview] Context Lost');
+                    };
+                    bEl.canvas.addEventListener('webglcontextlost', bEl.canvas._cw_lost, false);
+                }
+                if (!bEl.canvas._cw_restored) {
+                    bEl.canvas._cw_restored = () => {
+                        console.log('[BannerPreview] Context Restored');
+                        // Ensure logic is ready before re-init
+                        setTimeout(() => initPreview(), 100);
+                    };
+                    bEl.canvas.addEventListener('webglcontextrestored', bEl.canvas._cw_restored, false);
+                }
 
                 const glOpts = { alpha: false, antialias: false, powerPreference: 'default' };
                 const gl = bEl.canvas.getContext('webgl', glOpts)
@@ -5221,6 +5259,26 @@ void main() {
                 if (bEl.overlay) {
                     bEl.overlay.style.opacity = '0';
                     bEl.overlay.style.pointerEvents = 'none';
+                }
+
+                // Debounced Resize Listener
+                if (!window._previewResize) {
+                    let timeout;
+                    window._previewResize = () => {
+                        clearTimeout(timeout);
+                        timeout = setTimeout(() => resizePreviewCanvas(), 100);
+                    };
+                    window.addEventListener('resize', window._previewResize);
+                }
+
+                // Reactive Reduced Motion
+                if (!_motionQuery) {
+                    _motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+                    _motionListener = (e) => {
+                         previewState.targetSpeed = e.matches ? 0.0 : liveConfig.interaction.smoothTime; // Using smoothTime as a proxy for speed base if needed, or just 1.0
+                         // Actually, let's just flag it for the render loop to handle
+                    };
+                    _motionQuery.addEventListener('change', _motionListener);
                 }
 
                 Trace.log('BANNER_PREVIEW_INIT');
@@ -5276,8 +5334,14 @@ void main() {
                 previewState.lastTime = now;
 
                 // Smooth speed transition for hover slowdown
+                const motionReduce = _motionQuery && _motionQuery.matches;
+                const baseSpeed = motionReduce ? 0.0 : 1.0;
+                
+                // If reduced motion is on, force target to 0, otherwise standard physics
+                const target = motionReduce ? 0.0 : previewState.targetSpeed;
+                
                 const tau = Math.max(0.0001, liveConfig.interaction.smoothTime);
-                previewState.curSpeed += (previewState.targetSpeed - previewState.curSpeed)
+                previewState.curSpeed += (target - previewState.curSpeed)
                     * (1.0 - Math.exp(-dt / tau));
 
                 // Phase-space: accumulate real seconds, normalize to 0→1 phase for shader

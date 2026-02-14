@@ -42,7 +42,18 @@ const WEBGL_CONFIG = {
     stretchFrequency: 2.5    // Spatial frequency of stretch variation
   },
 
-  // 3. Wave Dynamics (the sine-wave motion)
+  // 3. Paint Drip Dynamics
+  drip: {
+    enabled: false,          // Toggle entire effect
+    density: 0.75,           // Probability of a drip (0.0 - 1.0)
+    distance: 0.1,           // Spacing between drips
+    sdfWidth: 0.18,          // Width of the drip trail
+    fallSpeed: 6.0,          // Speed of the fall
+    bFreq: 3.5,              // Bounce frequency
+    bRange: 0.35             // Bounce range
+  },
+
+  // 4. Wave Dynamics (the sine-wave motion)
   wave: {
     mainSpeed: 1.0,          // Speed of the primary undulation
     mainFrequency: 3.0,      // How many "humps" visible across width
@@ -124,7 +135,7 @@ async function loadBannerConfig() {
 
     const saved = data.config;
     // Merge each group's keys over WEBGL_CONFIG (colors are never overwritten)
-    for (const group of ['thickness', 'wave', 'twist', 'appearance', 'positioning', 'interaction', 'performance']) {
+    for (const group of ['thickness', 'drip', 'wave', 'twist', 'appearance', 'positioning', 'interaction', 'performance']) {
       if (saved[group] && typeof saved[group] === 'object' && WEBGL_CONFIG[group]) {
         for (const key in saved[group]) {
           if (key in WEBGL_CONFIG[group]) {
