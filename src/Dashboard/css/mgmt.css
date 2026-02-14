@@ -1429,6 +1429,7 @@ details.param-category[open] > .param-grid {
 
 .param-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     margin-top: 1rem;
 }
@@ -1457,6 +1458,189 @@ details.param-category[open] > .param-grid {
 
 .btn-apply:hover:not(:disabled) {
     background: var(--color-success-hover);
+}
+
+.btn-secondary {
+    background: var(--color-info);
+    color: var(--color-white, #fff);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: var(--color-info-hover);
+}
+
+.btn-danger {
+    background: var(--color-danger);
+    color: var(--color-white, #fff);
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: var(--color-danger-hover);
+}
+
+/* ====== SAVED PROFILES ====== */
+.saved-profiles-section {
+    margin-top: 1.25rem;
+    padding: 1rem;
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-md);
+}
+
+.saved-profiles-heading {
+    margin: 0 0 0.25rem 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.saved-profiles-description {
+    text-align: left;
+    font-size: 0.82rem;
+    margin-bottom: 0.75rem;
+}
+
+.profiles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.profiles-empty {
+    text-align: center;
+    padding: 0.75rem 0;
+}
+
+.profile-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    transition: box-shadow 0.15s ease;
+}
+
+.profile-item:hover {
+    box-shadow: var(--shadow-sm);
+}
+
+.profile-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.profile-name {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.profile-date {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-muted-soft);
+    margin-top: 1px;
+}
+
+.profile-item-actions {
+    display: flex;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+
+.profile-item-actions button {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.55rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+}
+
+.btn-load-profile {
+    background: var(--color-success);
+    color: var(--color-white);
+}
+.btn-load-profile:hover {
+    background: var(--color-success-hover);
+}
+
+.btn-rename-profile {
+    background: var(--color-surface-3);
+    color: var(--color-text);
+    border-color: var(--color-border-strong) !important;
+}
+.btn-rename-profile:hover {
+    background: var(--color-border-soft);
+}
+
+.btn-delete-profile {
+    background: var(--color-danger);
+    color: var(--color-white);
+}
+.btn-delete-profile:hover {
+    background: var(--color-danger-hover);
+}
+
+/* Inline rename input */
+.profile-rename-input {
+    font-size: 0.85rem;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid var(--color-info);
+    border-radius: var(--radius-sm);
+    outline: none;
+    width: 100%;
+    max-width: 200px;
+}
+
+/* Save profile form */
+.save-profile-form {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: var(--color-surface);
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-sm);
+}
+
+.save-profile-form label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted-strong);
+    margin-bottom: 0.25rem;
+}
+
+.save-profile-form input[type="text"] {
+    width: 100%;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.88rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.5rem;
+}
+
+.save-profile-form input[type="text"]:focus {
+    border-color: var(--color-info);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.save-profile-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.save-profile-actions button {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
 }
 
 /* ====== RESPONSIVE / MOBILE ====== */
@@ -1645,6 +1829,23 @@ details.param-category[open] > .param-grid {
 
     .banner-preview-wrapper {
         height: 90px;
+    }
+
+    .profile-item {
+        flex-wrap: wrap;
+    }
+
+    .profile-item-actions {
+        width: 100%;
+    }
+
+    .profile-item-actions button {
+        flex: 1;
+        text-align: center;
+    }
+
+    .save-profile-form input[type="text"] {
+        font-size: 1rem;
     }
 }
 
