@@ -110,6 +110,11 @@ const WEBGL_CONFIG = {
     bRange: 0.35, // Bounce range
     viscosity: 1.5, // Smooth-min viscosity
   },
+  gooey: {
+    animSpeed: 2.0, // Sweep speed
+    paintLength: 15.0, // Width of the paint block
+    loopSize: 24.0, // Domain repetition period (must be > paintLength + screen height)
+  },
 };
 
 /**
@@ -152,6 +157,7 @@ async function loadBannerConfig() {
       "interaction",
       "performance",
       "drip",
+      "gooey",
     ]) {
       if (
         saved[group] &&
@@ -458,6 +464,99 @@ function initWebGL() {
     }
   `;
 
+  // ── Gooey Drip Fragment Shader (SDE-based viscous paint) ──
+  const createGooeyShader = () => `
+    ${precisionLine}
+
+    uniform vec2 u_resolution;
+    uniform float u_time;
+
+    // --- CONFIGURATION (baked from WEBGL_CONFIG) ---
+    const float ANIM_SPEED  = ${f(WEBGL_CONFIG.gooey.animSpeed)};
+    const float PAINT_LENGTH = ${f(WEBGL_CONFIG.gooey.paintLength)};
+    const float LOOP_SIZE    = ${f(WEBGL_CONFIG.gooey.loopSize)};
+
+    vec3 c0 = ${vec3(WEBGL_CONFIG.colors.c0)};
+    vec3 c1 = ${vec3(WEBGL_CONFIG.colors.c1)};
+    vec3 c2 = ${vec3(WEBGL_CONFIG.colors.c2)};
+    vec3 c3 = ${vec3(WEBGL_CONFIG.colors.c3)};
+    vec3 c4 = ${vec3(WEBGL_CONFIG.colors.c4)};
+    vec3 bg = ${vec3(WEBGL_CONFIG.colors.background)};
+
+    // --- SIGNED DISTANCE ESTIMATOR ---
+    float DE( vec2 pp, float t )
+    {
+        // Fluid dynamics
+        pp.y += (
+            0.4 * sin(0.5 * 2.3 * pp.x + pp.y) +
+            0.2 * sin(0.5 * 5.5 * pp.x + pp.y) +
+            0.1 * sin(0.5 * 13.7 * pp.x) +
+            0.06 * sin(0.5 * 23.0 * pp.x)
+        );
+
+        // Continuous Domain Repetition (eliminates mod-boundary glitch)
+        float halfLoop = LOOP_SIZE * 0.5;
+        float localY = mod(pp.y + ANIM_SPEED * t + halfLoop, LOOP_SIZE) - halfLoop;
+
+        // Signed distance to a centered paint band
+        float paintRadius = PAINT_LENGTH * 0.5;
+        return paintRadius - abs(localY);
+    }
+
+    // --- HEIGHT MAP ISOLATION ---
+    float getSurfaceHeight(vec2 pp, float t) {
+        float sd = DE(pp, t);
+        float h = clamp(smoothstep(0.0, 0.25, max(sd, 0.0)), 0.0, 1.0);
+        return 4.0 * pow(h, 0.2);
+    }
+
+    // --- COLOR MAPPING ---
+    vec3 getMultiColor(float x) {
+        float viewWidth = 8.0 * (u_resolution.x / u_resolution.y);
+        float spread = clamp(x / viewWidth, 0.0, 1.0);
+        float v = spread * 4.0;
+        if (v < 1.0) return mix(c0, c1, v);
+        if (v < 2.0) return mix(c1, c2, v - 1.0);
+        if (v < 3.0) return mix(c2, c3, v - 2.0);
+        return mix(c3, c4, clamp(v - 3.0, 0.0, 1.0));
+    }
+
+    // --- RENDERING ---
+    vec3 sceneColour( in vec2 pp, float pxSize )
+    {
+        float t = u_time;
+        float sd = DE(pp, t);
+        float alpha = smoothstep(-pxSize, pxSize, sd);
+
+        // Early exit for background
+        if(alpha <= 0.0) return bg;
+
+        vec2 e = vec2(0.02, 0.0);
+        float h = getSurfaceHeight(pp, t);
+        float hx = getSurfaceHeight(pp + e.xy, t);
+        float hy = getSurfaceHeight(pp + e.yx, t);
+
+        // Forward differencing normals
+        vec3 N = normalize(vec3(-(hx - h) / e.x, 1.0, -(hy - h) / e.x));
+        vec3 L = normalize(vec3(0.5, 0.7, -0.5));
+
+        // Mirrored specular lobe
+        float spec = pow(max(abs(dot(N, L)), 0.0), 10.0);
+
+        vec3 baseColor = getMultiColor(pp.x);
+        vec3 paintColor = baseColor + vec3(spec * 0.5);
+        return mix(bg, paintColor, alpha);
+    }
+
+    void main()
+    {
+        vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+        uv.x *= u_resolution.x / u_resolution.y;
+        float pxSize = 8.0 / u_resolution.y;
+        gl_FragColor = vec4(sceneColour(uv * 8.0, pxSize), 1.0);
+    }
+  `;
+
   // ── Safe program creation: null-guards + deletes shaders after link [P1] ──
   function createProgramSafe(vsSrc, fsSrc) {
     const vs = compileShader(vsSrc, gl.VERTEX_SHADER);
@@ -705,6 +804,12 @@ function initWebGL() {
       "[WebGL] Paint program creation failed — paint mode unavailable.",
     );
   }
+  const gooeyProg = createProgramSafe(vertexShaderSource, createGooeyShader());
+  if (!gooeyProg) {
+    console.warn(
+      "[WebGL] Gooey program creation failed — gooey mode unavailable.",
+    );
+  }
 
   const dsVsSrc = `attribute vec2 p; varying vec2 v; void main(){v=p*0.5+0.5;gl_Position=vec4(p,0,1);}`;
   const dsFsSrc = `${precisionLine} varying vec2 v; uniform sampler2D t; uniform vec2 s;
@@ -789,6 +894,12 @@ function initWebGL() {
         viscosity: gl.getUniformLocation(paintProg, "u_viscosity"),
       }
     : null;
+  const gooeyUni = gooeyProg
+    ? {
+        res: gl.getUniformLocation(gooeyProg, "u_resolution"),
+        time: gl.getUniformLocation(gooeyProg, "u_time"),
+      }
+    : null;
   const dsTex = gl.getUniformLocation(dsProg, "t");
   const dsSize = gl.getUniformLocation(dsProg, "s");
 
@@ -840,6 +951,10 @@ function initWebGL() {
       if (paintProg) {
         gl.useProgram(paintProg);
         if (paintUni.res) gl.uniform2f(paintUni.res, pixelW, pixelH);
+      }
+      if (gooeyProg) {
+        gl.useProgram(gooeyProg);
+        if (gooeyUni.res) gl.uniform2f(gooeyUni.res, pixelW, pixelH);
       }
       return;
     }
@@ -913,6 +1028,10 @@ function initWebGL() {
       gl.useProgram(paintProg);
       if (paintUni.res) gl.uniform2f(paintUni.res, targetW, targetH);
     }
+    if (gooeyProg) {
+      gl.useProgram(gooeyProg);
+      if (gooeyUni.res) gl.uniform2f(gooeyUni.res, targetW, targetH);
+    }
     gl.useProgram(dsProg);
     if (dsSize) gl.uniform2f(dsSize, 1.0 / targetW, 1.0 / targetH);
   }
@@ -954,15 +1073,29 @@ function initWebGL() {
   let isVisible = !document.hidden;
   let firstFrame = true;
 
-  // ── Crossfade state (dual-program blend via GL constant-alpha) ──
+  // ── Crossfade state (from/to architecture for N shaders) ──
   const CROSSFADE_DURATION = 2.0;
-  let blendFactor = WEBGL_CONFIG.shaderType === "paint_drip" ? 1.0 : 0.0;
-  let blendTarget = blendFactor;
+
+  // Helper: resolve shader type → program/uni/needsDrip/needsGooey
+  function resolveShader(type) {
+    if (type === "paint_drip" && paintProg)
+      return { prog: paintProg, uni: paintUni, drip: true, gooey: false };
+    if (type === "gooey_drip" && gooeyProg)
+      return { prog: gooeyProg, uni: gooeyUni, drip: false, gooey: true };
+    return { prog: ribbonProg, uni: ribbonUni, drip: false, gooey: false };
+  }
+
+  let shaderFrom = WEBGL_CONFIG.shaderType || "ribbon_wave";
+  let shaderTo = shaderFrom;
+  let crossfadeFactor = 1.0; // 1.0 = fully showing shaderTo (no blend)
 
   // Expose transition trigger so the dashboard UI can drive crossfade
   window.transitionShader = (type) => {
     WEBGL_CONFIG.shaderType = type;
-    blendTarget = type === "paint_drip" ? 1.0 : 0.0;
+    if (type === shaderTo) return; // already there
+    shaderFrom = shaderTo;
+    shaderTo = type;
+    crossfadeFactor = 0.0;
   };
 
   let _debugDripLogged = false;
@@ -1034,7 +1167,8 @@ function initWebGL() {
       } else {
         gl.clear(gl.COLOR_BUFFER_BIT);
       }
-      if (uni.time) gl.uniform1f(uni.time, phase);
+      if (uni.time)
+        gl.uniform1f(uni.time, prog === gooeyProg ? animTime : phase);
       if (prog === paintProg) uploadDripUniforms();
 
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -1048,8 +1182,10 @@ function initWebGL() {
       gl.useProgram(prog);
       gl.viewport(0, 0, fbWidth, fbHeight);
       gl.clear(gl.COLOR_BUFFER_BIT);
-      if (uni.time) gl.uniform1f(uni.time, phase);
+      if (uni.time)
+        gl.uniform1f(uni.time, prog === gooeyProg ? animTime : phase);
       if (prog === paintProg) uploadDripUniforms();
+      if (prog === gooeyProg) uploadGooeyUniforms();
 
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
@@ -1147,37 +1283,46 @@ function initWebGL() {
     animTime = (animTime + dt * curSpeed) % LOOP_SECONDS;
     const loopPhase = animTime / LOOP_SECONDS;
 
-    // ── Crossfade blend update ──
-    // ── Crossfade blend update ──
+    // ── Crossfade blend update (from/to architecture) ──
     const directRender = ssFactor <= 1.0;
 
-    if (blendFactor !== blendTarget) {
+    if (crossfadeFactor < 1.0) {
       const speed = 1.0 / Math.max(0.001, CROSSFADE_DURATION);
-      if (blendTarget > blendFactor) {
-        blendFactor = Math.min(blendFactor + speed * dt, blendTarget);
-      } else {
-        blendFactor = Math.max(blendFactor - speed * dt, blendTarget);
+      crossfadeFactor = Math.min(crossfadeFactor + speed * dt, 1.0);
+      if (crossfadeFactor >= 1.0) {
+        shaderFrom = shaderTo; // snap: transition complete
       }
     }
 
-    // ── Determine active shaders ──
-    const showRibbon = blendFactor < 0.999;
-    const showPaint = blendFactor > 0.001 && !!paintProg;
+    // ── Resolve active shader programs ──
+    const toInfo = resolveShader(shaderTo);
 
-    if (showRibbon && !showPaint) {
-      // Pure ribbon
-      drawShaderPass(ribbonProg, ribbonUni, false, 0, loopPhase, directRender);
-    } else if (showPaint && !showRibbon) {
-      // Pure paint
-      drawShaderPass(paintProg, paintUni, false, 0, loopPhase, directRender);
-    } else if (showRibbon && showPaint) {
-      // Crossfade: ribbon first, paint blended on top
-      drawShaderPass(ribbonProg, ribbonUni, false, 0, loopPhase, directRender);
+    if (crossfadeFactor >= 0.999) {
+      // Pure single shader
       drawShaderPass(
-        paintProg,
-        paintUni,
+        toInfo.prog,
+        toInfo.uni,
+        false,
+        0,
+        loopPhase,
+        directRender,
+      );
+    } else {
+      // Crossfade: from first, to blended on top
+      const fromInfo = resolveShader(shaderFrom);
+      drawShaderPass(
+        fromInfo.prog,
+        fromInfo.uni,
+        false,
+        0,
+        loopPhase,
+        directRender,
+      );
+      drawShaderPass(
+        toInfo.prog,
+        toInfo.uni,
         true,
-        blendFactor,
+        crossfadeFactor,
         loopPhase,
         directRender,
       );

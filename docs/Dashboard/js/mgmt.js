@@ -5394,6 +5394,11 @@
         bRange: 0.35,
         viscosity: 1.5,
       },
+      gooey: {
+        animSpeed: 2.0,
+        paintLength: 15.0,
+        loopSize: 24.0,
+      },
     };
 
     /* ── Map of every control: config path → DOM id ── */
@@ -5559,6 +5564,10 @@
       { path: "drip.bFreq", id: "drip-bFreq", type: "range" },
       { path: "drip.bRange", id: "drip-bRange", type: "range" },
       { path: "drip.viscosity", id: "drip-viscosity", type: "range" },
+      // Gooey
+      { path: "gooey.animSpeed", id: "gooey-animSpeed", type: "range" },
+      { path: "gooey.paintLength", id: "gooey-paintLength", type: "range" },
+      { path: "gooey.loopSize", id: "gooey-loopSize", type: "range" },
     ];
 
     /* ── Helpers ── */
@@ -5694,8 +5703,11 @@
           }
 
           // Also crossfade the local preview engine
-          previewState.blendTarget =
-            liveConfig.shaderType === "paint_drip" ? 1.0 : 0.0;
+          if (mode !== previewState.shaderTo) {
+            previewState.shaderFrom = previewState.shaderTo;
+            previewState.shaderTo = mode;
+            previewState.crossfadeFactor = 0.0;
+          }
         });
       }
     }
@@ -5711,16 +5723,19 @@
       gl: null,
       ribbonProg: null,
       paintProg: null,
+      gooeyProg: null,
       ribbonUni: null,
       paintUni: null,
+      gooeyUni: null,
       rafId: null,
       animTime: 0,
       lastTime: 0,
       curSpeed: 1.0,
       targetSpeed: 1.0,
       running: false,
-      blendFactor: 0.0,
-      blendTarget: 0.0,
+      shaderFrom: "ribbon_wave",
+      shaderTo: "ribbon_wave",
+      crossfadeFactor: 1.0,
     };
 
     /* ── GLSL float formatter ── */
@@ -5876,6 +5891,102 @@
           float mask = 1.0 - smoothstep(c - w, c + w, d);
 
           gl_FragColor = vec4(mix(bg, ribbonColor, mask), 1.0);
+      }
+  `;
+    }
+
+    /* ── Gooey Drip Fragment Shader (SDE-based viscous paint) ── */
+    function buildGooeyShader(cfg) {
+      const g = cfg.gooey || {
+        animSpeed: 2.0,
+        paintLength: 15.0,
+        loopSize: 24.0,
+      };
+      return `
+      precision highp float;
+
+      uniform vec2 u_resolution;
+      uniform float u_time;
+
+      // --- CONFIGURATION (baked from config) ---
+      const float ANIM_SPEED  = ${g.animSpeed.toFixed(4)};
+      const float PAINT_LENGTH = ${g.paintLength.toFixed(4)};
+      const float LOOP_SIZE    = ${g.loopSize.toFixed(4)};
+
+      vec3 c0 = ${fmtVec3(cfg.colors.c0)};
+      vec3 c1 = ${fmtVec3(cfg.colors.c1)};
+      vec3 c2 = ${fmtVec3(cfg.colors.c2)};
+      vec3 c3 = ${fmtVec3(cfg.colors.c3)};
+      vec3 c4 = ${fmtVec3(cfg.colors.c4)};
+      vec3 bg = ${fmtVec3(cfg.colors.background)};
+
+      float DE( vec2 pp, float t )
+      {
+          // Fluid dynamics
+          pp.y += (
+              0.4 * sin(0.5 * 2.3 * pp.x + pp.y) +
+              0.2 * sin(0.5 * 5.5 * pp.x + pp.y) +
+              0.1 * sin(0.5 * 13.7 * pp.x) +
+              0.06 * sin(0.5 * 23.0 * pp.x)
+          );
+
+          // Continuous Domain Repetition (eliminates mod-boundary glitch)
+          float halfLoop = LOOP_SIZE * 0.5;
+          float localY = mod(pp.y + ANIM_SPEED * t + halfLoop, LOOP_SIZE) - halfLoop;
+
+          // Signed distance to a centered paint band
+          float paintRadius = PAINT_LENGTH * 0.5;
+          return paintRadius - abs(localY);
+      }
+
+      float getSurfaceHeight(vec2 pp, float t) {
+          float sd = DE(pp, t);
+          float h = clamp(smoothstep(0.0, 0.25, max(sd, 0.0)), 0.0, 1.0);
+          return 4.0 * pow(h, 0.2);
+      }
+
+      vec3 getMultiColor(float x) {
+          float viewWidth = 8.0 * (u_resolution.x / u_resolution.y);
+          float spread = clamp(x / viewWidth, 0.0, 1.0);
+          float v = spread * 4.0;
+          if (v < 1.0) return mix(c0, c1, v);
+          if (v < 2.0) return mix(c1, c2, v - 1.0);
+          if (v < 3.0) return mix(c2, c3, v - 2.0);
+          return mix(c3, c4, clamp(v - 3.0, 0.0, 1.0));
+      }
+
+      vec3 sceneColour( in vec2 pp, float pxSize )
+      {
+          float t = u_time;
+          float sd = DE(pp, t);
+          float alpha = smoothstep(-pxSize, pxSize, sd);
+
+          // Early exit for background
+          if(alpha <= 0.0) return bg;
+
+          vec2 e = vec2(0.02, 0.0);
+          float h = getSurfaceHeight(pp, t);
+          float hx = getSurfaceHeight(pp + e.xy, t);
+          float hy = getSurfaceHeight(pp + e.yx, t);
+
+          // Forward differencing normals
+          vec3 N = normalize(vec3(-(hx - h) / e.x, 1.0, -(hy - h) / e.x));
+          vec3 L = normalize(vec3(0.5, 0.7, -0.5));
+
+          // Mirrored specular lobe
+          float spec = pow(max(abs(dot(N, L)), 0.0), 10.0);
+
+          vec3 baseColor = getMultiColor(pp.x);
+          vec3 paintColor = baseColor + vec3(spec * 0.5);
+          return mix(bg, paintColor, alpha);
+      }
+
+      void main()
+      {
+          vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+          uv.x *= u_resolution.x / u_resolution.y;
+          float pxSize = 8.0 / u_resolution.y;
+          gl_FragColor = vec4(sceneColour(uv * 8.0, pxSize), 1.0);
       }
   `;
     }
@@ -6137,10 +6248,16 @@ void main() {
         vsSrc,
         buildDripShader(liveConfig),
       );
+      const gooeyProg = createPreviewProgram(
+        gl,
+        vsSrc,
+        buildGooeyShader(liveConfig),
+      );
       if (!ribbonProg) return false;
 
       previewState.ribbonProg = ribbonProg;
       previewState.paintProg = paintProg;
+      previewState.gooeyProg = gooeyProg;
 
       // Uniform locations for both programs
       previewState.ribbonUni = {
@@ -6161,11 +6278,18 @@ void main() {
             viscosity: gl.getUniformLocation(paintProg, "u_viscosity"),
           }
         : null;
+      previewState.gooeyUni = gooeyProg
+        ? {
+            res: gl.getUniformLocation(gooeyProg, "u_resolution"),
+            time: gl.getUniformLocation(gooeyProg, "u_time"),
+          }
+        : null;
 
-      // Set initial crossfade target
-      previewState.blendFactor =
-        liveConfig.shaderType === "paint_drip" ? 1.0 : 0.0;
-      previewState.blendTarget = previewState.blendFactor;
+      // Set initial crossfade state
+      const initType = liveConfig.shaderType || "ribbon_wave";
+      previewState.shaderFrom = initType;
+      previewState.shaderTo = initType;
+      previewState.crossfadeFactor = 1.0;
 
       // Force Black to test context
       // gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -6229,6 +6353,21 @@ void main() {
         };
       }
 
+      // Rebuild gooey
+      const newGooey = createPreviewProgram(
+        gl,
+        vsSrc,
+        buildGooeyShader(liveConfig),
+      );
+      if (newGooey) {
+        if (previewState.gooeyProg) gl.deleteProgram(previewState.gooeyProg);
+        previewState.gooeyProg = newGooey;
+        previewState.gooeyUni = {
+          res: gl.getUniformLocation(newGooey, "u_resolution"),
+          time: gl.getUniformLocation(newGooey, "u_time"),
+        };
+      }
+
       // Re-bind attribute (location 0 = a_position)
       gl.bindBuffer(gl.ARRAY_BUFFER, previewState.buffer);
       gl.enableVertexAttribArray(0);
@@ -6259,6 +6398,11 @@ void main() {
         gl.useProgram(previewState.paintProg);
         if (previewState.paintUni?.res)
           gl.uniform2f(previewState.paintUni.res, w, h);
+      }
+      if (previewState.gooeyProg) {
+        gl.useProgram(previewState.gooeyProg);
+        if (previewState.gooeyUni?.res)
+          gl.uniform2f(previewState.gooeyUni.res, w, h);
       }
     }
 
@@ -6309,27 +6453,50 @@ void main() {
         PREVIEW_LOOP_SECONDS;
       const loopPhase = previewState.animTime / PREVIEW_LOOP_SECONDS;
 
-      // Crossfade blend update
-      const bf = previewState.blendFactor;
-      const bt = previewState.blendTarget;
-      if (bf !== bt) {
+      // Crossfade blend update (from/to architecture)
+      if (previewState.crossfadeFactor < 1.0) {
         const speed = 1.0 / Math.max(0.001, PREVIEW_CROSSFADE_DURATION);
-        if (bt > bf) {
-          previewState.blendFactor = Math.min(bf + speed * dt, bt);
-        } else {
-          previewState.blendFactor = Math.max(bf - speed * dt, bt);
+        previewState.crossfadeFactor = Math.min(
+          previewState.crossfadeFactor + speed * dt,
+          1.0,
+        );
+        if (previewState.crossfadeFactor >= 1.0) {
+          previewState.shaderFrom = previewState.shaderTo;
         }
       }
 
-      const blend = previewState.blendFactor;
-      const showRibbon = blend < 0.999;
-      const showPaint = blend > 0.001 && !!previewState.paintProg;
+      // Helper: resolve shader type → program/uni/flags
+      function resolvePreviewShader(type) {
+        if (type === "paint_drip" && previewState.paintProg)
+          return {
+            prog: previewState.paintProg,
+            uni: previewState.paintUni,
+            drip: true,
+            gooey: false,
+          };
+        if (type === "gooey_drip" && previewState.gooeyProg)
+          return {
+            prog: previewState.gooeyProg,
+            uni: previewState.gooeyUni,
+            drip: false,
+            gooey: true,
+          };
+        return {
+          prog: previewState.ribbonProg,
+          uni: previewState.ribbonUni,
+          drip: false,
+          gooey: false,
+        };
+      }
+
+      const cf = previewState.crossfadeFactor;
+      const toInfo = resolvePreviewShader(previewState.shaderTo);
 
       // Log the render state once per second
       if (liveConfig.performance && liveConfig.performance.debugMode) {
         if (now - (renderPreviewFrame._dbgRouterLog || 0) >= 1.0) {
           console.log(
-            `🟡 [WebGL Router] Target: ${previewState.blendTarget} | Factor: ${blend.toFixed(3)} | Ribbon: ${showRibbon} | Paint: ${showPaint}`,
+            `\uD83D\uDFE1 [WebGL Router] From: ${previewState.shaderFrom} To: ${previewState.shaderTo} | Factor: ${cf.toFixed(3)}`,
           );
           renderPreviewFrame._dbgRouterLog = now;
         }
@@ -6337,32 +6504,33 @@ void main() {
 
       gl.clear(gl.COLOR_BUFFER_BIT);
 
-      if (showRibbon) {
-        gl.useProgram(previewState.ribbonProg);
-        if (previewState.ribbonUni?.time)
-          gl.uniform1f(previewState.ribbonUni.time, loopPhase);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      }
-
-      if (showPaint) {
-        if (showRibbon) {
-          // Blended on top of ribbon
+      function drawPreviewShader(info, blended, alpha) {
+        if (blended) {
           gl.enable(gl.BLEND);
-          gl.blendColor(0, 0, 0, blend);
+          gl.blendColor(0, 0, 0, alpha);
           gl.blendFunc(gl.CONSTANT_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
         }
-        gl.useProgram(previewState.paintProg);
-        if (previewState.paintUni?.time)
-          gl.uniform1f(previewState.paintUni.time, loopPhase);
-        uploadPreviewDripUniforms(gl);
+        gl.useProgram(info.prog);
+        if (info.uni?.time)
+          gl.uniform1f(
+            info.uni.time,
+            info.gooey ? previewState.animTime : loopPhase,
+          );
+        if (info.drip) uploadPreviewDripUniforms(gl);
 
-        // Manual attribute bind every frame (Fixes WebGL 1.0 draw failures)
         gl.bindBuffer(gl.ARRAY_BUFFER, previewState.buffer);
         gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(0);
-
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        if (showRibbon) gl.disable(gl.BLEND);
+        if (blended) gl.disable(gl.BLEND);
+      }
+
+      if (cf >= 0.999) {
+        drawPreviewShader(toInfo, false, 0);
+      } else {
+        const fromInfo = resolvePreviewShader(previewState.shaderFrom);
+        drawPreviewShader(fromInfo, false, 0);
+        drawPreviewShader(toInfo, true, cf);
       }
 
       previewState.rafId = requestAnimationFrame(renderPreviewFrame);
@@ -6411,6 +6579,7 @@ void main() {
         "interaction",
         "performance",
         "drip",
+        "gooey",
       ];
       for (const g of groups) {
         if (liveConfig[g]) out[g] = deepClone(liveConfig[g]);
@@ -6441,6 +6610,7 @@ void main() {
             "interaction",
             "performance",
             "drip",
+            "gooey",
           ];
           for (const g of groups) {
             if (saved[g] && typeof saved[g] === "object" && liveConfig[g]) {
@@ -6662,6 +6832,7 @@ void main() {
             "interaction",
             "performance",
             "drip",
+            "gooey",
           ];
           for (const g of groups) {
             if (saved[g] && typeof saved[g] === "object" && liveConfig[g]) {
@@ -6681,10 +6852,11 @@ void main() {
             if (bEl.shaderSelect) bEl.shaderSelect.value = saved.shaderType;
             document.body.dataset.activeShader = saved.shaderType;
 
-            // Switch local preview engine target
-            if (typeof previewState !== "undefined") {
-              previewState.blendTarget =
-                saved.shaderType === "paint_drip" ? 1.0 : 0.0;
+            // Crossfade preview engine to the loaded shader type
+            if (saved.shaderType !== previewState.shaderTo) {
+              previewState.shaderFrom = previewState.shaderTo;
+              previewState.shaderTo = saved.shaderType;
+              previewState.crossfadeFactor = 0.0;
             }
           }
 
