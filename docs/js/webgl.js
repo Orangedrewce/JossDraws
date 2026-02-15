@@ -101,13 +101,14 @@ const WEBGL_CONFIG = {
   // 9. Shader selection + Paint Drip params
   shaderType: "ribbon_wave", // "ribbon_wave" | "paint_drip"
   drip: {
-    density: 0.5, // Probability a slot spawns a drip
-    dripDistance: 0.15, // Spacing between drip slots
-    sdfWidth: 1.0, // SDF sharpness
-    fallSpeed: 0.05, // Drip fall speed
-    bFreq: 4.0, // Bounce frequency
-    bRange: 0.1, // Bounce range
-    viscosity: 1.0, // Smooth-min viscosity
+    scale: 1.0,
+    density: 0.75, // Probability a slot spawns a drip
+    dripDistance: 0.1, // Spacing between drip slots
+    sdfWidth: 0.18, // SDF sharpness (Drop Thickness)
+    fallSpeed: 6.0, // Drip fall speed
+    bFreq: 3.5, // Bounce frequency
+    bRange: 0.35, // Bounce range
+    viscosity: 1.5, // Smooth-min viscosity
   },
 };
 
@@ -318,6 +319,7 @@ function initWebGL() {
     uniform vec2 iResolution;
     uniform float iTime;
 
+    uniform float u_scale;
     uniform float u_density;
     uniform float u_dripDistance;
     uniform float u_sdfWidth;
@@ -450,7 +452,7 @@ function initWebGL() {
         float c = 1.0 / safeSdfWidth * 0.025;
         float w = 0.03;
 
-        float d = dripSDF(uv);
+        float d = dripSDF(uv * u_scale);
         float mask = 1.0 - smoothstep(c - w, c + w, d);
 
         gl_FragColor = vec4(mix(bg, ribbonColor, mask), 1.0);
@@ -778,6 +780,7 @@ function initWebGL() {
     ? {
         res: gl.getUniformLocation(paintProg, "iResolution"),
         time: gl.getUniformLocation(paintProg, "iTime"),
+        scale: gl.getUniformLocation(paintProg, "u_scale"),
         density: gl.getUniformLocation(paintProg, "u_density"),
         dripDistance: gl.getUniformLocation(paintProg, "u_dripDistance"),
         sdfWidth: gl.getUniformLocation(paintProg, "u_sdfWidth"),
@@ -974,6 +977,7 @@ function initWebGL() {
       );
       _debugDripLogged = true;
     }
+    if (paintUni.scale) gl.uniform1f(paintUni.scale, d.scale || 1.0);
     if (paintUni.density) gl.uniform1f(paintUni.density, d.density);
     if (paintUni.dripDistance)
       gl.uniform1f(paintUni.dripDistance, d.dripDistance);
@@ -1145,9 +1149,8 @@ function initWebGL() {
     const loopPhase = animTime / LOOP_SECONDS;
 
     // ── Crossfade blend update ──
-    // DEBUG: Force direct render to bypass FBO issues
-    const directRender = true; // was: ssFactor <= 1.0;
-    console.log("[WebGL] Direct Render Forced:", directRender);
+    // ── Crossfade blend update ──
+    const directRender = ssFactor <= 1.0;
 
     if (blendFactor !== blendTarget) {
       const speed = 1.0 / Math.max(0.001, CROSSFADE_DURATION);

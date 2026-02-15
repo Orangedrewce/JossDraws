@@ -1376,7 +1376,7 @@ details.param-category[open] > .param-grid {
     transition: transform 0.15s;
 }
 
-.param-control input[type="range"]::-webkit-slider-thumb:hover {
+.param-control input[type="range"]:hover::-webkit-slider-thumb {
     transform: scale(1.2);
 }
 

@@ -5385,6 +5385,7 @@
       },
       shaderType: "ribbon_wave",
       drip: {
+        scale: 1.0,
         density: 0.75,
         dripDistance: 0.1,
         sdfWidth: 0.18,
@@ -5550,6 +5551,7 @@
         type: "checkbox",
       },
       // Drip
+      { path: "drip.scale", id: "drip-scale", type: "range" },
       { path: "drip.density", id: "drip-density", type: "range" },
       { path: "drip.dripDistance", id: "drip-distance", type: "range" },
       { path: "drip.sdfWidth", id: "drip-sdfWidth", type: "range" },
@@ -5738,6 +5740,7 @@
       uniform vec2 iResolution;
       uniform float iTime;
 
+      uniform float u_scale;
       uniform float u_density;
       uniform float u_dripDistance;
       uniform float u_sdfWidth;
@@ -5870,7 +5873,8 @@
           float c = 1.0 / safeSdfWidth * 0.025;
           float w = 0.03;
 
-          float d = dripSDF(uv);
+          // Apply scale to UVs before generic SDF
+          float d = dripSDF(uv * u_scale);
           float mask = 1.0 - smoothstep(c - w, c + w, d);
 
           gl_FragColor = vec4(mix(bg, ribbonColor, mask), 1.0);
@@ -6149,6 +6153,7 @@ void main() {
         ? {
             res: gl.getUniformLocation(paintProg, "iResolution"),
             time: gl.getUniformLocation(paintProg, "iTime"),
+            scale: gl.getUniformLocation(paintProg, "u_scale"),
             density: gl.getUniformLocation(paintProg, "u_density"),
             dripDistance: gl.getUniformLocation(paintProg, "u_dripDistance"),
             sdfWidth: gl.getUniformLocation(paintProg, "u_sdfWidth"),
@@ -6215,6 +6220,7 @@ void main() {
         previewState.paintUni = {
           res: gl.getUniformLocation(newPaint, "iResolution"),
           time: gl.getUniformLocation(newPaint, "iTime"),
+          scale: gl.getUniformLocation(newPaint, "u_scale"),
           density: gl.getUniformLocation(newPaint, "u_density"),
           dripDistance: gl.getUniformLocation(newPaint, "u_dripDistance"),
           sdfWidth: gl.getUniformLocation(newPaint, "u_sdfWidth"),
@@ -6270,6 +6276,7 @@ void main() {
       }
 
       const u = previewState.paintUni;
+      if (u.scale) gl.uniform1f(u.scale, d.scale || 1.0);
       if (u.density) gl.uniform1f(u.density, d.density);
       if (u.dripDistance) gl.uniform1f(u.dripDistance, d.dripDistance);
       if (u.sdfWidth) gl.uniform1f(u.sdfWidth, d.sdfWidth);
@@ -6410,6 +6417,10 @@ void main() {
       for (const g of groups) {
         if (liveConfig[g]) out[g] = deepClone(liveConfig[g]);
       }
+      console.log(
+        "📦 [BannerParams] Publishing Payload:",
+        JSON.stringify(out.drip),
+      );
       return out;
     }
 
