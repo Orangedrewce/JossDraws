@@ -306,6 +306,8 @@
                         <option value="ribbon_wave" selected>Ribbon Wave</option>
                         <option value="paint_drip">Paint Drip</option>
                         <option value="gooey_drip">Gooey Drip</option>
+                        <option value="groovy">Groovy</option>
+                        <option value="painter">Painter</option>
                     </select>
                 </div>
 
@@ -602,6 +604,70 @@
                             <label for="gooey-loopSize">Loop Size</label>
                             <input type="range" id="gooey-loopSize" min="16.0" max="60.0" step="1.0" value="24.0">
                             <input type="number" id="gooey-loopSize-num" min="16.0" max="60.0" step="1.0" value="24.0">
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Groovy Shader Controls -->
+                <details class="param-category" data-shader-mode="groovy">
+                    <summary class="param-category-title">Groovy Swirl Controls</summary>
+                    <div class="param-grid">
+                        <div class="param-control">
+                            <label for="groovy-speed">Speed</label>
+                            <input type="range" id="groovy-speed" min="0" max="3.0" step="0.1" value="1.0">
+                            <input type="number" id="groovy-speed-num" min="0" max="3.0" step="0.1" value="1.0">
+                        </div>
+                        <div class="param-control">
+                            <label for="groovy-mixPowerMin">Mix Power Min</label>
+                            <input type="range" id="groovy-mixPowerMin" min="0" max="1.0" step="0.05" value="0.15">
+                            <input type="number" id="groovy-mixPowerMin-num" min="0" max="1.0" step="0.05" value="0.15">
+                        </div>
+                        <div class="param-control">
+                            <label for="groovy-mixPowerMax">Mix Power Max</label>
+                            <input type="range" id="groovy-mixPowerMax" min="0" max="2.0" step="0.05" value="0.80">
+                            <input type="number" id="groovy-mixPowerMax-num" min="0" max="2.0" step="0.05" value="0.80">
+                        </div>
+                        <div class="param-control">
+                            <label for="groovy-iterations">Iterations</label>
+                            <input type="range" id="groovy-iterations" min="1" max="20" step="1" value="11">
+                            <input type="number" id="groovy-iterations-num" min="1" max="20" step="1" value="11">
+                        </div>
+                        <div class="param-control">
+                            <label for="groovy-mouseInfluence">Mouse Influence</label>
+                            <input type="range" id="groovy-mouseInfluence" min="0.5" max="10.0" step="0.5" value="3.0">
+                            <input type="number" id="groovy-mouseInfluence-num" min="0.5" max="10.0" step="0.5" value="3.0">
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Painter Shader Controls -->
+                <details class="param-category" data-shader-mode="painter">
+                    <summary class="param-category-title">Painter Brush Controls</summary>
+                    <div class="param-grid">
+                        <div class="param-control">
+                            <label for="painter-brushSize">Brush Size</label>
+                            <input type="range" id="painter-brushSize" min="5" max="200" step="1" value="80">
+                            <input type="number" id="painter-brushSize-num" min="5" max="200" step="1" value="80">
+                        </div>
+                        <div class="param-control">
+                            <label for="painter-softness">Softness</label>
+                            <input type="range" id="painter-softness" min="0.3" max="3.0" step="0.1" value="1.2">
+                            <input type="number" id="painter-softness-num" min="0.3" max="3.0" step="0.1" value="1.2">
+                        </div>
+                        <div class="param-control">
+                            <label for="painter-noiseScale">Noise Scale</label>
+                            <input type="range" id="painter-noiseScale" min="1.0" max="20.0" step="0.5" value="4.0">
+                            <input type="number" id="painter-noiseScale-num" min="1.0" max="20.0" step="0.5" value="4.0">
+                        </div>
+                        <div class="param-control">
+                            <label for="painter-noiseInfluence">Noise Influence</label>
+                            <input type="range" id="painter-noiseInfluence" min="0.0" max="1.0" step="0.05" value="0.4">
+                            <input type="number" id="painter-noiseInfluence-num" min="0.0" max="1.0" step="0.05" value="0.4">
+                        </div>
+                        <div class="param-control">
+                            <label for="painter-cycleSpeed">Color Cycle Speed</label>
+                            <input type="range" id="painter-cycleSpeed" min="0.0" max="1.0" step="0.05" value="0.2">
+                            <input type="number" id="painter-cycleSpeed-num" min="0.0" max="1.0" step="0.05" value="0.2">
                         </div>
                     </div>
                 </details>

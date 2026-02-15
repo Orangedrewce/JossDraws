@@ -396,3 +396,151 @@ void main() {
 }
 `;
 }
+
+/* ── Groovy Fragment Shader ── */
+export function buildGroovyShader(cfg) {
+  const g = cfg.groovy || {
+    speed: 1.0,
+    mixPowerMin: 0.15,
+    mixPowerMax: 0.80,
+    iterations: 11,
+    mouseInfluence: 3.0,
+  };
+  return `
+  precision highp float;
+
+  uniform vec2 iResolution;
+  uniform float iTime;
+
+  uniform float u_groovy_speed;
+  uniform float u_groovy_mixMin;
+  uniform float u_groovy_mixMax;
+  uniform float u_groovy_iterations;
+  uniform float u_groovy_mouseInfl;
+
+  vec3 c0 = ${fmtVec3(cfg.colors.c0)};
+  vec3 c1 = ${fmtVec3(cfg.colors.c1)};
+  vec3 c2 = ${fmtVec3(cfg.colors.c2)};
+  vec3 c3 = ${fmtVec3(cfg.colors.c3)};
+  vec3 c4 = ${fmtVec3(cfg.colors.c4)};
+  vec3 bg = ${fmtVec3(cfg.colors.background)};
+
+  void main() {
+      vec2 uv = (2.0 * gl_FragCoord.xy - iResolution) / min(iResolution.x, iResolution.y);
+
+      // Animated focal point (replaces mouse on production banner)
+      float fx = 0.3 * sin(iTime * 0.4);
+      float fy = 0.2 * cos(iTime * 0.3);
+      vec2 m = vec2(fx, fy);
+
+      float dist = length(uv - m);
+      float mouseInfluence = exp(-u_groovy_mouseInfl * dist * dist);
+
+      float mixingPower = mix(u_groovy_mixMin, u_groovy_mixMax, mouseInfluence);
+
+      for (float i = 2.0; i < 25.0; i++) {
+          if (i >= u_groovy_iterations) break;
+          uv.x += (mixingPower / i) * cos(i * 2.0 * uv.y + iTime * u_groovy_speed);
+          uv.y += (mixingPower / i) * cos(i * 2.0 * uv.x + iTime * u_groovy_speed);
+      }
+
+      float val = 0.5 + 0.5 * cos(uv.x + uv.y + iTime * u_groovy_speed / 2.0);
+
+      vec3 col;
+      if (val < 0.25) {
+          col = mix(c0, c1, val * 4.0);
+      } else if (val < 0.5) {
+          col = mix(c1, c2, (val - 0.25) * 4.0);
+      } else if (val < 0.75) {
+          col = mix(c2, c3, (val - 0.5) * 4.0);
+      } else {
+          col = mix(c3, c4, (val - 0.75) * 4.0);
+      }
+
+      // Mix with background based on alpha value
+      gl_FragColor = vec4(mix(bg, col, 0.8), 1.0);
+  }
+`;
+}
+
+/* ── Painter Fragment Shader (procedural brush-stroke effect) ── */
+export function buildPainterShader(cfg) {
+  const p = cfg.painter || {
+    brushSize: 80.0,
+    softness: 1.2,
+    noiseScale: 4.0,
+    noiseInfluence: 0.4,
+    cycleSpeed: 0.2,
+  };
+  return `
+  precision highp float;
+
+  uniform vec2 iResolution;
+  uniform float iTime;
+
+  uniform float u_painter_brushSize;
+  uniform float u_painter_softness;
+  uniform float u_painter_noiseScale;
+  uniform float u_painter_noiseInfluence;
+  uniform float u_painter_cycleSpeed;
+
+  vec3 c0 = ${fmtVec3(cfg.colors.c0)};
+  vec3 c1 = ${fmtVec3(cfg.colors.c1)};
+  vec3 c2 = ${fmtVec3(cfg.colors.c2)};
+  vec3 c3 = ${fmtVec3(cfg.colors.c3)};
+  vec3 c4 = ${fmtVec3(cfg.colors.c4)};
+  vec3 bg = ${fmtVec3(cfg.colors.background)};
+
+  /* -- Noise from Shader Paint Studio -- */
+  float SEED = 12345.0;
+  float n1(float n) { return fract(cos(n * 85.62 + SEED) * 941.53); }
+  float p1(vec2 n) {
+      vec2 F = floor(n);
+      vec2 S = fract(n);
+      return mix(
+          mix(n1(F.x + n1(F.y)),       n1(F.x + 1.0 + n1(F.y)),       S.x),
+          mix(n1(F.x + n1(F.y + 1.0)), n1(F.x + 1.0 + n1(F.y + 1.0)), S.x),
+          S.y
+      );
+  }
+
+  vec3 getPaletteColor(float t) {
+      float val = fract(t);
+      if (val < 0.25)      return mix(c0, c1, val * 4.0);
+      else if (val < 0.5)  return mix(c1, c2, (val - 0.25) * 4.0);
+      else if (val < 0.75) return mix(c2, c3, (val - 0.5) * 4.0);
+      return mix(c3, c4, (val - 0.75) * 4.0);
+  }
+
+  void main() {
+      vec2 fragCoord = gl_FragCoord.xy;
+      float t = iTime;
+      vec3 color = bg;
+
+      /* 8 virtual brush-heads on Lissajous paths */
+      for (int i = 0; i < 8; i++) {
+          float fi = float(i);
+          float phase = fi * 0.7854 + t * (0.2 + fi * 0.03);
+
+          vec2 brushPos = vec2(
+              0.5 + 0.38 * sin(phase * 1.1 + fi * 2.1),
+              0.5 + 0.38 * cos(phase * 0.9 + fi * 1.7)
+          ) * iResolution.xy;
+
+          float dist = length(fragCoord - brushPos);
+
+          float noiseVal  = p1(fragCoord / u_painter_noiseScale);
+          float pattern   = noiseVal * u_painter_noiseInfluence
+                          + (1.0 - u_painter_noiseInfluence);
+
+          float outer     = u_painter_brushSize * u_painter_softness;
+          float intensity = smoothstep(outer, 0.0, dist / pattern);
+
+          vec3 brushCol = getPaletteColor(t * u_painter_cycleSpeed + fi * 0.15);
+          color = mix(color, brushCol, intensity * 0.45);
+      }
+
+      gl_FragColor = vec4(color, 1.0);
+  }
+`;
+}

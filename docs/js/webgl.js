@@ -115,6 +115,20 @@ const WEBGL_CONFIG = {
     paintLength: 15.0, // Width of the paint block
     loopSize: 24.0, // Domain repetition period (must be > paintLength + screen height)
   },
+  groovy: {
+    speed: 1.0,
+    mixPowerMin: 0.15,
+    mixPowerMax: 0.80,
+    iterations: 11,
+    mouseInfluence: 3.0,
+  },
+  painter: {
+    brushSize: 80.0,
+    softness: 1.2,
+    noiseScale: 4.0,
+    noiseInfluence: 0.4,
+    cycleSpeed: 0.2,
+  },
 };
 
 /**
@@ -158,6 +172,8 @@ async function loadBannerConfig() {
       "performance",
       "drip",
       "gooey",
+      "groovy",
+      "painter",
     ]) {
       if (
         saved[group] &&
@@ -557,6 +573,141 @@ function initWebGL() {
     }
   `;
 
+  // ── Groovy Shader Fragment (swirling color-mix) ──
+  const createGroovyShader = () => {
+    const cfg = WEBGL_CONFIG;
+    const gc = cfg.groovy;
+    const fv3 = (hex) => {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      return `vec3(${r.toFixed(4)}, ${g.toFixed(4)}, ${b.toFixed(4)})`;
+    };
+    return `
+      ${precisionLine}
+      uniform vec2 iResolution;
+      uniform float iTime;
+      uniform float u_groovy_speed;
+      uniform float u_groovy_mixPowerMin;
+      uniform float u_groovy_mixPowerMax;
+      uniform float u_groovy_iterations;
+      uniform float u_groovy_mouseInfluence;
+
+      vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {
+          return a + b * cos(6.28318 * (c * t + d));
+      }
+
+      void main() {
+          vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy) / min(iResolution.x, iResolution.y);
+          float t = iTime * u_groovy_speed;
+          vec2 focus = vec2(0.3 * sin(t * 0.4), 0.2 * cos(t * 0.3));
+          vec2 uv0 = uv;
+          vec3 finalColor = vec3(0.0);
+          for (int i = 0; i < 20; i++) {
+              if (float(i) >= u_groovy_iterations) break;
+              uv = fract(uv * 1.5) - 0.5;
+              float fi = float(i);
+              float d = length(uv) * exp(-length(uv0 - focus) / u_groovy_mouseInfluence);
+              vec3 col = palette(
+                  length(uv0) + fi * 0.4 + t * 0.4,
+                  ${fv3(cfg.colors.c0)},
+                  ${fv3(cfg.colors.c1)},
+                  ${fv3(cfg.colors.c2)},
+                  ${fv3(cfg.colors.c3)}
+              );
+              d = sin(d * 8.0 + t) / 8.0;
+              d = abs(d);
+              float mixPower = mix(u_groovy_mixPowerMin, u_groovy_mixPowerMax,
+                  0.5 + 0.5 * sin(t * 0.3 + fi));
+              d = pow(0.01 / d, mixPower);
+              finalColor += col * d;
+          }
+          vec3 bg = ${fv3(cfg.colors.background)};
+          float edgeFade = smoothstep(2.0, 0.5, length(uv0));
+          finalColor = mix(bg, finalColor, edgeFade);
+          gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+  };
+
+  // ── Painter Fragment Shader (procedural brush-stroke effect) ──
+  const createPainterShader = () => {
+    const cfg = WEBGL_CONFIG;
+    const fv3 = (hex) => {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      return `vec3(${r.toFixed(4)}, ${g.toFixed(4)}, ${b.toFixed(4)})`;
+    };
+    return `
+      ${precisionLine}
+      uniform vec2 iResolution;
+      uniform float iTime;
+      uniform float u_painter_brushSize;
+      uniform float u_painter_softness;
+      uniform float u_painter_noiseScale;
+      uniform float u_painter_noiseInfluence;
+      uniform float u_painter_cycleSpeed;
+
+      vec3 c0 = ${fv3(cfg.colors.c0)};
+      vec3 c1 = ${fv3(cfg.colors.c1)};
+      vec3 c2 = ${fv3(cfg.colors.c2)};
+      vec3 c3 = ${fv3(cfg.colors.c3)};
+      vec3 c4 = ${fv3(cfg.colors.c4)};
+      vec3 bg = ${fv3(cfg.colors.background)};
+
+      float SEED = 12345.0;
+      float n1(float n) { return fract(cos(n * 85.62 + SEED) * 941.53); }
+      float p1(vec2 n) {
+          vec2 F = floor(n);
+          vec2 S = fract(n);
+          return mix(
+              mix(n1(F.x + n1(F.y)),       n1(F.x + 1.0 + n1(F.y)),       S.x),
+              mix(n1(F.x + n1(F.y + 1.0)), n1(F.x + 1.0 + n1(F.y + 1.0)), S.x),
+              S.y
+          );
+      }
+
+      vec3 getPaletteColor(float t) {
+          float val = fract(t);
+          if (val < 0.25)      return mix(c0, c1, val * 4.0);
+          else if (val < 0.5)  return mix(c1, c2, (val - 0.25) * 4.0);
+          else if (val < 0.75) return mix(c2, c3, (val - 0.5) * 4.0);
+          return mix(c3, c4, (val - 0.75) * 4.0);
+      }
+
+      void main() {
+          vec2 fragCoord = gl_FragCoord.xy;
+          float t = iTime;
+          vec3 color = bg;
+
+          for (int i = 0; i < 8; i++) {
+              float fi = float(i);
+              float phase = fi * 0.7854 + t * (0.2 + fi * 0.03);
+
+              vec2 brushPos = vec2(
+                  0.5 + 0.38 * sin(phase * 1.1 + fi * 2.1),
+                  0.5 + 0.38 * cos(phase * 0.9 + fi * 1.7)
+              ) * iResolution.xy;
+
+              float dist = length(fragCoord - brushPos);
+
+              float noiseVal  = p1(fragCoord / u_painter_noiseScale);
+              float pattern   = noiseVal * u_painter_noiseInfluence
+                              + (1.0 - u_painter_noiseInfluence);
+
+              float outer     = u_painter_brushSize * u_painter_softness;
+              float intensity = smoothstep(outer, 0.0, dist / pattern);
+
+              vec3 brushCol = getPaletteColor(t * u_painter_cycleSpeed + fi * 0.15);
+              color = mix(color, brushCol, intensity * 0.45);
+          }
+
+          gl_FragColor = vec4(color, 1.0);
+      }
+    `;
+  };
+
   // ── Safe program creation: null-guards + deletes shaders after link [P1] ──
   function createProgramSafe(vsSrc, fsSrc) {
     const vs = compileShader(vsSrc, gl.VERTEX_SHADER);
@@ -810,6 +961,18 @@ function initWebGL() {
       "[WebGL] Gooey program creation failed — gooey mode unavailable.",
     );
   }
+  const groovyProg = createProgramSafe(vertexShaderSource, createGroovyShader());
+  if (!groovyProg) {
+    console.warn(
+      "[WebGL] Groovy program creation failed — groovy mode unavailable.",
+    );
+  }
+  const painterProg = createProgramSafe(vertexShaderSource, createPainterShader());
+  if (!painterProg) {
+    console.warn(
+      "[WebGL] Painter program creation failed — painter mode unavailable.",
+    );
+  }
 
   const dsVsSrc = `attribute vec2 p; varying vec2 v; void main(){v=p*0.5+0.5;gl_Position=vec4(p,0,1);}`;
   const dsFsSrc = `${precisionLine} varying vec2 v; uniform sampler2D t; uniform vec2 s;
@@ -900,6 +1063,28 @@ function initWebGL() {
         time: gl.getUniformLocation(gooeyProg, "u_time"),
       }
     : null;
+  const groovyUni = groovyProg
+    ? {
+        res: gl.getUniformLocation(groovyProg, "iResolution"),
+        time: gl.getUniformLocation(groovyProg, "iTime"),
+        speed: gl.getUniformLocation(groovyProg, "u_groovy_speed"),
+        mixMin: gl.getUniformLocation(groovyProg, "u_groovy_mixPowerMin"),
+        mixMax: gl.getUniformLocation(groovyProg, "u_groovy_mixPowerMax"),
+        iterations: gl.getUniformLocation(groovyProg, "u_groovy_iterations"),
+        mouseInfl: gl.getUniformLocation(groovyProg, "u_groovy_mouseInfluence"),
+      }
+    : null;
+  const painterUni = painterProg
+    ? {
+        res: gl.getUniformLocation(painterProg, "iResolution"),
+        time: gl.getUniformLocation(painterProg, "iTime"),
+        brushSize: gl.getUniformLocation(painterProg, "u_painter_brushSize"),
+        softness: gl.getUniformLocation(painterProg, "u_painter_softness"),
+        noiseScale: gl.getUniformLocation(painterProg, "u_painter_noiseScale"),
+        noiseInfluence: gl.getUniformLocation(painterProg, "u_painter_noiseInfluence"),
+        cycleSpeed: gl.getUniformLocation(painterProg, "u_painter_cycleSpeed"),
+      }
+    : null;
   const dsTex = gl.getUniformLocation(dsProg, "t");
   const dsSize = gl.getUniformLocation(dsProg, "s");
 
@@ -955,6 +1140,14 @@ function initWebGL() {
       if (gooeyProg) {
         gl.useProgram(gooeyProg);
         if (gooeyUni.res) gl.uniform2f(gooeyUni.res, pixelW, pixelH);
+      }
+      if (groovyProg) {
+        gl.useProgram(groovyProg);
+        if (groovyUni.res) gl.uniform2f(groovyUni.res, pixelW, pixelH);
+      }
+      if (painterProg) {
+        gl.useProgram(painterProg);
+        if (painterUni.res) gl.uniform2f(painterUni.res, pixelW, pixelH);
       }
       return;
     }
@@ -1032,6 +1225,14 @@ function initWebGL() {
       gl.useProgram(gooeyProg);
       if (gooeyUni.res) gl.uniform2f(gooeyUni.res, targetW, targetH);
     }
+    if (groovyProg) {
+      gl.useProgram(groovyProg);
+      if (groovyUni.res) gl.uniform2f(groovyUni.res, targetW, targetH);
+    }
+    if (painterProg) {
+      gl.useProgram(painterProg);
+      if (painterUni.res) gl.uniform2f(painterUni.res, targetW, targetH);
+    }
     gl.useProgram(dsProg);
     if (dsSize) gl.uniform2f(dsSize, 1.0 / targetW, 1.0 / targetH);
   }
@@ -1079,10 +1280,14 @@ function initWebGL() {
   // Helper: resolve shader type → program/uni/needsDrip/needsGooey
   function resolveShader(type) {
     if (type === "paint_drip" && paintProg)
-      return { prog: paintProg, uni: paintUni, drip: true, gooey: false };
+      return { prog: paintProg, uni: paintUni, drip: true, gooey: false, groovy: false, painter: false };
     if (type === "gooey_drip" && gooeyProg)
-      return { prog: gooeyProg, uni: gooeyUni, drip: false, gooey: true };
-    return { prog: ribbonProg, uni: ribbonUni, drip: false, gooey: false };
+      return { prog: gooeyProg, uni: gooeyUni, drip: false, gooey: true, groovy: false, painter: false };
+    if (type === "groovy" && groovyProg)
+      return { prog: groovyProg, uni: groovyUni, drip: false, gooey: false, groovy: true, painter: false };
+    if (type === "painter" && painterProg)
+      return { prog: painterProg, uni: painterUni, drip: false, gooey: false, groovy: false, painter: true };
+    return { prog: ribbonProg, uni: ribbonUni, drip: false, gooey: false, groovy: false, painter: false };
   }
 
   let shaderFrom = WEBGL_CONFIG.shaderType || "ribbon_wave";
@@ -1101,6 +1306,26 @@ function initWebGL() {
   // Gooey shader bakes config at compile time (no runtime uniforms to upload).
   // This no-op prevents a ReferenceError when the FBO path calls it.
   function uploadGooeyUniforms() { /* compile-time constants — nothing to upload */ }
+
+  function uploadGroovyUniforms() {
+    if (!groovyUni) return;
+    const g = WEBGL_CONFIG.groovy;
+    if (groovyUni.speed) gl.uniform1f(groovyUni.speed, g.speed);
+    if (groovyUni.mixMin) gl.uniform1f(groovyUni.mixMin, g.mixPowerMin);
+    if (groovyUni.mixMax) gl.uniform1f(groovyUni.mixMax, g.mixPowerMax);
+    if (groovyUni.iterations) gl.uniform1f(groovyUni.iterations, g.iterations);
+    if (groovyUni.mouseInfl) gl.uniform1f(groovyUni.mouseInfl, g.mouseInfluence);
+  }
+
+  function uploadPainterUniforms() {
+    if (!painterUni) return;
+    const p = WEBGL_CONFIG.painter;
+    if (painterUni.brushSize) gl.uniform1f(painterUni.brushSize, p.brushSize);
+    if (painterUni.softness) gl.uniform1f(painterUni.softness, p.softness);
+    if (painterUni.noiseScale) gl.uniform1f(painterUni.noiseScale, p.noiseScale);
+    if (painterUni.noiseInfluence) gl.uniform1f(painterUni.noiseInfluence, p.noiseInfluence);
+    if (painterUni.cycleSpeed) gl.uniform1f(painterUni.cycleSpeed, p.cycleSpeed);
+  }
 
   let _debugDripLogged = false;
   function uploadDripUniforms() {
@@ -1172,8 +1397,10 @@ function initWebGL() {
         gl.clear(gl.COLOR_BUFFER_BIT);
       }
       if (uni.time)
-        gl.uniform1f(uni.time, prog === gooeyProg ? animTime : phase);
+        gl.uniform1f(uni.time, (prog === gooeyProg || prog === groovyProg || prog === painterProg) ? animTime : phase);
       if (prog === paintProg) uploadDripUniforms();
+      if (prog === groovyProg) uploadGroovyUniforms();
+      if (prog === painterProg) uploadPainterUniforms();
 
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
@@ -1187,9 +1414,11 @@ function initWebGL() {
       gl.viewport(0, 0, fbWidth, fbHeight);
       gl.clear(gl.COLOR_BUFFER_BIT);
       if (uni.time)
-        gl.uniform1f(uni.time, prog === gooeyProg ? animTime : phase);
+        gl.uniform1f(uni.time, (prog === gooeyProg || prog === groovyProg || prog === painterProg) ? animTime : phase);
       if (prog === paintProg) uploadDripUniforms();
       if (prog === gooeyProg) uploadGooeyUniforms();
+      if (prog === groovyProg) uploadGroovyUniforms();
+      if (prog === painterProg) uploadPainterUniforms();
 
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 

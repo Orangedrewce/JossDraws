@@ -5,7 +5,7 @@
 // ============================================
 
 import { Trace, ctx, escHTML } from './utils.js';
-import { buildDripShader, buildGooeyShader, buildRibbonShader } from './banner-shaders.js';
+import { buildDripShader, buildGooeyShader, buildRibbonShader, buildGroovyShader, buildPainterShader } from './banner-shaders.js';
 
 export function initBannerEditor() {
   Trace.group("BANNER_PARAMS");
@@ -106,6 +106,20 @@ export function initBannerEditor() {
       paintLength: 15.0,
       loopSize: 24.0,
     },
+    groovy: {
+      speed: 1.0,
+      mixPowerMin: 0.15,
+      mixPowerMax: 0.80,
+      iterations: 11,
+      mouseInfluence: 3.0,
+    },
+    painter: {
+      brushSize: 80.0,
+      softness: 1.2,
+      noiseScale: 4.0,
+      noiseInfluence: 0.4,
+      cycleSpeed: 0.2,
+    },
   };
 
   /* ── Map of every control: config path → DOM id ── */
@@ -167,6 +181,18 @@ export function initBannerEditor() {
     { path: "gooey.animSpeed", id: "gooey-animSpeed", type: "range" },
     { path: "gooey.paintLength", id: "gooey-paintLength", type: "range" },
     { path: "gooey.loopSize", id: "gooey-loopSize", type: "range" },
+    // Groovy
+    { path: "groovy.speed", id: "groovy-speed", type: "range" },
+    { path: "groovy.mixPowerMin", id: "groovy-mixPowerMin", type: "range" },
+    { path: "groovy.mixPowerMax", id: "groovy-mixPowerMax", type: "range" },
+    { path: "groovy.iterations", id: "groovy-iterations", type: "range" },
+    { path: "groovy.mouseInfluence", id: "groovy-mouseInfluence", type: "range" },
+    // Painter
+    { path: "painter.brushSize", id: "painter-brushSize", type: "range" },
+    { path: "painter.softness", id: "painter-softness", type: "range" },
+    { path: "painter.noiseScale", id: "painter-noiseScale", type: "range" },
+    { path: "painter.noiseInfluence", id: "painter-noiseInfluence", type: "range" },
+    { path: "painter.cycleSpeed", id: "painter-cycleSpeed", type: "range" },
   ];
 
   /* ── Helpers ── */
@@ -323,9 +349,11 @@ export function initBannerEditor() {
     ribbonProg: null,
     paintProg: null,
     gooeyProg: null,
+    groovyProg: null,
     ribbonUni: null,
     paintUni: null,
     gooeyUni: null,
+    groovyUni: null,
     rafId: null,
     animTime: 0,
     lastTime: 0,
@@ -423,11 +451,15 @@ export function initBannerEditor() {
     const ribbonProg = createPreviewProgram(gl, vsSrc, buildRibbonShader(liveConfig));
     const paintProg = createPreviewProgram(gl, vsSrc, buildDripShader(liveConfig));
     const gooeyProg = createPreviewProgram(gl, vsSrc, buildGooeyShader(liveConfig));
+    const groovyProg = createPreviewProgram(gl, vsSrc, buildGroovyShader(liveConfig));
+    const painterProg = createPreviewProgram(gl, vsSrc, buildPainterShader(liveConfig));
     if (!ribbonProg) return false;
 
     previewState.ribbonProg = ribbonProg;
     previewState.paintProg = paintProg;
     previewState.gooeyProg = gooeyProg;
+    previewState.groovyProg = groovyProg;
+    previewState.painterProg = painterProg;
 
     // Uniform locations for all programs
     previewState.ribbonUni = {
@@ -452,6 +484,28 @@ export function initBannerEditor() {
       ? {
           res: gl.getUniformLocation(gooeyProg, "u_resolution"),
           time: gl.getUniformLocation(gooeyProg, "u_time"),
+        }
+      : null;
+    previewState.groovyUni = groovyProg
+      ? {
+          res: gl.getUniformLocation(groovyProg, "iResolution"),
+          time: gl.getUniformLocation(groovyProg, "iTime"),
+          speed: gl.getUniformLocation(groovyProg, "u_groovy_speed"),
+          mixMin: gl.getUniformLocation(groovyProg, "u_groovy_mixMin"),
+          mixMax: gl.getUniformLocation(groovyProg, "u_groovy_mixMax"),
+          iterations: gl.getUniformLocation(groovyProg, "u_groovy_iterations"),
+          mouseInfl: gl.getUniformLocation(groovyProg, "u_groovy_mouseInfl"),
+        }
+      : null;
+    previewState.painterUni = painterProg
+      ? {
+          res: gl.getUniformLocation(painterProg, "iResolution"),
+          time: gl.getUniformLocation(painterProg, "iTime"),
+          brushSize: gl.getUniformLocation(painterProg, "u_painter_brushSize"),
+          softness: gl.getUniformLocation(painterProg, "u_painter_softness"),
+          noiseScale: gl.getUniformLocation(painterProg, "u_painter_noiseScale"),
+          noiseInfluence: gl.getUniformLocation(painterProg, "u_painter_noiseInfluence"),
+          cycleSpeed: gl.getUniformLocation(painterProg, "u_painter_cycleSpeed"),
         }
       : null;
 
@@ -522,6 +576,38 @@ export function initBannerEditor() {
       };
     }
 
+    // Rebuild groovy
+    const newGroovy = createPreviewProgram(gl, vsSrc, buildGroovyShader(liveConfig));
+    if (newGroovy) {
+      if (previewState.groovyProg) gl.deleteProgram(previewState.groovyProg);
+      previewState.groovyProg = newGroovy;
+      previewState.groovyUni = {
+        res: gl.getUniformLocation(newGroovy, "iResolution"),
+        time: gl.getUniformLocation(newGroovy, "iTime"),
+        speed: gl.getUniformLocation(newGroovy, "u_groovy_speed"),
+        mixMin: gl.getUniformLocation(newGroovy, "u_groovy_mixPowerMin"),
+        mixMax: gl.getUniformLocation(newGroovy, "u_groovy_mixPowerMax"),
+        iterations: gl.getUniformLocation(newGroovy, "u_groovy_iterations"),
+        mouseInfl: gl.getUniformLocation(newGroovy, "u_groovy_mouseInfluence"),
+      };
+    }
+
+    // Rebuild painter
+    const newPainter = createPreviewProgram(gl, vsSrc, buildPainterShader(liveConfig));
+    if (newPainter) {
+      if (previewState.painterProg) gl.deleteProgram(previewState.painterProg);
+      previewState.painterProg = newPainter;
+      previewState.painterUni = {
+        res: gl.getUniformLocation(newPainter, "iResolution"),
+        time: gl.getUniformLocation(newPainter, "iTime"),
+        brushSize: gl.getUniformLocation(newPainter, "u_painter_brushSize"),
+        softness: gl.getUniformLocation(newPainter, "u_painter_softness"),
+        noiseScale: gl.getUniformLocation(newPainter, "u_painter_noiseScale"),
+        noiseInfluence: gl.getUniformLocation(newPainter, "u_painter_noiseInfluence"),
+        cycleSpeed: gl.getUniformLocation(newPainter, "u_painter_cycleSpeed"),
+      };
+    }
+
     // Re-bind attribute (location 0 = a_position)
     gl.bindBuffer(gl.ARRAY_BUFFER, previewState.buffer);
     gl.enableVertexAttribArray(0);
@@ -558,6 +644,16 @@ export function initBannerEditor() {
       if (previewState.gooeyUni?.res)
         gl.uniform2f(previewState.gooeyUni.res, w, h);
     }
+    if (previewState.groovyProg) {
+      gl.useProgram(previewState.groovyProg);
+      if (previewState.groovyUni?.res)
+        gl.uniform2f(previewState.groovyUni.res, w, h);
+    }
+    if (previewState.painterProg) {
+      gl.useProgram(previewState.painterProg);
+      if (previewState.painterUni?.res)
+        gl.uniform2f(previewState.painterUni.res, w, h);
+    }
   }
 
   /* ── Upload drip uniforms to paint program ── */
@@ -580,6 +676,30 @@ export function initBannerEditor() {
     if (u.bFreq) gl.uniform1f(u.bFreq, d.bFreq);
     if (u.bRange) gl.uniform1f(u.bRange, d.bRange);
     if (u.viscosity) gl.uniform1f(u.viscosity, d.viscosity);
+  }
+
+  /* ── Upload groovy uniforms to groovy program ── */
+  function uploadPreviewGroovyUniforms(gl) {
+    if (!previewState.groovyUni) return;
+    const g = liveConfig.groovy;
+    const u = previewState.groovyUni;
+    if (u.speed) gl.uniform1f(u.speed, g.speed);
+    if (u.mixMin) gl.uniform1f(u.mixMin, g.mixPowerMin);
+    if (u.mixMax) gl.uniform1f(u.mixMax, g.mixPowerMax);
+    if (u.iterations) gl.uniform1f(u.iterations, g.iterations);
+    if (u.mouseInfl) gl.uniform1f(u.mouseInfl, g.mouseInfluence);
+  }
+
+  /* ── Upload painter uniforms to painter program ── */
+  function uploadPreviewPainterUniforms(gl) {
+    if (!previewState.painterUni) return;
+    const p = liveConfig.painter;
+    const u = previewState.painterUni;
+    if (u.brushSize) gl.uniform1f(u.brushSize, p.brushSize);
+    if (u.softness) gl.uniform1f(u.softness, p.softness);
+    if (u.noiseScale) gl.uniform1f(u.noiseScale, p.noiseScale);
+    if (u.noiseInfluence) gl.uniform1f(u.noiseInfluence, p.noiseInfluence);
+    if (u.cycleSpeed) gl.uniform1f(u.cycleSpeed, p.cycleSpeed);
   }
 
   /* ── Crossfade duration ── */
@@ -634,12 +754,33 @@ export function initBannerEditor() {
           uni: previewState.gooeyUni,
           drip: false,
           gooey: true,
+          groovy: false,
+        };
+      if (type === "groovy" && previewState.groovyProg)
+        return {
+          prog: previewState.groovyProg,
+          uni: previewState.groovyUni,
+          drip: false,
+          gooey: false,
+          groovy: true,
+          painter: false,
+        };
+      if (type === "painter" && previewState.painterProg)
+        return {
+          prog: previewState.painterProg,
+          uni: previewState.painterUni,
+          drip: false,
+          gooey: false,
+          groovy: false,
+          painter: true,
         };
       return {
         prog: previewState.ribbonProg,
         uni: previewState.ribbonUni,
         drip: false,
         gooey: false,
+        groovy: false,
+        painter: false,
       };
     }
 
@@ -668,9 +809,11 @@ export function initBannerEditor() {
       if (info.uni?.time)
         gl.uniform1f(
           info.uni.time,
-          info.gooey ? previewState.animTime : loopPhase,
+          (info.gooey || info.groovy || info.painter) ? previewState.animTime : loopPhase,
         );
       if (info.drip) uploadPreviewDripUniforms(gl);
+      if (info.groovy) uploadPreviewGroovyUniforms(gl);
+      if (info.painter) uploadPreviewPainterUniforms(gl);
 
       gl.bindBuffer(gl.ARRAY_BUFFER, previewState.buffer);
       gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
@@ -734,6 +877,8 @@ export function initBannerEditor() {
       "performance",
       "drip",
       "gooey",
+      "groovy",
+      "painter",
     ];
     for (const g of groups) {
       if (liveConfig[g]) out[g] = deepClone(liveConfig[g]);
@@ -762,6 +907,8 @@ export function initBannerEditor() {
           "performance",
           "drip",
           "gooey",
+          "groovy",
+          "painter",
         ];
         for (const g of groups) {
           if (saved[g] && typeof saved[g] === "object" && liveConfig[g]) {
@@ -982,6 +1129,8 @@ export function initBannerEditor() {
           "performance",
           "drip",
           "gooey",
+          "groovy",
+          "painter",
         ];
         for (const g of groups) {
           if (saved[g] && typeof saved[g] === "object" && liveConfig[g]) {
