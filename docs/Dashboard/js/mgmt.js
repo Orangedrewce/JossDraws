@@ -6584,10 +6584,7 @@ void main() {
       for (const g of groups) {
         if (liveConfig[g]) out[g] = deepClone(liveConfig[g]);
       }
-      console.log(
-        "📦 [BannerParams] Publishing Payload:",
-        JSON.stringify(out.drip),
-      );
+      console.log("📦 [BannerParams] Publishing Payload:", JSON.stringify(out));
       return out;
     }
 
