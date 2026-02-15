@@ -577,12 +577,6 @@ function initWebGL() {
   const createGroovyShader = () => {
     const cfg = WEBGL_CONFIG;
     const gc = cfg.groovy;
-    const fv3 = (hex) => {
-      const r = parseInt(hex.slice(1, 3), 16) / 255;
-      const g = parseInt(hex.slice(3, 5), 16) / 255;
-      const b = parseInt(hex.slice(5, 7), 16) / 255;
-      return `vec3(${r.toFixed(4)}, ${g.toFixed(4)}, ${b.toFixed(4)})`;
-    };
     return `
       ${precisionLine}
       uniform vec2 iResolution;
@@ -610,10 +604,10 @@ function initWebGL() {
               float d = length(uv) * exp(-length(uv0 - focus) / u_groovy_mouseInfluence);
               vec3 col = palette(
                   length(uv0) + fi * 0.4 + t * 0.4,
-                  ${fv3(cfg.colors.c0)},
-                  ${fv3(cfg.colors.c1)},
-                  ${fv3(cfg.colors.c2)},
-                  ${fv3(cfg.colors.c3)}
+                  ${vec3(cfg.colors.c0)},
+                  ${vec3(cfg.colors.c1)},
+                  ${vec3(cfg.colors.c2)},
+                  ${vec3(cfg.colors.c3)}
               );
               d = sin(d * 8.0 + t) / 8.0;
               d = abs(d);
@@ -622,7 +616,7 @@ function initWebGL() {
               d = pow(0.01 / d, mixPower);
               finalColor += col * d;
           }
-          vec3 bg = ${fv3(cfg.colors.background)};
+          vec3 bg = ${vec3(cfg.colors.background)};
           float edgeFade = smoothstep(2.0, 0.5, length(uv0));
           finalColor = mix(bg, finalColor, edgeFade);
           gl_FragColor = vec4(finalColor, 1.0);
@@ -633,12 +627,6 @@ function initWebGL() {
   // ── Painter Fragment Shader (procedural brush-stroke effect) ──
   const createPainterShader = () => {
     const cfg = WEBGL_CONFIG;
-    const fv3 = (hex) => {
-      const r = parseInt(hex.slice(1, 3), 16) / 255;
-      const g = parseInt(hex.slice(3, 5), 16) / 255;
-      const b = parseInt(hex.slice(5, 7), 16) / 255;
-      return `vec3(${r.toFixed(4)}, ${g.toFixed(4)}, ${b.toFixed(4)})`;
-    };
     return `
       ${precisionLine}
       uniform vec2 iResolution;
@@ -649,12 +637,12 @@ function initWebGL() {
       uniform float u_painter_noiseInfluence;
       uniform float u_painter_cycleSpeed;
 
-      vec3 c0 = ${fv3(cfg.colors.c0)};
-      vec3 c1 = ${fv3(cfg.colors.c1)};
-      vec3 c2 = ${fv3(cfg.colors.c2)};
-      vec3 c3 = ${fv3(cfg.colors.c3)};
-      vec3 c4 = ${fv3(cfg.colors.c4)};
-      vec3 bg = ${fv3(cfg.colors.background)};
+      vec3 c0 = ${vec3(cfg.colors.c0)};
+      vec3 c1 = ${vec3(cfg.colors.c1)};
+      vec3 c2 = ${vec3(cfg.colors.c2)};
+      vec3 c3 = ${vec3(cfg.colors.c3)};
+      vec3 c4 = ${vec3(cfg.colors.c4)};
+      vec3 bg = ${vec3(cfg.colors.background)};
 
       float SEED = 12345.0;
       float n1(float n) { return fract(cos(n * 85.62 + SEED) * 941.53); }
