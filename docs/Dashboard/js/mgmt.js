@@ -5671,7 +5671,15 @@
       // Shader mode dropdown: trigger crossfade on selection change
       if (bEl.shaderSelect) {
         bEl.shaderSelect.addEventListener("change", () => {
-          liveConfig.shaderType = bEl.shaderSelect.value;
+          if (window.transitionShader) {
+            window.transitionShader(bEl.shaderSelect.value);
+          } else {
+            // Fallback for when WebGL isn't loaded/ready
+            liveConfig.shaderType = bEl.shaderSelect.value;
+            console.warn(
+              "transitionShader not ready, update queued via liveConfig",
+            );
+          }
           console.log("[BannerPreview] Shader mode -->", liveConfig.shaderType);
 
           // Drive the production WebGL banner crossfade (if present)
@@ -5680,7 +5688,8 @@
           }
 
           // Also crossfade the local preview engine
-          previewState.blendTarget = liveConfig.shaderType === "paint_drip" ? 1.0 : 0.0;
+          previewState.blendTarget =
+            liveConfig.shaderType === "paint_drip" ? 1.0 : 0.0;
         });
       }
     }
@@ -5717,106 +5726,137 @@
       return `vec3(${fmtF(c.r)}, ${fmtF(c.g)}, ${fmtF(c.b)})`;
     }
 
-    /* ── Paint Drip Fragment Shader (SDF-based, uniform-driven) ── */
+    /* ── Paint Drip Fragment Shader (Complex Kinematics + WebGL 1.0 Safe) ── */
+    /* ── Paint Drip Fragment Shader (WebGL 1.0 Safe + Seamless Loop) ── */
     function buildDripShader(cfg) {
       return `
-precision highp float;
+      precision highp float;
 
-uniform vec2 iResolution;
-uniform float iTime;
+      uniform vec2 iResolution;
+      uniform float iTime;
 
-uniform float u_density;
-uniform float u_dripDistance;
-uniform float u_sdfWidth;
-uniform float u_fallSpeed;
-uniform float u_bFreq;
-uniform float u_bRange;
-uniform float u_viscosity;
+      uniform float u_density;
+      uniform float u_dripDistance;
+      uniform float u_sdfWidth;
+      uniform float u_fallSpeed;
+      uniform float u_bFreq;
+      uniform float u_bRange;
+      uniform float u_viscosity;
 
-const float PI = 3.14159265359;
-const float seed = 0.25;
-const float bCurve = 1.5;
+      const float PI = 3.14159265359;
+      const float TAU = 6.28318530718;
+      const float seed = 0.25;
+      const float bCurve = 1.5;
+      const float LOOP_SECONDS = 12.0;
 
-vec3 c0 = ${fmtVec3(cfg.colors.c0)};
-vec3 c1 = ${fmtVec3(cfg.colors.c1)};
-vec3 c2 = ${fmtVec3(cfg.colors.c2)};
-vec3 c3 = ${fmtVec3(cfg.colors.c3)};
-vec3 c4 = ${fmtVec3(cfg.colors.c4)};
-vec3 bg = ${fmtVec3(cfg.colors.background)};
+      vec3 c0 = ${fmtVec3(cfg.colors.c0)};
+      vec3 c1 = ${fmtVec3(cfg.colors.c1)};
+      vec3 c2 = ${fmtVec3(cfg.colors.c2)};
+      vec3 c3 = ${fmtVec3(cfg.colors.c3)};
+      vec3 c4 = ${fmtVec3(cfg.colors.c4)};
+      vec3 bg = ${fmtVec3(cfg.colors.background)};
 
-vec3 getColor(int i) {
-    if (i == 0) return c0;
-    if (i == 1) return c1;
-    if (i == 2) return c2;
-    if (i == 3) return c3;
-    if (i == 4) return c4;
-    return vec3(1.0);
-}
+      vec3 getColor(int i) {
+          if (i == 0) return c0;
+          if (i == 1) return c1;
+          if (i == 2) return c2;
+          if (i == 3) return c3;
+          if (i == 4) return c4;
+          return vec3(1.0);
+      }
 
-float hash11(float p) {
-    p = fract(p * 0.1031);
-    p *= p + 33.33;
-    p *= p + p;
-    return fract(p);
-}
+      float rand(float x, float y) {
+          return fract(sin(dot(vec2(x, y), vec2(12.9898, 78.233))) * 43758.5453);
+      }
 
-float smin(float a, float b, float k) {
-    float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
-    return mix(b, a, h) - k * h * (1.0 - h);
-}
+      float smin(float a, float b, float k) {
+          k = max(k, 0.001); 
+          float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+          return mix(b, a, h) - k * h * (1.0 - h);
+      }
 
-float dripSDF(vec2 uv) {
-    float k = u_viscosity * 0.05;
-    float s = u_sdfWidth * abs((1.0 - uv.y) - 0.75) + 0.05;
-    float o = 1.0;
-    float drip = 999.0;
-    float localCeilDrip = 999.0;
-    float cell = floor(uv.x / u_dripDistance);
-    for (int i = -1; i <= 1; i++) {
-        float c = cell + float(i);
-        float x = (c + 0.5) * u_dripDistance;
-        float h1 = hash11(c + seed);
-        if (h1 > u_density) continue;
-        float h2 = hash11(c + seed + 1.23);
-        float y = h2 * 0.8 + 0.1;
-        float animTime = iTime * 12.0 + (y * 10.0);
-        float tMod = mod(animTime, u_bFreq);
-        float bounce = -(bCurve * tMod) * exp(1.0 - bCurve * tMod);
-        y += bounce * u_bRange;
-        y = min(y, uv.y);
-        float f = y + tMod * u_fallSpeed * u_bRange;
-        float dBody = distance(vec2(x, y), uv);
-        float dFall = distance(vec2(x, f), uv);
-        o *= clamp(dBody / s, 0.0, 1.0);
-        drip = smin(drip, dFall, k);
-        localCeilDrip = min(localCeilDrip, abs(uv.x - x));
-    }
-    o = smin(o, clamp(drip / s, 0.0, 1.0), k);
-    float ceilingBase = clamp(localCeilDrip / u_dripDistance, 0.2, 0.6);
-    return o * clamp(uv.y / ceilingBase, 0.0, 1.0);
-}
+      float dripSDF(vec2 uv) {
+          float safeSdfWidth = max(u_sdfWidth, 0.001);
+          float safeDripDist = max(u_dripDistance, 0.001);
+          float k = max(u_viscosity * 0.05, 0.001);
 
-void main() {
-    vec2 normUV = gl_FragCoord.xy / iResolution.xy;
-    vec2 uv = normUV;
-    uv.x *= iResolution.x / iResolution.y;
-    uv.y = 1.0 - uv.y;
+          // SEAMLESS LOOP FIX: Quantize frequency so it divides perfectly into 12.0 seconds
+          float safeFreq = max(u_bFreq, 0.001);
+          // WebGL 1.0 doesn't have round(), so we use floor(x + 0.5)
+          float cycleDivisor = max(1.0, floor((LOOP_SECONDS / safeFreq) + 0.5));
+          float lockedFreq = LOOP_SECONDS / cycleDivisor;
 
-    float t = normUV.x * 4.0;
-    int idx = int(floor(t));
-    float fr = smoothstep(0.0, 1.0, fract(t));
-    vec3 colA = getColor(idx);
-    vec3 colB = getColor(min(idx + 1, 4));
-    vec3 ribbonColor = mix(colA, colB, fr);
+          float s = safeSdfWidth * abs((1.0 - uv.y) - 0.75) + 0.05;
+          float o = 1.0;
+          float drip = 999.0;
 
-    float cVal = 1.0 / u_sdfWidth * 0.025;
-    float w = 0.03;
-    float d = dripSDF(uv);
-    float mask = 1.0 - smoothstep(cVal - w, cVal + w, d);
-    vec3 finalColor = mix(bg, ribbonColor, mask);
-    gl_FragColor = vec4(finalColor, 1.0);
-}
-`;
+          float x = uv.x - safeSdfWidth;
+          x += safeDripDist - mod(x, safeDripDist);
+          x -= safeDripDist;
+
+          for(int i = 0; i < 150; i++) {
+              if (x > uv.x + safeSdfWidth) break;
+              
+              x += safeDripDist;
+              float isLine = floor(rand(x, seed) + u_density);
+              
+              if (isLine > 0.0) {
+                  float y = rand(seed, x) * 0.8 + 0.1;
+                  
+                  // iTime is 0.0 -> 1.0 phase, scale to 12.0 real seconds
+                  float animTime = (iTime * LOOP_SECONDS) + (y * 10.0);
+                  
+                  // Because lockedFreq perfectly divides 12.0, this mod seamlessly wraps
+                  float tMod = mod(animTime, lockedFreq);
+                  float bounce = 0.0 - (bCurve * tMod) * exp(1.0 - bCurve * tMod);
+                  
+                  y += bounce * u_bRange;
+                  y = min(y, uv.y);
+
+                  float f = y + tMod * u_fallSpeed * u_bRange;
+
+                  float d = distance(vec2(x, y), uv);
+                  
+                  o *= clamp(d / max(s, 0.001), 0.0, 1.0);
+                  drip = smin(drip, distance(vec2(x, f), uv), k);
+              }
+          }
+
+          o = smin(o, clamp(drip / max(s, 0.001), 0.0, 1.0), k);
+
+          // SEAMLESS LOOP FIX: Phase-lock the ceiling sine wave to exactly one TAU rotation
+          float ceilS = sin(uv.x * 20.0 + (iTime * TAU)) * 0.3 + 0.4;
+          return o * clamp(distance(0.0, uv.y) / max(ceilS, 0.001), 0.0, 1.0);
+      }
+
+      void main() {
+          vec2 normUV = gl_FragCoord.xy / iResolution.xy;
+          vec2 uv = normUV;
+          uv.x *= iResolution.x / iResolution.y; 
+          uv.y = 1.0 - uv.y; 
+
+          float t = normUV.x * 4.0;
+          int idx = int(floor(t));
+          float fBand = smoothstep(0.0, 1.0, fract(t));
+
+          vec3 cLeft = getColor(idx);
+          
+          int idx2 = idx + 1;
+          if (idx2 > 4) idx2 = 4;
+          vec3 cRight = getColor(idx2);
+
+          vec3 ribbonColor = mix(cLeft, cRight, fBand);
+
+          float safeSdfWidth = max(u_sdfWidth, 0.001);
+          float c = 1.0 / safeSdfWidth * 0.025;
+          float w = 0.03;
+
+          float d = dripSDF(uv);
+          float mask = 1.0 - smoothstep(c - w, c + w, d);
+
+          gl_FragColor = vec4(mix(bg, ribbonColor, mask), 1.0);
+      }
+      `;
     }
 
     /* ── Ribbon Wave Fragment Shader (compile-time injected) ── */
@@ -6011,6 +6051,8 @@ void main() {
       const prog = gl.createProgram();
       gl.attachShader(prog, vs);
       gl.attachShader(prog, fs);
+      // Force attribute location 0 to match the hardcoded vertexAttribPointer
+      gl.bindAttribLocation(prog, 0, "a_position");
       gl.linkProgram(prog);
       if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
         console.error(
@@ -6064,8 +6106,16 @@ void main() {
       const vsSrc =
         "attribute vec2 a_position; void main(){ gl_Position = vec4(a_position,0.0,1.0); }";
 
-      const ribbonProg = createPreviewProgram(gl, vsSrc, buildRibbonShader(liveConfig));
-      const paintProg = createPreviewProgram(gl, vsSrc, buildDripShader(liveConfig));
+      const ribbonProg = createPreviewProgram(
+        gl,
+        vsSrc,
+        buildRibbonShader(liveConfig),
+      );
+      const paintProg = createPreviewProgram(
+        gl,
+        vsSrc,
+        buildDripShader(liveConfig),
+      );
       if (!ribbonProg) return false;
 
       previewState.ribbonProg = ribbonProg;
@@ -6073,27 +6123,31 @@ void main() {
 
       // Uniform locations for both programs
       previewState.ribbonUni = {
-        res:  gl.getUniformLocation(ribbonProg, "iResolution"),
+        res: gl.getUniformLocation(ribbonProg, "iResolution"),
         time: gl.getUniformLocation(ribbonProg, "iTime"),
       };
-      previewState.paintUni = paintProg ? {
-        res:         gl.getUniformLocation(paintProg, "iResolution"),
-        time:        gl.getUniformLocation(paintProg, "iTime"),
-        density:     gl.getUniformLocation(paintProg, "u_density"),
-        dripDistance: gl.getUniformLocation(paintProg, "u_dripDistance"),
-        sdfWidth:    gl.getUniformLocation(paintProg, "u_sdfWidth"),
-        fallSpeed:   gl.getUniformLocation(paintProg, "u_fallSpeed"),
-        bFreq:       gl.getUniformLocation(paintProg, "u_bFreq"),
-        bRange:      gl.getUniformLocation(paintProg, "u_bRange"),
-        viscosity:   gl.getUniformLocation(paintProg, "u_viscosity"),
-      } : null;
+      previewState.paintUni = paintProg
+        ? {
+            res: gl.getUniformLocation(paintProg, "iResolution"),
+            time: gl.getUniformLocation(paintProg, "iTime"),
+            density: gl.getUniformLocation(paintProg, "u_density"),
+            dripDistance: gl.getUniformLocation(paintProg, "u_dripDistance"),
+            sdfWidth: gl.getUniformLocation(paintProg, "u_sdfWidth"),
+            fallSpeed: gl.getUniformLocation(paintProg, "u_fallSpeed"),
+            bFreq: gl.getUniformLocation(paintProg, "u_bFreq"),
+            bRange: gl.getUniformLocation(paintProg, "u_bRange"),
+            viscosity: gl.getUniformLocation(paintProg, "u_viscosity"),
+          }
+        : null;
 
       // Set initial crossfade target
-      previewState.blendFactor = liveConfig.shaderType === "paint_drip" ? 1.0 : 0.0;
+      previewState.blendFactor =
+        liveConfig.shaderType === "paint_drip" ? 1.0 : 0.0;
       previewState.blendTarget = previewState.blendFactor;
 
-      const bgC = liveConfig.colors.background;
-      gl.clearColor(bgC.r, bgC.g, bgC.b, 1.0);
+      // Force Black to test context
+      // gl.clearColor(0.0, 0.0, 0.0, 1.0);
+      // console.log("[BannerPreview] Forced Clear Color: BLACK");
 
       resizePreviewCanvas();
 
@@ -6115,31 +6169,40 @@ void main() {
         "attribute vec2 a_position; void main(){ gl_Position = vec4(a_position,0.0,1.0); }";
 
       // Rebuild ribbon
-      const newRibbon = createPreviewProgram(gl, vsSrc, buildRibbonShader(liveConfig));
+      const newRibbon = createPreviewProgram(
+        gl,
+        vsSrc,
+        buildRibbonShader(liveConfig),
+      );
       if (newRibbon) {
         if (previewState.ribbonProg) gl.deleteProgram(previewState.ribbonProg);
         previewState.ribbonProg = newRibbon;
         previewState.ribbonUni = {
-          res:  gl.getUniformLocation(newRibbon, "iResolution"),
+          res: gl.getUniformLocation(newRibbon, "iResolution"),
           time: gl.getUniformLocation(newRibbon, "iTime"),
         };
       }
 
       // Rebuild paint
-      const newPaint = createPreviewProgram(gl, vsSrc, buildDripShader(liveConfig));
+      const newPaint = createPreviewProgram(
+        gl,
+        vsSrc,
+        buildDripShader(liveConfig),
+      );
       if (newPaint) {
         if (previewState.paintProg) gl.deleteProgram(previewState.paintProg);
         previewState.paintProg = newPaint;
+        console.log("🟢 [WebGL] Paint program compiled successfully.");
         previewState.paintUni = {
-          res:         gl.getUniformLocation(newPaint, "iResolution"),
-          time:        gl.getUniformLocation(newPaint, "iTime"),
-          density:     gl.getUniformLocation(newPaint, "u_density"),
+          res: gl.getUniformLocation(newPaint, "iResolution"),
+          time: gl.getUniformLocation(newPaint, "iTime"),
+          density: gl.getUniformLocation(newPaint, "u_density"),
           dripDistance: gl.getUniformLocation(newPaint, "u_dripDistance"),
-          sdfWidth:    gl.getUniformLocation(newPaint, "u_sdfWidth"),
-          fallSpeed:   gl.getUniformLocation(newPaint, "u_fallSpeed"),
-          bFreq:       gl.getUniformLocation(newPaint, "u_bFreq"),
-          bRange:      gl.getUniformLocation(newPaint, "u_bRange"),
-          viscosity:   gl.getUniformLocation(newPaint, "u_viscosity"),
+          sdfWidth: gl.getUniformLocation(newPaint, "u_sdfWidth"),
+          fallSpeed: gl.getUniformLocation(newPaint, "u_fallSpeed"),
+          bFreq: gl.getUniformLocation(newPaint, "u_bFreq"),
+          bRange: gl.getUniformLocation(newPaint, "u_bRange"),
+          viscosity: gl.getUniformLocation(newPaint, "u_viscosity"),
         };
       }
 
@@ -6166,11 +6229,13 @@ void main() {
       // Update resolution uniform on both programs
       if (previewState.ribbonProg) {
         gl.useProgram(previewState.ribbonProg);
-        if (previewState.ribbonUni?.res) gl.uniform2f(previewState.ribbonUni.res, w, h);
+        if (previewState.ribbonUni?.res)
+          gl.uniform2f(previewState.ribbonUni.res, w, h);
       }
       if (previewState.paintProg) {
         gl.useProgram(previewState.paintProg);
-        if (previewState.paintUni?.res) gl.uniform2f(previewState.paintUni.res, w, h);
+        if (previewState.paintUni?.res)
+          gl.uniform2f(previewState.paintUni.res, w, h);
       }
     }
 
@@ -6178,14 +6243,21 @@ void main() {
     function uploadPreviewDripUniforms(gl) {
       if (!previewState.paintUni) return;
       const d = liveConfig.drip;
+
+      // Log payload once
+      if (!uploadPreviewDripUniforms._logged) {
+        console.log("🔵 [WebGL] Uploading Drip Uniforms:", JSON.stringify(d));
+        uploadPreviewDripUniforms._logged = true;
+      }
+
       const u = previewState.paintUni;
-      if (u.density)     gl.uniform1f(u.density, d.density);
+      if (u.density) gl.uniform1f(u.density, d.density);
       if (u.dripDistance) gl.uniform1f(u.dripDistance, d.dripDistance);
-      if (u.sdfWidth)    gl.uniform1f(u.sdfWidth, d.sdfWidth);
-      if (u.fallSpeed)   gl.uniform1f(u.fallSpeed, d.fallSpeed);
-      if (u.bFreq)       gl.uniform1f(u.bFreq, d.bFreq);
-      if (u.bRange)      gl.uniform1f(u.bRange, d.bRange);
-      if (u.viscosity)   gl.uniform1f(u.viscosity, d.viscosity);
+      if (u.sdfWidth) gl.uniform1f(u.sdfWidth, d.sdfWidth);
+      if (u.fallSpeed) gl.uniform1f(u.fallSpeed, d.fallSpeed);
+      if (u.bFreq) gl.uniform1f(u.bFreq, d.bFreq);
+      if (u.bRange) gl.uniform1f(u.bRange, d.bRange);
+      if (u.viscosity) gl.uniform1f(u.viscosity, d.viscosity);
     }
 
     /* ── Crossfade duration ── */
@@ -6227,13 +6299,24 @@ void main() {
 
       const blend = previewState.blendFactor;
       const showRibbon = blend < 0.999;
-      const showPaint  = blend > 0.001 && !!previewState.paintProg;
+      const showPaint = blend > 0.001 && !!previewState.paintProg;
+
+      // Log the render state once per second
+      if (liveConfig.performance && liveConfig.performance.debugMode) {
+        if (now - (renderPreviewFrame._dbgRouterLog || 0) >= 1.0) {
+          console.log(
+            `🟡 [WebGL Router] Target: ${previewState.blendTarget} | Factor: ${blend.toFixed(3)} | Ribbon: ${showRibbon} | Paint: ${showPaint}`,
+          );
+          renderPreviewFrame._dbgRouterLog = now;
+        }
+      }
 
       gl.clear(gl.COLOR_BUFFER_BIT);
 
       if (showRibbon) {
         gl.useProgram(previewState.ribbonProg);
-        if (previewState.ribbonUni?.time) gl.uniform1f(previewState.ribbonUni.time, loopPhase);
+        if (previewState.ribbonUni?.time)
+          gl.uniform1f(previewState.ribbonUni.time, loopPhase);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       }
 
@@ -6245,8 +6328,15 @@ void main() {
           gl.blendFunc(gl.CONSTANT_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
         }
         gl.useProgram(previewState.paintProg);
-        if (previewState.paintUni?.time) gl.uniform1f(previewState.paintUni.time, loopPhase);
+        if (previewState.paintUni?.time)
+          gl.uniform1f(previewState.paintUni.time, loopPhase);
         uploadPreviewDripUniforms(gl);
+
+        // Manual attribute bind every frame (Fixes WebGL 1.0 draw failures)
+        gl.bindBuffer(gl.ARRAY_BUFFER, previewState.buffer);
+        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(0);
+
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         if (showRibbon) gl.disable(gl.BLEND);
       }

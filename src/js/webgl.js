@@ -95,7 +95,7 @@ const WEBGL_CONFIG = {
     respectDPR: true, // Account for devicePixelRatio (high-DPI screens)
     pauseWhenHidden: true, // Pause animation when tab not visible
     maxDeltaTime: 0.05, // Max frame time to prevent jumps (seconds)
-    debugMode: false, // Enable WebGL error checking (dev only)
+    debugMode: true, // DEBUG: Force Enable WebGL error checking (dev only)
   },
 
   // 9. Shader selection + Paint Drip params
@@ -298,16 +298,26 @@ function initWebGL() {
     gl.shaderSource(shader, src);
     gl.compileShader(shader);
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      console.error(
+      console.warn(
         "[WebGL] Shader compile error:",
         gl.getShaderInfoLog(shader),
       );
-      if (WEBGL_CONFIG.performance.debugMode) console.error("Source:\n", src);
+      // Always log source on error for debugging
+      console.warn("Source:\n", src);
       gl.deleteShader(shader);
       return null;
     }
     return shader;
   }
+
+  // ── Paint Drip Fragment Shader (MINIMAL DEBUG VERSION) ──
+  const createPaintShader = () => `
+    precision highp float;
+    void main() {
+        // Nuclear Green - minimal shader
+        gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+    }
+  `;
 
   // ── Safe program creation: null-guards + deletes shaders after link [P1] ──
   function createProgramSafe(vsSrc, fsSrc) {
@@ -321,6 +331,8 @@ function initWebGL() {
     const prog = gl.createProgram();
     gl.attachShader(prog, vs);
     gl.attachShader(prog, fs);
+    // Force attribute location to 0 to ensure VAO compatibility across programs [P1 fix]
+    gl.bindAttribLocation(prog, 0, "a_position");
     gl.linkProgram(prog);
     if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
       console.error("[WebGL] Program link error:", gl.getProgramInfoLog(prog));
@@ -531,132 +543,8 @@ function initWebGL() {
     }
   `;
 
-  // ── Paint Drip Fragment Shader (SDF-based drip physics) ──
-  const createPaintShader = () => `
-    ${precisionLine}
-
-    uniform vec2 iResolution;
-    uniform float iTime;
-
-    // UI Uniforms
-    uniform float u_density;
-    uniform float u_dripDistance;
-    uniform float u_sdfWidth;
-    uniform float u_fallSpeed;
-    uniform float u_bFreq;
-    uniform float u_bRange;
-    uniform float u_viscosity;
-
-    const float PI = 3.14159265359;
-    const float seed = 0.25;
-    const float bCurve = 1.5;
-
-    const vec3 bgColor = vec3(1.0, 1.0, 1.0);
-
-    vec3 getColor(int i) {
-        if (i == 0) return vec3(0.004, 0.569, 0.663);
-        if (i == 1) return vec3(0.482, 0.804, 0.796);
-        if (i == 2) return vec3(0.988, 0.855, 0.024);
-        if (i == 3) return vec3(0.973, 0.561, 0.173);
-        if (i == 4) return vec3(0.937, 0.341, 0.553);
-        return vec3(1.0);
-    }
-
-    // 1. Hash Randomness (No Textures)
-    float hash11(float p) {
-        p = fract(p * 0.1031);
-        p *= p + 33.33;
-        p *= p + p;
-        return fract(p);
-    }
-
-    // Smooth Minimum for surface tension
-    float smin(float a, float b, float k) {
-        float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
-        return mix(b, a, h) - k * h * (1.0 - h);
-    }
-
-    float dripSDF(vec2 uv) {
-        float k = u_viscosity * 0.05;
-        float s = u_sdfWidth * abs((1.0 - uv.y) - 0.75) + 0.05;
-
-        float o = 1.0;
-        float drip = 999.0;
-        float localCeilDrip = 999.0;
-
-        // 2. Slot-Based Repetition (O(1) Domain Hashing)
-        float cell = floor(uv.x / u_dripDistance);
-
-        for (int i = -1; i <= 1; i++) {
-            float c = cell + float(i);
-            float x = (c + 0.5) * u_dripDistance;
-
-            // Hash for density probability
-            float h1 = hash11(c + seed);
-            if (h1 > u_density) continue;
-
-            // Hash for length/phase
-            float h2 = hash11(c + seed + 1.23);
-            float y = h2 * 0.8 + 0.1;
-
-            float animTime = iTime * 12.0 + (y * 10.0);
-            float tMod = mod(animTime, u_bFreq);
-
-            // 3. Exponential Bounce
-            float bounce = -(bCurve * tMod) * exp(1.0 - bCurve * tMod);
-            y += bounce * u_bRange;
-            y = min(y, uv.y);
-
-            float f = y + tMod * u_fallSpeed * u_bRange;
-
-            float dBody = distance(vec2(x, y), uv);
-            float dFall = distance(vec2(x, f), uv);
-
-            o *= clamp(dBody / s, 0.0, 1.0);
-
-            // 4. Smooth Union for fluid detachment
-            drip = smin(drip, dFall, k);
-
-            // Ceiling thickness based on local drip presence
-            localCeilDrip = min(localCeilDrip, abs(uv.x - x));
-        }
-
-        o = smin(o, clamp(drip / s, 0.0, 1.0), k);
-
-        // Dynamic ceiling based on procedural drip proximity
-        float ceilingBase = clamp(localCeilDrip / u_dripDistance, 0.2, 0.6);
-        return o * clamp(uv.y / ceilingBase, 0.0, 1.0);
-    }
-
-    void mainImage(out vec4 fragColor, in vec2 fragCoord) {
-        vec2 normUV = fragCoord / iResolution.xy;
-        vec2 uv = normUV;
-        uv.x *= iResolution.x / iResolution.y;
-        uv.y = 1.0 - uv.y;
-
-        // Linear Interpolation for color bands
-        float t = normUV.x * 4.0;
-        int idx = int(floor(t));
-        float f = smoothstep(0.0, 1.0, fract(t));
-
-        vec3 c1 = getColor(idx);
-        vec3 c2 = getColor(min(idx + 1, 4));
-        vec3 ribbonColor = mix(c1, c2, f);
-
-        float c = 1.0 / u_sdfWidth * 0.025;
-        float w = 0.03;
-
-        float d = dripSDF(uv);
-        float mask = 1.0 - smoothstep(c - w, c + w, d);
-
-        vec3 finalColor = mix(bgColor, ribbonColor, mask);
-        fragColor = vec4(finalColor, 1.0);
-    }
-
-    void main() {
-        mainImage(gl_FragColor, gl_FragCoord.xy);
-    }
-  `;
+  // ── Paint Drip Fragment Shader (SDF-based O(1) drip physics) ──
+  // (Old createPaintShader removed)
 
   const vertexShaderSource = `
     attribute vec2 a_position;
@@ -664,14 +552,19 @@ function initWebGL() {
   `;
 
   // ── Compile BOTH shader programs (dual-program crossfade architecture) ──
-  const ribbonProg = createProgramSafe(vertexShaderSource, createRibbonShader());
+  const ribbonProg = createProgramSafe(
+    vertexShaderSource,
+    createRibbonShader(),
+  );
   if (!ribbonProg) {
     console.error("[WebGL] Ribbon program creation failed.");
     return;
   }
   const paintProg = createProgramSafe(vertexShaderSource, createPaintShader());
   if (!paintProg) {
-    console.warn("[WebGL] Paint program creation failed — paint mode unavailable.");
+    console.warn(
+      "[WebGL] Paint program creation failed — paint mode unavailable.",
+    );
   }
 
   const dsVsSrc = `attribute vec2 p; varying vec2 v; void main(){v=p*0.5+0.5;gl_Position=vec4(p,0,1);}`;
@@ -740,21 +633,23 @@ function initWebGL() {
 
   // ── Uniform locations (dual-program) ──
   const ribbonUni = {
-    res:  gl.getUniformLocation(ribbonProg, "iResolution"),
+    res: gl.getUniformLocation(ribbonProg, "iResolution"),
     time: gl.getUniformLocation(ribbonProg, "iTime"),
   };
-  const paintUni = paintProg ? {
-    res:         gl.getUniformLocation(paintProg, "iResolution"),
-    time:        gl.getUniformLocation(paintProg, "iTime"),
-    density:     gl.getUniformLocation(paintProg, "u_density"),
-    dripDistance: gl.getUniformLocation(paintProg, "u_dripDistance"),
-    sdfWidth:    gl.getUniformLocation(paintProg, "u_sdfWidth"),
-    fallSpeed:   gl.getUniformLocation(paintProg, "u_fallSpeed"),
-    bFreq:       gl.getUniformLocation(paintProg, "u_bFreq"),
-    bRange:      gl.getUniformLocation(paintProg, "u_bRange"),
-    viscosity:   gl.getUniformLocation(paintProg, "u_viscosity"),
-  } : null;
-  const dsTex  = gl.getUniformLocation(dsProg, "t");
+  const paintUni = paintProg
+    ? {
+        res: gl.getUniformLocation(paintProg, "iResolution"),
+        time: gl.getUniformLocation(paintProg, "iTime"),
+        density: gl.getUniformLocation(paintProg, "u_density"),
+        dripDistance: gl.getUniformLocation(paintProg, "u_dripDistance"),
+        sdfWidth: gl.getUniformLocation(paintProg, "u_sdfWidth"),
+        fallSpeed: gl.getUniformLocation(paintProg, "u_fallSpeed"),
+        bFreq: gl.getUniformLocation(paintProg, "u_bFreq"),
+        bRange: gl.getUniformLocation(paintProg, "u_bRange"),
+        viscosity: gl.getUniformLocation(paintProg, "u_viscosity"),
+      }
+    : null;
+  const dsTex = gl.getUniformLocation(dsProg, "t");
   const dsSize = gl.getUniformLocation(dsProg, "s");
 
   // Set texture unit once (never changes)
@@ -930,16 +825,25 @@ function initWebGL() {
     blendTarget = type === "paint_drip" ? 1.0 : 0.0;
   };
 
+  let _debugDripLogged = false;
   function uploadDripUniforms() {
     if (!paintUni) return;
     const d = WEBGL_CONFIG.drip;
-    if (paintUni.density)     gl.uniform1f(paintUni.density, d.density);
-    if (paintUni.dripDistance) gl.uniform1f(paintUni.dripDistance, d.dripDistance);
-    if (paintUni.sdfWidth)    gl.uniform1f(paintUni.sdfWidth, d.sdfWidth);
-    if (paintUni.fallSpeed)   gl.uniform1f(paintUni.fallSpeed, d.fallSpeed);
-    if (paintUni.bFreq)       gl.uniform1f(paintUni.bFreq, d.bFreq);
-    if (paintUni.bRange)      gl.uniform1f(paintUni.bRange, d.bRange);
-    if (paintUni.viscosity)   gl.uniform1f(paintUni.viscosity, d.viscosity);
+    if (!_debugDripLogged) {
+      console.log(
+        "[WebGL] Uploading drip uniforms:",
+        JSON.parse(JSON.stringify(d)),
+      );
+      _debugDripLogged = true;
+    }
+    if (paintUni.density) gl.uniform1f(paintUni.density, d.density);
+    if (paintUni.dripDistance)
+      gl.uniform1f(paintUni.dripDistance, d.dripDistance);
+    if (paintUni.sdfWidth) gl.uniform1f(paintUni.sdfWidth, d.sdfWidth);
+    if (paintUni.fallSpeed) gl.uniform1f(paintUni.fallSpeed, d.fallSpeed);
+    if (paintUni.bFreq) gl.uniform1f(paintUni.bFreq, d.bFreq);
+    if (paintUni.bRange) gl.uniform1f(paintUni.bRange, d.bRange);
+    if (paintUni.viscosity) gl.uniform1f(paintUni.viscosity, d.viscosity);
   }
 
   /**
@@ -951,8 +855,33 @@ function initWebGL() {
    * @param {number} phase        - normalized loop phase 0→1
    * @param {boolean} direct      - true → skip FBO, draw straight to screen
    */
+  // ── Manual Attribute Binding (Replaces VAO for robustness) [P1 Fix] ──
+  let _dbgLogAttr = false;
+  function bindAttributes(prog) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    const loc = gl.getAttribLocation(prog, "a_position");
+    if (!_dbgLogAttr) {
+      console.log(`[WebGL] Attrib 'a_position' loc: ${loc}`);
+      _dbgLogAttr = true;
+    }
+    if (loc !== -1) {
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    }
+  }
+
+  let _dbgLogView = false;
   function drawShaderPass(prog, uni, blended, alpha, phase, direct) {
     if (!prog) return;
+
+    // Always bind attributes manually for this program
+    bindAttributes(prog);
+
+    if (!_dbgLogView) {
+      console.log(`[WebGL] Viewport: ${canvas.width}x${canvas.height}`);
+      _dbgLogView = true;
+    }
+
     if (direct) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       gl.useProgram(prog);
@@ -966,9 +895,9 @@ function initWebGL() {
       }
       if (uni.time) gl.uniform1f(uni.time, phase);
       if (prog === paintProg) uploadDripUniforms();
-      if (vaoExt && mainVAO) vaoExt.bindVertexArrayOES(mainVAO);
+
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      if (vaoExt) vaoExt.bindVertexArrayOES(null);
+
       if (blended) gl.disable(gl.BLEND);
       checkGLError(blended ? "blend pass" : "direct pass");
     } else {
@@ -980,9 +909,9 @@ function initWebGL() {
       gl.clear(gl.COLOR_BUFFER_BIT);
       if (uni.time) gl.uniform1f(uni.time, phase);
       if (prog === paintProg) uploadDripUniforms();
-      if (vaoExt && mainVAO) vaoExt.bindVertexArrayOES(mainVAO);
+
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      if (vaoExt) vaoExt.bindVertexArrayOES(null);
+
       checkGLError(blended ? "fbo blend pass" : "fbo main pass");
       // Downsample FBO → screen
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -997,9 +926,11 @@ function initWebGL() {
       }
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, fbTex);
-      if (vaoExt && dsVAO) vaoExt.bindVertexArrayOES(dsVAO);
+
+      // Bind attributes for downsample program
+      bindAttributes(dsProg);
+
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      if (vaoExt) vaoExt.bindVertexArrayOES(null);
       gl.bindTexture(gl.TEXTURE_2D, null);
       if (blended) gl.disable(gl.BLEND);
       checkGLError(blended ? "ds blend pass" : "downsample pass");
@@ -1046,8 +977,8 @@ function initWebGL() {
   }
 
   // ── Clear color (set once — matches WEBGL_CONFIG background) [P1] ──
-  const bgC = WEBGL_CONFIG.colors.background;
-  gl.clearColor(bgC.r, bgC.g, bgC.b, 1.0);
+  // DEBUG CHECK: Force Black to prove context is clearing
+  gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
   // ── Render loop ──
   function render() {
@@ -1076,7 +1007,10 @@ function initWebGL() {
     const loopPhase = animTime / LOOP_SECONDS;
 
     // ── Crossfade blend update ──
-    const directRender = ssFactor <= 1.0;
+    // DEBUG: Force direct render to bypass FBO issues
+    const directRender = true; // was: ssFactor <= 1.0;
+    console.log("[WebGL] Direct Render Forced:", directRender);
+
     if (blendFactor !== blendTarget) {
       const speed = 1.0 / Math.max(0.001, CROSSFADE_DURATION);
       if (blendTarget > blendFactor) {
@@ -1088,7 +1022,7 @@ function initWebGL() {
 
     // ── Determine active shaders ──
     const showRibbon = blendFactor < 0.999;
-    const showPaint  = blendFactor > 0.001 && !!paintProg;
+    const showPaint = blendFactor > 0.001 && !!paintProg;
 
     if (showRibbon && !showPaint) {
       // Pure ribbon
@@ -1099,7 +1033,14 @@ function initWebGL() {
     } else if (showRibbon && showPaint) {
       // Crossfade: ribbon first, paint blended on top
       drawShaderPass(ribbonProg, ribbonUni, false, 0, loopPhase, directRender);
-      drawShaderPass(paintProg, paintUni, true, blendFactor, loopPhase, directRender);
+      drawShaderPass(
+        paintProg,
+        paintUni,
+        true,
+        blendFactor,
+        loopPhase,
+        directRender,
+      );
     }
 
     // ── Debug FPS [v4: P5] ──
