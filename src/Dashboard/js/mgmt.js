@@ -6618,6 +6618,10 @@ void main() {
               }
             }
           }
+          // Restore top-level shaderType (not inside any group)
+          if (typeof saved.shaderType === "string") {
+            liveConfig.shaderType = saved.shaderType;
+          }
           Trace.log("BANNER_CONFIG_LOADED");
         }
       } catch (err) {

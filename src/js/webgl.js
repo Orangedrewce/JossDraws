@@ -1098,6 +1098,10 @@ function initWebGL() {
     crossfadeFactor = 0.0;
   };
 
+  // Gooey shader bakes config at compile time (no runtime uniforms to upload).
+  // This no-op prevents a ReferenceError when the FBO path calls it.
+  function uploadGooeyUniforms() { /* compile-time constants — nothing to upload */ }
+
   let _debugDripLogged = false;
   function uploadDripUniforms() {
     if (!paintUni) return;
