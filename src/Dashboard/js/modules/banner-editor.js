@@ -4,8 +4,14 @@
 // WebGL preview engine, controls, profiles, publish.
 // ============================================
 
-import { Trace, ctx, escHTML } from './utils.js';
-import { buildDripShader, buildGooeyShader, buildRibbonShader, buildGroovyShader, buildPainterShader } from './banner-shaders.js';
+import { Trace, ctx, escHTML } from "./utils.js";
+import {
+  buildDripShader,
+  buildGooeyShader,
+  buildRibbonShader,
+  buildGroovyShader,
+  buildPainterShader,
+} from "./banner-shaders.js";
 
 export function initBannerEditor() {
   Trace.group("BANNER_PARAMS");
@@ -109,7 +115,7 @@ export function initBannerEditor() {
     groovy: {
       speed: 1.0,
       mixPowerMin: 0.15,
-      mixPowerMax: 0.80,
+      mixPowerMax: 0.8,
       iterations: 11,
       mouseInfluence: 3.0,
     },
@@ -128,8 +134,16 @@ export function initBannerEditor() {
     { path: "thickness.base", id: "thickness-base", type: "range" },
     { path: "thickness.stretchMin", id: "thickness-stretchMin", type: "range" },
     { path: "thickness.stretchMax", id: "thickness-stretchMax", type: "range" },
-    { path: "thickness.stretchSpeed", id: "thickness-stretchSpeed", type: "range" },
-    { path: "thickness.stretchFrequency", id: "thickness-stretchFrequency", type: "range" },
+    {
+      path: "thickness.stretchSpeed",
+      id: "thickness-stretchSpeed",
+      type: "range",
+    },
+    {
+      path: "thickness.stretchFrequency",
+      id: "thickness-stretchFrequency",
+      type: "range",
+    },
     // Wave
     { path: "wave.mainSpeed", id: "wave-mainSpeed", type: "range" },
     { path: "wave.mainFrequency", id: "wave-mainFrequency", type: "range" },
@@ -138,36 +152,124 @@ export function initBannerEditor() {
     { path: "wave.secondaryFreq", id: "wave-secondaryFreq", type: "range" },
     { path: "wave.secondaryAmp", id: "wave-secondaryAmp", type: "range" },
     { path: "wave.horizontalSpeed", id: "wave-horizontalSpeed", type: "range" },
-    { path: "wave.horizontalFrequency", id: "wave-horizontalFrequency", type: "range" },
-    { path: "wave.horizontalAmount", id: "wave-horizontalAmount", type: "range" },
+    {
+      path: "wave.horizontalFrequency",
+      id: "wave-horizontalFrequency",
+      type: "range",
+    },
+    {
+      path: "wave.horizontalAmount",
+      id: "wave-horizontalAmount",
+      type: "range",
+    },
     { path: "wave.offsetBlend", id: "wave-offsetBlend", type: "range" },
     // World Rotation
     { path: "twist.enabled", id: "twist-enabled", type: "checkbox" },
     { path: "twist.intensity", id: "twist-intensity", type: "range" },
     // Appearance
-    { path: "appearance.brightness", id: "appearance-brightness", type: "range" },
-    { path: "appearance.plasticEffect", id: "appearance-plasticEffect", type: "checkbox" },
-    { path: "appearance.centerSoftness", id: "appearance-centerSoftness", type: "range" },
-    { path: "appearance.specularPower", id: "appearance-specularPower", type: "range" },
-    { path: "appearance.specularIntensity", id: "appearance-specularIntensity", type: "range" },
-    { path: "appearance.shadowStrength", id: "appearance-shadowStrength", type: "range" },
-    { path: "appearance.shadowWidth", id: "appearance-shadowWidth", type: "range" },
-    { path: "appearance.aaSharpness", id: "appearance-aaSharpness", type: "range" },
-    { path: "appearance.aaFallback", id: "appearance-aaFallback", type: "number" },
+    {
+      path: "appearance.brightness",
+      id: "appearance-brightness",
+      type: "range",
+    },
+    {
+      path: "appearance.plasticEffect",
+      id: "appearance-plasticEffect",
+      type: "checkbox",
+    },
+    {
+      path: "appearance.centerSoftness",
+      id: "appearance-centerSoftness",
+      type: "range",
+    },
+    {
+      path: "appearance.specularPower",
+      id: "appearance-specularPower",
+      type: "range",
+    },
+    {
+      path: "appearance.specularIntensity",
+      id: "appearance-specularIntensity",
+      type: "range",
+    },
+    {
+      path: "appearance.shadowStrength",
+      id: "appearance-shadowStrength",
+      type: "range",
+    },
+    {
+      path: "appearance.shadowWidth",
+      id: "appearance-shadowWidth",
+      type: "range",
+    },
+    {
+      path: "appearance.aaSharpness",
+      id: "appearance-aaSharpness",
+      type: "range",
+    },
+    {
+      path: "appearance.aaFallback",
+      id: "appearance-aaFallback",
+      type: "number",
+    },
     // Positioning
-    { path: "positioning.verticalOffset", id: "positioning-verticalOffset", type: "range" },
-    { path: "positioning.bandCount", id: "positioning-bandCount", type: "number" },
+    {
+      path: "positioning.verticalOffset",
+      id: "positioning-verticalOffset",
+      type: "range",
+    },
+    {
+      path: "positioning.bandCount",
+      id: "positioning-bandCount",
+      type: "number",
+    },
     // Interaction
-    { path: "interaction.hoverSlowdown", id: "interaction-hoverSlowdown", type: "range" },
-    { path: "interaction.smoothTime", id: "interaction-smoothTime", type: "range" },
+    {
+      path: "interaction.hoverSlowdown",
+      id: "interaction-hoverSlowdown",
+      type: "range",
+    },
+    {
+      path: "interaction.smoothTime",
+      id: "interaction-smoothTime",
+      type: "range",
+    },
     // Performance
-    { path: "performance.supersampleDesktop", id: "performance-supersampleDesktop", type: "range" },
-    { path: "performance.supersampleMobile", id: "performance-supersampleMobile", type: "range" },
-    { path: "performance.mobileBreakpoint", id: "performance-mobileBreakpoint", type: "number" },
-    { path: "performance.respectDPR", id: "performance-respectDPR", type: "checkbox" },
-    { path: "performance.pauseWhenHidden", id: "performance-pauseWhenHidden", type: "checkbox" },
-    { path: "performance.maxDeltaTime", id: "performance-maxDeltaTime", type: "range" },
-    { path: "performance.debugMode", id: "performance-debugMode", type: "checkbox" },
+    {
+      path: "performance.supersampleDesktop",
+      id: "performance-supersampleDesktop",
+      type: "range",
+    },
+    {
+      path: "performance.supersampleMobile",
+      id: "performance-supersampleMobile",
+      type: "range",
+    },
+    {
+      path: "performance.mobileBreakpoint",
+      id: "performance-mobileBreakpoint",
+      type: "number",
+    },
+    {
+      path: "performance.respectDPR",
+      id: "performance-respectDPR",
+      type: "checkbox",
+    },
+    {
+      path: "performance.pauseWhenHidden",
+      id: "performance-pauseWhenHidden",
+      type: "checkbox",
+    },
+    {
+      path: "performance.maxDeltaTime",
+      id: "performance-maxDeltaTime",
+      type: "range",
+    },
+    {
+      path: "performance.debugMode",
+      id: "performance-debugMode",
+      type: "checkbox",
+    },
     // Drip
     { path: "drip.scale", id: "drip-scale", type: "range" },
     { path: "drip.density", id: "drip-density", type: "range" },
@@ -186,12 +288,20 @@ export function initBannerEditor() {
     { path: "groovy.mixPowerMin", id: "groovy-mixPowerMin", type: "range" },
     { path: "groovy.mixPowerMax", id: "groovy-mixPowerMax", type: "range" },
     { path: "groovy.iterations", id: "groovy-iterations", type: "range" },
-    { path: "groovy.mouseInfluence", id: "groovy-mouseInfluence", type: "range" },
+    {
+      path: "groovy.mouseInfluence",
+      id: "groovy-mouseInfluence",
+      type: "range",
+    },
     // Painter
     { path: "painter.brushSize", id: "painter-brushSize", type: "range" },
     { path: "painter.softness", id: "painter-softness", type: "range" },
     { path: "painter.noiseScale", id: "painter-noiseScale", type: "range" },
-    { path: "painter.noiseInfluence", id: "painter-noiseInfluence", type: "range" },
+    {
+      path: "painter.noiseInfluence",
+      id: "painter-noiseInfluence",
+      type: "range",
+    },
     { path: "painter.cycleSpeed", id: "painter-cycleSpeed", type: "range" },
   ];
 
@@ -332,6 +442,8 @@ export function initBannerEditor() {
           previewState.shaderFrom = previewState.shaderTo;
           previewState.shaderTo = mode;
           previewState.crossfadeFactor = 0.0;
+          // Reset painter canvas when transitioning to it
+          if (mode === "painter") previewState.painterFrameCount = 0;
         }
       });
     }
@@ -350,10 +462,12 @@ export function initBannerEditor() {
     paintProg: null,
     gooeyProg: null,
     groovyProg: null,
+    painterProg: null,
     ribbonUni: null,
     paintUni: null,
     gooeyUni: null,
     groovyUni: null,
+    painterUni: null,
     rafId: null,
     animTime: 0,
     lastTime: 0,
@@ -363,6 +477,17 @@ export function initBannerEditor() {
     shaderFrom: "ribbon_wave",
     shaderTo: "ribbon_wave",
     crossfadeFactor: 1.0,
+    mouseX: 0,
+    mouseY: 0,
+    // Painter feedback FBO state (ping-pong)
+    painterFbA: null, painterTexA: null,
+    painterFbB: null, painterTexB: null,
+    painterPing: 0,
+    painterFrameCount: 0,
+    painterFbW: 0, painterFbH: 0,
+    painterMouseX: 0,
+    painterMouseY: 0,
+    painterMouseOver: false,
   };
 
   /* ── Compile a single shader ── */
@@ -448,11 +573,31 @@ export function initBannerEditor() {
     const vsSrc =
       "attribute vec2 a_position; void main(){ gl_Position = vec4(a_position,0.0,1.0); }";
 
-    const ribbonProg = createPreviewProgram(gl, vsSrc, buildRibbonShader(liveConfig));
-    const paintProg = createPreviewProgram(gl, vsSrc, buildDripShader(liveConfig));
-    const gooeyProg = createPreviewProgram(gl, vsSrc, buildGooeyShader(liveConfig));
-    const groovyProg = createPreviewProgram(gl, vsSrc, buildGroovyShader(liveConfig));
-    const painterProg = createPreviewProgram(gl, vsSrc, buildPainterShader(liveConfig));
+    const ribbonProg = createPreviewProgram(
+      gl,
+      vsSrc,
+      buildRibbonShader(liveConfig),
+    );
+    const paintProg = createPreviewProgram(
+      gl,
+      vsSrc,
+      buildDripShader(liveConfig),
+    );
+    const gooeyProg = createPreviewProgram(
+      gl,
+      vsSrc,
+      buildGooeyShader(liveConfig),
+    );
+    const groovyProg = createPreviewProgram(
+      gl,
+      vsSrc,
+      buildGroovyShader(liveConfig),
+    );
+    const painterProg = createPreviewProgram(
+      gl,
+      vsSrc,
+      buildPainterShader(liveConfig),
+    );
     if (!ribbonProg) return false;
 
     previewState.ribbonProg = ribbonProg;
@@ -491,6 +636,7 @@ export function initBannerEditor() {
           res: gl.getUniformLocation(groovyProg, "iResolution"),
           time: gl.getUniformLocation(groovyProg, "iTime"),
           speed: gl.getUniformLocation(groovyProg, "u_groovy_speed"),
+          mouse: gl.getUniformLocation(groovyProg, "u_mouse"),
           mixMin: gl.getUniformLocation(groovyProg, "u_groovy_mixMin"),
           mixMax: gl.getUniformLocation(groovyProg, "u_groovy_mixMax"),
           iterations: gl.getUniformLocation(groovyProg, "u_groovy_iterations"),
@@ -501,11 +647,23 @@ export function initBannerEditor() {
       ? {
           res: gl.getUniformLocation(painterProg, "iResolution"),
           time: gl.getUniformLocation(painterProg, "iTime"),
+          mouse: gl.getUniformLocation(painterProg, "u_mouse"),
+          prevFrame: gl.getUniformLocation(painterProg, "u_prevFrame"),
+          frame: gl.getUniformLocation(painterProg, "u_frame"),
           brushSize: gl.getUniformLocation(painterProg, "u_painter_brushSize"),
           softness: gl.getUniformLocation(painterProg, "u_painter_softness"),
-          noiseScale: gl.getUniformLocation(painterProg, "u_painter_noiseScale"),
-          noiseInfluence: gl.getUniformLocation(painterProg, "u_painter_noiseInfluence"),
-          cycleSpeed: gl.getUniformLocation(painterProg, "u_painter_cycleSpeed"),
+          noiseScale: gl.getUniformLocation(
+            painterProg,
+            "u_painter_noiseScale",
+          ),
+          noiseInfluence: gl.getUniformLocation(
+            painterProg,
+            "u_painter_noiseInfluence",
+          ),
+          cycleSpeed: gl.getUniformLocation(
+            painterProg,
+            "u_painter_cycleSpeed",
+          ),
         }
       : null;
 
@@ -535,7 +693,11 @@ export function initBannerEditor() {
       "attribute vec2 a_position; void main(){ gl_Position = vec4(a_position,0.0,1.0); }";
 
     // Rebuild ribbon
-    const newRibbon = createPreviewProgram(gl, vsSrc, buildRibbonShader(liveConfig));
+    const newRibbon = createPreviewProgram(
+      gl,
+      vsSrc,
+      buildRibbonShader(liveConfig),
+    );
     if (newRibbon) {
       if (previewState.ribbonProg) gl.deleteProgram(previewState.ribbonProg);
       previewState.ribbonProg = newRibbon;
@@ -546,7 +708,11 @@ export function initBannerEditor() {
     }
 
     // Rebuild paint
-    const newPaint = createPreviewProgram(gl, vsSrc, buildDripShader(liveConfig));
+    const newPaint = createPreviewProgram(
+      gl,
+      vsSrc,
+      buildDripShader(liveConfig),
+    );
     if (newPaint) {
       if (previewState.paintProg) gl.deleteProgram(previewState.paintProg);
       previewState.paintProg = newPaint;
@@ -566,7 +732,11 @@ export function initBannerEditor() {
     }
 
     // Rebuild gooey
-    const newGooey = createPreviewProgram(gl, vsSrc, buildGooeyShader(liveConfig));
+    const newGooey = createPreviewProgram(
+      gl,
+      vsSrc,
+      buildGooeyShader(liveConfig),
+    );
     if (newGooey) {
       if (previewState.gooeyProg) gl.deleteProgram(previewState.gooeyProg);
       previewState.gooeyProg = newGooey;
@@ -577,13 +747,18 @@ export function initBannerEditor() {
     }
 
     // Rebuild groovy
-    const newGroovy = createPreviewProgram(gl, vsSrc, buildGroovyShader(liveConfig));
+    const newGroovy = createPreviewProgram(
+      gl,
+      vsSrc,
+      buildGroovyShader(liveConfig),
+    );
     if (newGroovy) {
       if (previewState.groovyProg) gl.deleteProgram(previewState.groovyProg);
       previewState.groovyProg = newGroovy;
       previewState.groovyUni = {
         res: gl.getUniformLocation(newGroovy, "iResolution"),
         time: gl.getUniformLocation(newGroovy, "iTime"),
+        mouse: gl.getUniformLocation(newGroovy, "u_mouse"),
         speed: gl.getUniformLocation(newGroovy, "u_groovy_speed"),
         mixMin: gl.getUniformLocation(newGroovy, "u_groovy_mixPowerMin"),
         mixMax: gl.getUniformLocation(newGroovy, "u_groovy_mixPowerMax"),
@@ -593,19 +768,31 @@ export function initBannerEditor() {
     }
 
     // Rebuild painter
-    const newPainter = createPreviewProgram(gl, vsSrc, buildPainterShader(liveConfig));
+    const newPainter = createPreviewProgram(
+      gl,
+      vsSrc,
+      buildPainterShader(liveConfig),
+    );
     if (newPainter) {
       if (previewState.painterProg) gl.deleteProgram(previewState.painterProg);
       previewState.painterProg = newPainter;
       previewState.painterUni = {
         res: gl.getUniformLocation(newPainter, "iResolution"),
         time: gl.getUniformLocation(newPainter, "iTime"),
+        mouse: gl.getUniformLocation(newPainter, "u_mouse"),
+        prevFrame: gl.getUniformLocation(newPainter, "u_prevFrame"),
+        frame: gl.getUniformLocation(newPainter, "u_frame"),
         brushSize: gl.getUniformLocation(newPainter, "u_painter_brushSize"),
         softness: gl.getUniformLocation(newPainter, "u_painter_softness"),
         noiseScale: gl.getUniformLocation(newPainter, "u_painter_noiseScale"),
-        noiseInfluence: gl.getUniformLocation(newPainter, "u_painter_noiseInfluence"),
+        noiseInfluence: gl.getUniformLocation(
+          newPainter,
+          "u_painter_noiseInfluence",
+        ),
         cycleSpeed: gl.getUniformLocation(newPainter, "u_painter_cycleSpeed"),
       };
+      // Reset feedback so it re-initializes with new shader
+      previewState.painterFrameCount = 0;
     }
 
     // Re-bind attribute (location 0 = a_position)
@@ -654,6 +841,8 @@ export function initBannerEditor() {
       if (previewState.painterUni?.res)
         gl.uniform2f(previewState.painterUni.res, w, h);
     }
+    // Create/resize painter feedback FBOs
+    setupPreviewPainterFeedback();
   }
 
   /* ── Upload drip uniforms to paint program ── */
@@ -683,6 +872,14 @@ export function initBannerEditor() {
     if (!previewState.groovyUni) return;
     const g = liveConfig.groovy;
     const u = previewState.groovyUni;
+    if (u.mouse) {
+      const dpr = window.devicePixelRatio || 1;
+      gl.uniform2f(
+        u.mouse,
+        (previewState.mouseX || 0) * dpr,
+        (previewState.mouseY || 0) * dpr,
+      );
+    }
     if (u.speed) gl.uniform1f(u.speed, g.speed);
     if (u.mixMin) gl.uniform1f(u.mixMin, g.mixPowerMin);
     if (u.mixMax) gl.uniform1f(u.mixMax, g.mixPowerMax);
@@ -700,6 +897,145 @@ export function initBannerEditor() {
     if (u.noiseScale) gl.uniform1f(u.noiseScale, p.noiseScale);
     if (u.noiseInfluence) gl.uniform1f(u.noiseInfluence, p.noiseInfluence);
     if (u.cycleSpeed) gl.uniform1f(u.cycleSpeed, p.cycleSpeed);
+  }
+
+  /* ── Painter ping-pong FBO helpers ── */
+  function makePreviewPainterTex(gl, w, h) {
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    return tex;
+  }
+
+  function setupPreviewPainterFeedback() {
+    const gl = previewState.gl;
+    if (!gl || !previewState.painterProg) return;
+    const w = bEl.canvas.width;
+    const h = bEl.canvas.height;
+    if (w === previewState.painterFbW && h === previewState.painterFbH
+        && previewState.painterFbA) return;
+
+    // Tear down old
+    if (previewState.painterFbA) gl.deleteFramebuffer(previewState.painterFbA);
+    if (previewState.painterFbB) gl.deleteFramebuffer(previewState.painterFbB);
+    if (previewState.painterTexA) gl.deleteTexture(previewState.painterTexA);
+    if (previewState.painterTexB) gl.deleteTexture(previewState.painterTexB);
+
+    previewState.painterTexA = makePreviewPainterTex(gl, w, h);
+    previewState.painterFbA = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, previewState.painterFbA);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, previewState.painterTexA, 0);
+
+    previewState.painterTexB = makePreviewPainterTex(gl, w, h);
+    previewState.painterFbB = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, previewState.painterFbB);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, previewState.painterTexB, 0);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+
+    previewState.painterFbW = w;
+    previewState.painterFbH = h;
+    previewState.painterPing = 0;
+    previewState.painterFrameCount = 0;
+  }
+
+  function stepPreviewPainterFeedback() {
+    const gl = previewState.gl;
+    if (!gl || !previewState.painterProg || !previewState.painterFbA) return;
+    const u = previewState.painterUni;
+    const w = previewState.painterFbW;
+    const h = previewState.painterFbH;
+
+    // Determine read/write targets
+    const readTex = previewState.painterPing === 0
+      ? previewState.painterTexA : previewState.painterTexB;
+    const writeFb = previewState.painterPing === 0
+      ? previewState.painterFbB : previewState.painterFbA;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, writeFb);
+    gl.viewport(0, 0, w, h);
+    gl.useProgram(previewState.painterProg);
+
+    // Bind previous frame texture
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, readTex);
+    if (u.prevFrame) gl.uniform1i(u.prevFrame, 0);
+
+    // Frame counter (0 = clear to bg)
+    if (u.frame) gl.uniform1f(u.frame, previewState.painterFrameCount);
+
+    // Resolution + time
+    if (u.res) gl.uniform2f(u.res, w, h);
+    if (u.time) gl.uniform1f(u.time, previewState.animTime);
+
+    // Mouse state
+    const mouseActive = previewState.painterMouseOver;
+    if (u.mouse) {
+      gl.uniform4f(
+        u.mouse,
+        previewState.painterMouseX,
+        previewState.painterMouseY,
+        mouseActive ? 1.0 : 0.0,
+        0.0,
+      );
+    }
+
+    // Upload paint params
+    uploadPreviewPainterUniforms(gl);
+
+    // Draw
+    gl.bindBuffer(gl.ARRAY_BUFFER, previewState.buffer);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(0);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    // Flip ping-pong
+    previewState.painterPing = 1 - previewState.painterPing;
+    previewState.painterFrameCount++;
+  }
+
+  function blitPreviewPainterToScreen(gl, blended, alpha) {
+    // The most recently written texture is the "write" side after flip
+    const displayTex = previewState.painterPing === 0
+      ? previewState.painterTexA : previewState.painterTexB;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, bEl.canvas.width, bEl.canvas.height);
+
+    if (blended) {
+      gl.enable(gl.BLEND);
+      gl.blendColor(0, 0, 0, alpha);
+      gl.blendFunc(gl.CONSTANT_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
+    }
+
+    // Use a simple passthrough: rebind painterProg reading from displayTex
+    // with u_frame = 1 and mouse off-screen so it just passes through the texture
+    gl.useProgram(previewState.painterProg);
+    const u = previewState.painterUni;
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, displayTex);
+    if (u.prevFrame) gl.uniform1i(u.prevFrame, 0);
+    if (u.frame) gl.uniform1f(u.frame, 1.0);
+    if (u.res) gl.uniform2f(u.res, bEl.canvas.width, bEl.canvas.height);
+    if (u.time) gl.uniform1f(u.time, previewState.animTime);
+    if (u.mouse) gl.uniform4f(u.mouse, -1000.0, -1000.0, 0.0, 0.0);
+    uploadPreviewPainterUniforms(gl);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, previewState.buffer);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(0);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    if (blended) gl.disable(gl.BLEND);
   }
 
   /* ── Crossfade duration ── */
@@ -787,6 +1123,13 @@ export function initBannerEditor() {
     const cf = previewState.crossfadeFactor;
     const toInfo = resolvePreviewShader(previewState.shaderTo);
 
+    // Painter feedback: step before any draw calls
+    const painterActive = (previewState.shaderTo === "painter" ||
+      (cf < 1.0 && previewState.shaderFrom === "painter"));
+    if (painterActive && previewState.painterProg && previewState.painterFbA) {
+      stepPreviewPainterFeedback();
+    }
+
     // Log the render state once per second
     if (liveConfig.performance && liveConfig.performance.debugMode) {
       if (now - (renderPreviewFrame._dbgRouterLog || 0) >= 1.0) {
@@ -800,6 +1143,11 @@ export function initBannerEditor() {
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     function drawPreviewShader(info, blended, alpha) {
+      // Painter uses its own feedback pipeline
+      if (info.painter) {
+        blitPreviewPainterToScreen(gl, blended, alpha);
+        return;
+      }
       if (blended) {
         gl.enable(gl.BLEND);
         gl.blendColor(0, 0, 0, alpha);
@@ -809,11 +1157,10 @@ export function initBannerEditor() {
       if (info.uni?.time)
         gl.uniform1f(
           info.uni.time,
-          (info.gooey || info.groovy || info.painter) ? previewState.animTime : loopPhase,
+          info.gooey ? previewState.animTime : loopPhase,
         );
       if (info.drip) uploadPreviewDripUniforms(gl);
       if (info.groovy) uploadPreviewGroovyUniforms(gl);
-      if (info.painter) uploadPreviewPainterUniforms(gl);
 
       gl.bindBuffer(gl.ARRAY_BUFFER, previewState.buffer);
       gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
@@ -966,9 +1313,7 @@ export function initBannerEditor() {
 
         // Also copy JSON to clipboard as backup
         try {
-          await navigator.clipboard.writeText(
-            JSON.stringify(payload, null, 2),
-          );
+          await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
         } catch (_) {
           /* clipboard optional */
         }
@@ -1285,9 +1630,22 @@ export function initBannerEditor() {
   if (bEl.wrapper) {
     bEl.wrapper.addEventListener("pointerenter", () => {
       previewState.targetSpeed = liveConfig.interaction.hoverSlowdown;
+      previewState.painterMouseOver = true;
     });
     bEl.wrapper.addEventListener("pointerleave", () => {
       previewState.targetSpeed = 1.0;
+      previewState.painterMouseOver = false;
+    });
+    bEl.wrapper.addEventListener("mousemove", (e) => {
+      const rect = bEl.canvas.getBoundingClientRect();
+      previewState.mouseX = e.clientX - rect.left;
+      previewState.mouseY =
+        bEl.canvas.height / (window.devicePixelRatio || 1) -
+        (e.clientY - rect.top);
+      // Painter: precise GL pixel coordinates
+      previewState.painterMouseX = (e.clientX - rect.left) / rect.width * bEl.canvas.width;
+      previewState.painterMouseY = (1.0 - (e.clientY - rect.top) / rect.height) * bEl.canvas.height;
+      previewState.painterMouseOver = true;
     });
   }
 

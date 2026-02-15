@@ -249,9 +249,7 @@ export function buildRibbonShader(cfg) {
     cfg.wave.horizontalAmount * Math.abs(cfg.wave.offsetBlend);
   const maxRibbonHalfHeight =
     maxWaveAbs +
-    cfg.thickness.base *
-      cfg.thickness.stretchMax *
-      cfg.positioning.bandCount +
+    cfg.thickness.base * cfg.thickness.stretchMax * cfg.positioning.bandCount +
     cfg.appearance.aaFallback;
 
   const twistEnabled = cfg.twist.enabled;
@@ -402,7 +400,7 @@ export function buildGroovyShader(cfg) {
   const g = cfg.groovy || {
     speed: 1.0,
     mixPowerMin: 0.15,
-    mixPowerMax: 0.80,
+    mixPowerMax: 0.8,
     iterations: 11,
     mouseInfluence: 3.0,
   };
@@ -411,8 +409,9 @@ export function buildGroovyShader(cfg) {
 
   uniform vec2 iResolution;
   uniform float iTime;
-
+  uniform vec2 u_mouse;
   uniform float u_groovy_speed;
+
   uniform float u_groovy_mixMin;
   uniform float u_groovy_mixMax;
   uniform float u_groovy_iterations;
@@ -426,25 +425,37 @@ export function buildGroovyShader(cfg) {
   vec3 bg = ${fmtVec3(cfg.colors.background)};
 
   void main() {
+      // Normalize coordinates
       vec2 uv = (2.0 * gl_FragCoord.xy - iResolution) / min(iResolution.x, iResolution.y);
+      vec2 m = (2.0 * u_mouse - iResolution) / min(iResolution.x, iResolution.y);
 
-      // Animated focal point (replaces mouse on production banner)
-      float fx = 0.3 * sin(iTime * 0.4);
-      float fy = 0.2 * cos(iTime * 0.3);
-      vec2 m = vec2(fx, fy);
+      // --- ZOOM LOGIC ---
+      // Values < 1.0 zoom in; > 1.0 zoom out. 
+      // Applied to both uv and m to keep mouse interaction visually aligned.
+      float zoom = 0.8; 
+      uv *= zoom;
+      m *= zoom;
 
+      // --- PERFECT LOOP LOGIC ---
+      // Force speed to an integer to guarantee the phase offset completes a full 2*PI cycle.
+      float speedInt = max(1.0, floor(u_groovy_speed)); 
+      float t = iTime * 6.28318530718 * speedInt;
+
+      // Mouse influence scaling
       float dist = length(uv - m);
       float mouseInfluence = exp(-u_groovy_mouseInfl * dist * dist);
-
       float mixingPower = mix(u_groovy_mixMin, u_groovy_mixMax, mouseInfluence);
 
+      // Domain warping loop
       for (float i = 2.0; i < 25.0; i++) {
           if (i >= u_groovy_iterations) break;
-          uv.x += (mixingPower / i) * cos(i * 2.0 * uv.y + iTime * u_groovy_speed);
-          uv.y += (mixingPower / i) * cos(i * 2.0 * uv.x + iTime * u_groovy_speed);
+          // Notice 't' is now used directly, ensuring exact cyclic boundary conditions
+          uv.x += (mixingPower / i) * cos(i * 2.0 * uv.y + t);
+          uv.y += (mixingPower / i) * cos(i * 2.0 * uv.x + t);
       }
 
-      float val = 0.5 + 0.5 * cos(uv.x + uv.y + iTime * u_groovy_speed / 2.0);
+      // Final scalar map (removed the '/ 2.0' to preserve the integer 2*PI period)
+      float val = 0.5 + 0.5 * cos(uv.x + uv.y + t);
 
       vec3 col;
       if (val < 0.25) {
@@ -457,13 +468,13 @@ export function buildGroovyShader(cfg) {
           col = mix(c3, c4, (val - 0.75) * 4.0);
       }
 
-      // Mix with background based on alpha value
+      // Output mix
       gl_FragColor = vec4(mix(bg, col, 0.8), 1.0);
   }
 `;
 }
 
-/* ── Painter Fragment Shader (procedural brush-stroke effect) ── */
+/* ── Painter Fragment Shader (interactive mouse-driven paint with feedback) ── */
 export function buildPainterShader(cfg) {
   const p = cfg.painter || {
     brushSize: 80.0,
@@ -477,6 +488,9 @@ export function buildPainterShader(cfg) {
 
   uniform vec2 iResolution;
   uniform float iTime;
+  uniform vec4 u_mouse;
+  uniform sampler2D u_prevFrame;
+  uniform float u_frame;
 
   uniform float u_painter_brushSize;
   uniform float u_painter_softness;
@@ -505,7 +519,7 @@ export function buildPainterShader(cfg) {
   }
 
   vec3 getPaletteColor(float t) {
-      float val = fract(t);
+      float val = fract(t * u_painter_cycleSpeed);
       if (val < 0.25)      return mix(c0, c1, val * 4.0);
       else if (val < 0.5)  return mix(c1, c2, (val - 0.25) * 4.0);
       else if (val < 0.75) return mix(c2, c3, (val - 0.5) * 4.0);
@@ -514,33 +528,33 @@ export function buildPainterShader(cfg) {
 
   void main() {
       vec2 fragCoord = gl_FragCoord.xy;
-      float t = iTime;
-      vec3 color = bg;
+      vec4 C;
 
-      /* 8 virtual brush-heads on Lissajous paths */
-      for (int i = 0; i < 8; i++) {
-          float fi = float(i);
-          float phase = fi * 0.7854 + t * (0.2 + fi * 0.03);
+      if (u_frame < 0.5) {
+          C = vec4(bg, 1.0);
+      } else {
+          vec2 UV = fragCoord / iResolution.xy;
+          C = texture2D(u_prevFrame, UV);
 
-          vec2 brushPos = vec2(
-              0.5 + 0.38 * sin(phase * 1.1 + fi * 2.1),
-              0.5 + 0.38 * cos(phase * 0.9 + fi * 1.7)
-          ) * iResolution.xy;
+          vec2 mousePos = u_mouse.xy;
+          if (u_mouse.z <= 0.0) mousePos = vec2(-1000.0);
 
-          float dist = length(fragCoord - brushPos);
+          float dist = length(fragCoord - mousePos);
 
-          float noiseVal  = p1(fragCoord / u_painter_noiseScale);
-          float pattern   = noiseVal * u_painter_noiseInfluence
-                          + (1.0 - u_painter_noiseInfluence);
+          float noiseVal = p1(fragCoord / u_painter_noiseScale);
+          float brushPattern = noiseVal * u_painter_noiseInfluence
+                             + (1.0 - u_painter_noiseInfluence);
 
-          float outer     = u_painter_brushSize * u_painter_softness;
-          float intensity = smoothstep(outer, 0.0, dist / pattern);
+          float outerRadius = u_painter_brushSize * u_painter_softness;
+          float intensity = 1.0 - smoothstep(0.0, outerRadius, dist / brushPattern);
 
-          vec3 brushCol = getPaletteColor(t * u_painter_cycleSpeed + fi * 0.15);
-          color = mix(color, brushCol, intensity * 0.45);
+          if (u_mouse.z > 0.0) {
+              vec3 brushColor = getPaletteColor(iTime);
+              C = mix(C, vec4(brushColor, 1.0), intensity * 0.5);
+          }
       }
 
-      gl_FragColor = vec4(color, 1.0);
+      gl_FragColor = C;
   }
 `;
 }

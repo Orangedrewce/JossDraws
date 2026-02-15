@@ -118,7 +118,7 @@ const WEBGL_CONFIG = {
   groovy: {
     speed: 1.0,
     mixPowerMin: 0.15,
-    mixPowerMax: 0.80,
+    mixPowerMax: 0.8,
     iterations: 11,
     mouseInfluence: 3.0,
   },
@@ -267,10 +267,15 @@ function initWebGL() {
       "pointerleave",
       initWebGL._onHeaderLeave,
     );
+    initWebGL._headerEl.removeEventListener(
+      "pointermove",
+      initWebGL._onHeaderMove,
+    );
   }
   initWebGL._headerEl = null;
   initWebGL._onHeaderEnter = null;
   initWebGL._onHeaderLeave = null;
+  initWebGL._onHeaderMove = null;
 
   // ── Context loss/restore (attached once) [P1, P3, P4] ──
   if (!initWebGL._contextHandlers) {
@@ -576,61 +581,81 @@ function initWebGL() {
   // ── Groovy Shader Fragment (swirling color-mix) ──
   const createGroovyShader = () => {
     const cfg = WEBGL_CONFIG;
-    const gc = cfg.groovy;
+    // Adapted from banner-shaders.js to match Dashboard preview
     return `
       ${precisionLine}
       uniform vec2 iResolution;
       uniform float iTime;
+      uniform vec2 u_mouse;
       uniform float u_groovy_speed;
+
       uniform float u_groovy_mixPowerMin;
       uniform float u_groovy_mixPowerMax;
       uniform float u_groovy_iterations;
       uniform float u_groovy_mouseInfluence;
 
-      vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {
-          return a + b * cos(6.28318 * (c * t + d));
-      }
+      vec3 c0 = ${vec3(cfg.colors.c0)};
+      vec3 c1 = ${vec3(cfg.colors.c1)};
+      vec3 c2 = ${vec3(cfg.colors.c2)};
+      vec3 c3 = ${vec3(cfg.colors.c3)};
+      vec3 c4 = ${vec3(cfg.colors.c4)};
+      vec3 bg = ${vec3(cfg.colors.background)};
 
       void main() {
-          vec2 uv = (gl_FragCoord.xy * 2.0 - iResolution.xy) / min(iResolution.x, iResolution.y);
-          float t = iTime * u_groovy_speed;
-          vec2 focus = vec2(0.3 * sin(t * 0.4), 0.2 * cos(t * 0.3));
-          vec2 uv0 = uv;
-          vec3 finalColor = vec3(0.0);
-          for (int i = 0; i < 20; i++) {
-              if (float(i) >= u_groovy_iterations) break;
-              uv = fract(uv * 1.5) - 0.5;
-              float fi = float(i);
-              float d = length(uv) * exp(-length(uv0 - focus) / u_groovy_mouseInfluence);
-              vec3 col = palette(
-                  length(uv0) + fi * 0.4 + t * 0.4,
-                  ${vec3(cfg.colors.c0)},
-                  ${vec3(cfg.colors.c1)},
-                  ${vec3(cfg.colors.c2)},
-                  ${vec3(cfg.colors.c3)}
-              );
-              d = sin(d * 8.0 + t) / 8.0;
-              d = abs(d);
-              float mixPower = mix(u_groovy_mixPowerMin, u_groovy_mixPowerMax,
-                  0.5 + 0.5 * sin(t * 0.3 + fi));
-              d = pow(0.01 / d, mixPower);
-              finalColor += col * d;
+          // Normalize coordinates
+          vec2 uv = (2.0 * gl_FragCoord.xy - iResolution) / min(iResolution.x, iResolution.y);
+          vec2 m = (2.0 * u_mouse - iResolution) / min(iResolution.x, iResolution.y);
+
+          // --- ZOOM LOGIC ---
+          float zoom = 0.8; 
+          uv *= zoom;
+          m *= zoom;
+
+          // --- PERFECT LOOP LOGIC ---
+          float speedInt = max(1.0, floor(u_groovy_speed)); 
+          float t = iTime * 6.28318530718 * speedInt;
+
+          // Mouse influence
+          float dist = length(uv - m);
+          float mouseInfluence = exp(-u_groovy_mouseInfluence * dist * dist);
+          float mixingPower = mix(u_groovy_mixPowerMin, u_groovy_mixPowerMax, mouseInfluence);
+
+          // Domain warping
+          for (float i = 2.0; i < 25.0; i++) {
+              if (i >= u_groovy_iterations) break;
+              uv.x += (mixingPower / i) * cos(i * 2.0 * uv.y + t);
+              uv.y += (mixingPower / i) * cos(i * 2.0 * uv.x + t);
           }
-          vec3 bg = ${vec3(cfg.colors.background)};
-          float edgeFade = smoothstep(2.0, 0.5, length(uv0));
-          finalColor = mix(bg, finalColor, edgeFade);
-          gl_FragColor = vec4(finalColor, 1.0);
+
+          // Final scalar map (integers only)
+          float val = 0.5 + 0.5 * cos(uv.x + uv.y + t);
+
+          vec3 col;
+          if (val < 0.25) {
+              col = mix(c0, c1, val * 4.0);
+          } else if (val < 0.5) {
+              col = mix(c1, c2, (val - 0.25) * 4.0);
+          } else if (val < 0.75) {
+              col = mix(c2, c3, (val - 0.5) * 4.0);
+          } else {
+              col = mix(c3, c4, (val - 0.75) * 4.0);
+          }
+
+          gl_FragColor = vec4(mix(bg, col, 0.8), 1.0);
       }
     `;
   };
 
-  // ── Painter Fragment Shader (procedural brush-stroke effect) ──
+  // ── Painter Fragment Shader (interactive mouse-driven paint with feedback) ──
   const createPainterShader = () => {
     const cfg = WEBGL_CONFIG;
     return `
       ${precisionLine}
       uniform vec2 iResolution;
       uniform float iTime;
+      uniform vec4 u_mouse;
+      uniform sampler2D u_prevFrame;
+      uniform float u_frame;
       uniform float u_painter_brushSize;
       uniform float u_painter_softness;
       uniform float u_painter_noiseScale;
@@ -657,7 +682,7 @@ function initWebGL() {
       }
 
       vec3 getPaletteColor(float t) {
-          float val = fract(t);
+          float val = fract(t * u_painter_cycleSpeed);
           if (val < 0.25)      return mix(c0, c1, val * 4.0);
           else if (val < 0.5)  return mix(c1, c2, (val - 0.25) * 4.0);
           else if (val < 0.75) return mix(c2, c3, (val - 0.5) * 4.0);
@@ -666,32 +691,33 @@ function initWebGL() {
 
       void main() {
           vec2 fragCoord = gl_FragCoord.xy;
-          float t = iTime;
-          vec3 color = bg;
+          vec4 C;
 
-          for (int i = 0; i < 8; i++) {
-              float fi = float(i);
-              float phase = fi * 0.7854 + t * (0.2 + fi * 0.03);
+          if (u_frame < 0.5) {
+              C = vec4(bg, 1.0);
+          } else {
+              vec2 UV = fragCoord / iResolution.xy;
+              C = texture2D(u_prevFrame, UV);
 
-              vec2 brushPos = vec2(
-                  0.5 + 0.38 * sin(phase * 1.1 + fi * 2.1),
-                  0.5 + 0.38 * cos(phase * 0.9 + fi * 1.7)
-              ) * iResolution.xy;
+              vec2 mousePos = u_mouse.xy;
+              if (u_mouse.z <= 0.0) mousePos = vec2(-1000.0);
 
-              float dist = length(fragCoord - brushPos);
+              float dist = length(fragCoord - mousePos);
 
-              float noiseVal  = p1(fragCoord / u_painter_noiseScale);
-              float pattern   = noiseVal * u_painter_noiseInfluence
-                              + (1.0 - u_painter_noiseInfluence);
+              float noiseVal = p1(fragCoord / u_painter_noiseScale);
+              float brushPattern = noiseVal * u_painter_noiseInfluence
+                                 + (1.0 - u_painter_noiseInfluence);
 
-              float outer     = u_painter_brushSize * u_painter_softness;
-              float intensity = smoothstep(outer, 0.0, dist / pattern);
+              float outerRadius = u_painter_brushSize * u_painter_softness;
+              float intensity = 1.0 - smoothstep(0.0, outerRadius, dist / brushPattern);
 
-              vec3 brushCol = getPaletteColor(t * u_painter_cycleSpeed + fi * 0.15);
-              color = mix(color, brushCol, intensity * 0.45);
+              if (u_mouse.z > 0.0) {
+                  vec3 brushColor = getPaletteColor(iTime);
+                  C = mix(C, vec4(brushColor, 1.0), intensity * 0.5);
+              }
           }
 
-          gl_FragColor = vec4(color, 1.0);
+          gl_FragColor = C;
       }
     `;
   };
@@ -949,13 +975,19 @@ function initWebGL() {
       "[WebGL] Gooey program creation failed — gooey mode unavailable.",
     );
   }
-  const groovyProg = createProgramSafe(vertexShaderSource, createGroovyShader());
+  const groovyProg = createProgramSafe(
+    vertexShaderSource,
+    createGroovyShader(),
+  );
   if (!groovyProg) {
     console.warn(
       "[WebGL] Groovy program creation failed — groovy mode unavailable.",
     );
   }
-  const painterProg = createProgramSafe(vertexShaderSource, createPainterShader());
+  const painterProg = createProgramSafe(
+    vertexShaderSource,
+    createPainterShader(),
+  );
   if (!painterProg) {
     console.warn(
       "[WebGL] Painter program creation failed — painter mode unavailable.",
@@ -1055,6 +1087,7 @@ function initWebGL() {
     ? {
         res: gl.getUniformLocation(groovyProg, "iResolution"),
         time: gl.getUniformLocation(groovyProg, "iTime"),
+        mouse: gl.getUniformLocation(groovyProg, "u_mouse"),
         speed: gl.getUniformLocation(groovyProg, "u_groovy_speed"),
         mixMin: gl.getUniformLocation(groovyProg, "u_groovy_mixPowerMin"),
         mixMax: gl.getUniformLocation(groovyProg, "u_groovy_mixPowerMax"),
@@ -1066,10 +1099,16 @@ function initWebGL() {
     ? {
         res: gl.getUniformLocation(painterProg, "iResolution"),
         time: gl.getUniformLocation(painterProg, "iTime"),
+        mouse: gl.getUniformLocation(painterProg, "u_mouse"),
+        prevFrame: gl.getUniformLocation(painterProg, "u_prevFrame"),
+        frame: gl.getUniformLocation(painterProg, "u_frame"),
         brushSize: gl.getUniformLocation(painterProg, "u_painter_brushSize"),
         softness: gl.getUniformLocation(painterProg, "u_painter_softness"),
         noiseScale: gl.getUniformLocation(painterProg, "u_painter_noiseScale"),
-        noiseInfluence: gl.getUniformLocation(painterProg, "u_painter_noiseInfluence"),
+        noiseInfluence: gl.getUniformLocation(
+          painterProg,
+          "u_painter_noiseInfluence",
+        ),
         cycleSpeed: gl.getUniformLocation(painterProg, "u_painter_cycleSpeed"),
       }
     : null;
@@ -1089,6 +1128,16 @@ function initWebGL() {
   let fbWidth = 0,
     fbHeight = 0;
   let ssFactor = 1.0;
+
+  // ── Painter feedback FBO state (ping-pong for frame persistence) ──
+  let painterFbA = null,
+    painterTexA = null;
+  let painterFbB = null,
+    painterTexB = null;
+  let painterPing = 0; // 0: read A → write B, 1: read B → write A
+  let painterFrameCount = 0;
+  let painterFbW = 0,
+    painterFbH = 0;
 
   // Re-evaluate supersample factor on every resize [P2]
   function computeSuperSampleFactor() {
@@ -1252,6 +1301,138 @@ function initWebGL() {
     }
 
     setupFramebuffer(pixelW, pixelH, ssFactor);
+
+    // Resize painter feedback FBOs (resets paint canvas on resize)
+    if (painterProg) setupPainterFeedback(pixelW, pixelH);
+  }
+
+  // ── Painter feedback FBO helpers ──
+  function makePainterFb(w, h) {
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      w,
+      h,
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      null,
+    );
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT0,
+      gl.TEXTURE_2D,
+      tex,
+      0,
+    );
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    return { fbo, tex };
+  }
+
+  function setupPainterFeedback(w, h) {
+    if (!painterProg) return;
+    if (painterFbW === w && painterFbH === h && painterFbA) return;
+    if (painterFbA) gl.deleteFramebuffer(painterFbA);
+    if (painterTexA) gl.deleteTexture(painterTexA);
+    if (painterFbB) gl.deleteFramebuffer(painterFbB);
+    if (painterTexB) gl.deleteTexture(painterTexB);
+    const a = makePainterFb(w, h);
+    const b = makePainterFb(w, h);
+    painterFbA = a.fbo;
+    painterTexA = a.tex;
+    painterFbB = b.fbo;
+    painterTexB = b.tex;
+    painterFbW = w;
+    painterFbH = h;
+    painterPing = 0;
+    painterFrameCount = 0;
+  }
+
+  // Run one feedback iteration: read previous frame → painter shader → write new frame
+  function stepPainterFeedback() {
+    if (!painterProg || !painterFbA) return;
+    const readTex = painterPing === 0 ? painterTexA : painterTexB;
+    const writeFb = painterPing === 0 ? painterFbB : painterFbA;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, writeFb);
+    gl.viewport(0, 0, painterFbW, painterFbH);
+    gl.useProgram(painterProg);
+
+    // Bind previous frame texture on unit 1
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, readTex);
+    if (painterUni.prevFrame) gl.uniform1i(painterUni.prevFrame, 1);
+
+    // Set per-frame uniforms
+    if (painterUni.res) gl.uniform2f(painterUni.res, painterFbW, painterFbH);
+    if (painterUni.time) gl.uniform1f(painterUni.time, animTime);
+    if (painterUni.mouse)
+      gl.uniform4f(
+        painterUni.mouse,
+        initWebGL._painterMouseX ?? -1000,
+        initWebGL._painterMouseY ?? -1000,
+        initWebGL._painterMouseOver ? 1.0 : 0.0,
+        0.0,
+      );
+    if (painterUni.frame) gl.uniform1f(painterUni.frame, painterFrameCount);
+    uploadPainterUniforms();
+
+    bindAttributes(painterProg);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    // Cleanup
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    // Swap buffers and advance frame
+    painterPing = 1 - painterPing;
+    painterFrameCount++;
+  }
+
+  // Blit the painter feedback result to screen (with optional blend for crossfade)
+  function drawPainterToScreen(blended, alpha) {
+    // After swap, current painterPing index points to the just-written texture
+    const displayTex = painterPing === 0 ? painterTexA : painterTexB;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+
+    if (blended) {
+      gl.enable(gl.BLEND);
+      gl.blendColor(0, 0, 0, alpha);
+      gl.blendFunc(gl.CONSTANT_ALPHA, gl.ONE_MINUS_CONSTANT_ALPHA);
+    } else {
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+
+    // Reuse downsample shader as a 1:1 blit (zero offset = passthrough)
+    gl.useProgram(dsProg);
+    if (dsSize) gl.uniform2f(dsSize, 0.0, 0.0);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, displayTex);
+
+    bindAttributes(dsProg);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    if (blended) gl.disable(gl.BLEND);
+
+    // Restore dsSize for non-painter shaders
+    if (dsSize && fbWidth > 0 && fbHeight > 0) {
+      gl.uniform2f(dsSize, 1.0 / fbWidth, 1.0 / fbHeight);
+    }
   }
 
   // ── Animation state ──
@@ -1268,14 +1449,49 @@ function initWebGL() {
   // Helper: resolve shader type → program/uni/needsDrip/needsGooey
   function resolveShader(type) {
     if (type === "paint_drip" && paintProg)
-      return { prog: paintProg, uni: paintUni, drip: true, gooey: false, groovy: false, painter: false };
+      return {
+        prog: paintProg,
+        uni: paintUni,
+        drip: true,
+        gooey: false,
+        groovy: false,
+        painter: false,
+      };
     if (type === "gooey_drip" && gooeyProg)
-      return { prog: gooeyProg, uni: gooeyUni, drip: false, gooey: true, groovy: false, painter: false };
+      return {
+        prog: gooeyProg,
+        uni: gooeyUni,
+        drip: false,
+        gooey: true,
+        groovy: false,
+        painter: false,
+      };
     if (type === "groovy" && groovyProg)
-      return { prog: groovyProg, uni: groovyUni, drip: false, gooey: false, groovy: true, painter: false };
+      return {
+        prog: groovyProg,
+        uni: groovyUni,
+        drip: false,
+        gooey: false,
+        groovy: true,
+        painter: false,
+      };
     if (type === "painter" && painterProg)
-      return { prog: painterProg, uni: painterUni, drip: false, gooey: false, groovy: false, painter: true };
-    return { prog: ribbonProg, uni: ribbonUni, drip: false, gooey: false, groovy: false, painter: false };
+      return {
+        prog: painterProg,
+        uni: painterUni,
+        drip: false,
+        gooey: false,
+        groovy: false,
+        painter: true,
+      };
+    return {
+      prog: ribbonProg,
+      uni: ribbonUni,
+      drip: false,
+      gooey: false,
+      groovy: false,
+      painter: false,
+    };
   }
 
   let shaderFrom = WEBGL_CONFIG.shaderType || "ribbon_wave";
@@ -1289,20 +1505,35 @@ function initWebGL() {
     shaderFrom = shaderTo;
     shaderTo = type;
     crossfadeFactor = 0.0;
+    // Reset painter canvas when transitioning to it
+    if (type === "painter") painterFrameCount = 0;
   };
 
   // Gooey shader bakes config at compile time (no runtime uniforms to upload).
   // This no-op prevents a ReferenceError when the FBO path calls it.
-  function uploadGooeyUniforms() { /* compile-time constants — nothing to upload */ }
+  function uploadGooeyUniforms() {
+    /* compile-time constants — nothing to upload */
+  }
 
   function uploadGroovyUniforms() {
     if (!groovyUni) return;
     const g = WEBGL_CONFIG.groovy;
+    if (groovyUni.mouse) {
+      const rw = fbWidth || canvas.width;
+      const cw = canvas.clientWidth || 1;
+      const s = rw / cw;
+      gl.uniform2f(
+        groovyUni.mouse,
+        (initWebGL._mouseX || 0) * s,
+        (initWebGL._mouseY || 0) * s,
+      );
+    }
     if (groovyUni.speed) gl.uniform1f(groovyUni.speed, g.speed);
     if (groovyUni.mixMin) gl.uniform1f(groovyUni.mixMin, g.mixPowerMin);
     if (groovyUni.mixMax) gl.uniform1f(groovyUni.mixMax, g.mixPowerMax);
     if (groovyUni.iterations) gl.uniform1f(groovyUni.iterations, g.iterations);
-    if (groovyUni.mouseInfl) gl.uniform1f(groovyUni.mouseInfl, g.mouseInfluence);
+    if (groovyUni.mouseInfl)
+      gl.uniform1f(groovyUni.mouseInfl, g.mouseInfluence);
   }
 
   function uploadPainterUniforms() {
@@ -1310,9 +1541,12 @@ function initWebGL() {
     const p = WEBGL_CONFIG.painter;
     if (painterUni.brushSize) gl.uniform1f(painterUni.brushSize, p.brushSize);
     if (painterUni.softness) gl.uniform1f(painterUni.softness, p.softness);
-    if (painterUni.noiseScale) gl.uniform1f(painterUni.noiseScale, p.noiseScale);
-    if (painterUni.noiseInfluence) gl.uniform1f(painterUni.noiseInfluence, p.noiseInfluence);
-    if (painterUni.cycleSpeed) gl.uniform1f(painterUni.cycleSpeed, p.cycleSpeed);
+    if (painterUni.noiseScale)
+      gl.uniform1f(painterUni.noiseScale, p.noiseScale);
+    if (painterUni.noiseInfluence)
+      gl.uniform1f(painterUni.noiseInfluence, p.noiseInfluence);
+    if (painterUni.cycleSpeed)
+      gl.uniform1f(painterUni.cycleSpeed, p.cycleSpeed);
   }
 
   let _debugDripLogged = false;
@@ -1365,6 +1599,12 @@ function initWebGL() {
   function drawShaderPass(prog, uni, blended, alpha, phase, direct) {
     if (!prog) return;
 
+    // Painter uses its own feedback pipeline — blit result to screen instead
+    if (prog === painterProg) {
+      drawPainterToScreen(blended, alpha);
+      return;
+    }
+
     // Always bind attributes manually for this program
     bindAttributes(prog);
 
@@ -1385,7 +1625,11 @@ function initWebGL() {
         gl.clear(gl.COLOR_BUFFER_BIT);
       }
       if (uni.time)
-        gl.uniform1f(uni.time, (prog === gooeyProg || prog === groovyProg || prog === painterProg) ? animTime : phase);
+        gl.uniform1f(
+          uni.time,
+          uni.time,
+          prog === gooeyProg || prog === painterProg ? animTime : phase,
+        );
       if (prog === paintProg) uploadDripUniforms();
       if (prog === groovyProg) uploadGroovyUniforms();
       if (prog === painterProg) uploadPainterUniforms();
@@ -1402,7 +1646,10 @@ function initWebGL() {
       gl.viewport(0, 0, fbWidth, fbHeight);
       gl.clear(gl.COLOR_BUFFER_BIT);
       if (uni.time)
-        gl.uniform1f(uni.time, (prog === gooeyProg || prog === groovyProg || prog === painterProg) ? animTime : phase);
+        gl.uniform1f(
+          uni.time,
+          prog === gooeyProg || prog === painterProg ? animTime : phase,
+        );
       if (prog === paintProg) uploadDripUniforms();
       if (prog === gooeyProg) uploadGooeyUniforms();
       if (prog === groovyProg) uploadGroovyUniforms();
@@ -1461,9 +1708,27 @@ function initWebGL() {
     initWebGL._headerEl = header;
     initWebGL._onHeaderEnter = () =>
       (targetSpeed = WEBGL_CONFIG.interaction.hoverSlowdown);
-    initWebGL._onHeaderLeave = () => (targetSpeed = reduceMotion ? 0.3 : 1.0);
+    initWebGL._onHeaderLeave = () => {
+      targetSpeed = reduceMotion ? 0.3 : 1.0;
+      initWebGL._painterMouseOver = false;
+    };
+
+    // Mouse tracking for interactive shaders (Groovy + Painter)
+    initWebGL._onHeaderMove = (e) => {
+      const rect = header.getBoundingClientRect();
+      initWebGL._mouseX = e.clientX - rect.left;
+      initWebGL._mouseY = header.clientHeight - (e.clientY - rect.top); // Flip Y
+      // Painter: precise GL pixel coordinates
+      initWebGL._painterMouseX =
+        ((e.clientX - rect.left) / rect.width) * canvas.width;
+      initWebGL._painterMouseY =
+        (1.0 - (e.clientY - rect.top) / rect.height) * canvas.height;
+      initWebGL._painterMouseOver = true;
+    };
+
     header.addEventListener("pointerenter", initWebGL._onHeaderEnter);
     header.addEventListener("pointerleave", initWebGL._onHeaderLeave);
+    header.addEventListener("pointermove", initWebGL._onHeaderMove);
   }
 
   // ── Debug helper [P3] ──
@@ -1517,6 +1782,14 @@ function initWebGL() {
 
     // ── Resolve active shader programs ──
     const toInfo = resolveShader(shaderTo);
+
+    // ── Painter feedback: run one step before any drawShaderPass calls ──
+    const painterActive =
+      shaderTo === "painter" ||
+      (crossfadeFactor < 1.0 && shaderFrom === "painter");
+    if (painterActive && painterProg && painterFbA) {
+      stepPainterFeedback();
+    }
 
     if (crossfadeFactor >= 0.999) {
       // Pure single shader
