@@ -1876,3 +1876,22 @@ details.param-category[open] > .param-grid {
         flex-wrap: wrap;
     }
 }
+
+/* ====== SHADER MODE PARAMETER FILTERING ====== */
+/* Hide all mode-specific sections by default */
+.param-category[data-shader-mode="ribbon_wave"],
+.param-category[data-shader-mode="paint_drip"] {
+    display: none;
+}
+
+/* Show ribbon wave sections when active */
+body[data-active-shader="ribbon_wave"] .param-category[data-shader-mode="ribbon_wave"],
+body[data-active-shader="ribbon_wave"] .param-category[data-shader-mode="all"] {
+    display: block;
+}
+
+/* Show paint drip sections when active */
+body[data-active-shader="paint_drip"] .param-category[data-shader-mode="paint_drip"],
+body[data-active-shader="paint_drip"] .param-category[data-shader-mode="all"] {
+    display: block;
+}

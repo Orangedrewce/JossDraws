@@ -11,7 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="js/mgmt.js" defer></script>
 </head>
-<body>
+<body data-active-shader="ribbon_wave">
     <main class="card">
         <div class="card-header">
             <h1>Admin Dashboard</h1>
@@ -309,7 +309,7 @@
                 </div>
 
                 <!-- Geometry & Physics -->
-                <details class="param-category" open>
+                <details class="param-category" data-shader-mode="ribbon_wave" open>
                     <summary class="param-category-title">Ribbon Thickness &amp; Stretch</summary>
                     <div class="param-grid">
                         <div class="param-control">
@@ -341,7 +341,7 @@
                 </details>
 
                 <!-- Wave Dynamics -->
-                <details class="param-category">
+                <details class="param-category" data-shader-mode="ribbon_wave">
                     <summary class="param-category-title">Wave Motion &amp; Undulation</summary>
                     <div class="param-grid">
                         <div class="param-control">
@@ -398,7 +398,7 @@
                 </details>
 
                 <!-- World Rotation -->
-                <details class="param-category">
+                <details class="param-category" data-shader-mode="ribbon_wave">
                     <summary class="param-category-title">World Rotation</summary>
                     <div class="param-grid">
                         <div class="param-control param-toggle">
@@ -414,7 +414,7 @@
                 </details>
 
                 <!-- Visual Styling -->
-                <details class="param-category">
+                <details class="param-category" data-shader-mode="all">
                     <summary class="param-category-title">Lighting, Gloss &amp; Shadows</summary>
                     <div class="param-grid">
                         <div class="param-control">
@@ -464,7 +464,7 @@
                 </details>
 
                 <!-- Positioning -->
-                <details class="param-category">
+                <details class="param-category" data-shader-mode="all">
                     <summary class="param-category-title">Vertical Position &amp; Band Count</summary>
                     <div class="param-grid">
                         <div class="param-control">
@@ -480,7 +480,7 @@
                 </details>
 
                 <!-- Interaction -->
-                <details class="param-category">
+                <details class="param-category" data-shader-mode="all">
                     <summary class="param-category-title">Hover Slowdown &amp; Smoothing</summary>
                     <div class="param-grid">
                         <div class="param-control">
@@ -497,7 +497,7 @@
                 </details>
 
                 <!-- Performance -->
-                <details class="param-category">
+                <details class="param-category" data-shader-mode="all">
                     <summary class="param-category-title">Supersampling &amp; Render Options</summary>
                     <div class="param-grid">
                         <div class="param-control">
@@ -535,7 +535,7 @@
                 </details>
 
                 <!-- Paint Drip Dynamics -->
-                <details class="param-category">
+                <details class="param-category" data-shader-mode="paint_drip">
                     <summary class="param-category-title">Paint Drip Dynamics</summary>
                     <div class="param-grid">
                         <div class="param-control">

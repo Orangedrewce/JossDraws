@@ -5604,7 +5604,9 @@
       }
       // Sync shader mode dropdown
       if (bEl.shaderSelect) {
-        bEl.shaderSelect.value = liveConfig.shaderType || "ribbon_wave";
+        const mode = liveConfig.shaderType || "ribbon_wave";
+        bEl.shaderSelect.value = mode;
+        document.body.dataset.activeShader = mode;
       }
     }
 
@@ -5671,8 +5673,10 @@
       // Shader mode dropdown: trigger crossfade on selection change
       if (bEl.shaderSelect) {
         bEl.shaderSelect.addEventListener("change", () => {
+          const mode = bEl.shaderSelect.value;
+          document.body.dataset.activeShader = mode;
           if (window.transitionShader) {
-            window.transitionShader(bEl.shaderSelect.value);
+            window.transitionShader(mode);
           } else {
             // Fallback for when WebGL isn't loaded/ready
             liveConfig.shaderType = bEl.shaderSelect.value;
@@ -5726,8 +5730,7 @@
       return `vec3(${fmtF(c.r)}, ${fmtF(c.g)}, ${fmtF(c.b)})`;
     }
 
-    /* ── Paint Drip Fragment Shader (Complex Kinematics + WebGL 1.0 Safe) ── */
-    /* ── Paint Drip Fragment Shader (WebGL 1.0 Safe + Seamless Loop) ── */
+    /* ── Paint Drip Fragment Shader ── */
     function buildDripShader(cfg) {
       return `
       precision highp float;
@@ -5780,15 +5783,22 @@
           float safeDripDist = max(u_dripDistance, 0.001);
           float k = max(u_viscosity * 0.05, 0.001);
 
-          // SEAMLESS LOOP FIX: Quantize frequency so it divides perfectly into 12.0 seconds
+          // SEAMLESS LOOP FIX
           float safeFreq = max(u_bFreq, 0.001);
-          // WebGL 1.0 doesn't have round(), so we use floor(x + 0.5)
           float cycleDivisor = max(1.0, floor((LOOP_SECONDS / safeFreq) + 0.5));
           float lockedFreq = LOOP_SECONDS / cycleDivisor;
 
           float s = safeSdfWidth * abs((1.0 - uv.y) - 0.75) + 0.05;
           float o = 1.0;
-          float drip = 999.0;
+          
+          // Initialize to a large number since we are using squared distances now
+          float drip2 = 999999.0;
+
+          // ✨ PRE-COMPUTED CONSTANTS & HOISTED MATH
+          float loopTime = iTime * LOOP_SECONDS;
+          float fallSpeedRange = u_fallSpeed * u_bRange;
+          float invS2 = 1.0 / max(s * s, 0.000001); 
+          float densityThreshold = 1.0 - u_density; 
 
           float x = uv.x - safeSdfWidth;
           x += safeDripDist - mod(x, safeDripDist);
@@ -5798,35 +5808,44 @@
               if (x > uv.x + safeSdfWidth) break;
               
               x += safeDripDist;
-              float isLine = floor(rand(x, seed) + u_density);
+              
+              // ✨ HARDWARE STEP INSTEAD OF FLOOR+ADD
+              float isLine = step(densityThreshold, rand(x, seed));
               
               if (isLine > 0.0) {
                   float y = rand(seed, x) * 0.8 + 0.1;
                   
-                  // iTime is 0.0 -> 1.0 phase, scale to 12.0 real seconds
-                  float animTime = (iTime * LOOP_SECONDS) + (y * 10.0);
-                  
-                  // Because lockedFreq perfectly divides 12.0, this mod seamlessly wraps
+                  float animTime = loopTime + (y * 10.0);
                   float tMod = mod(animTime, lockedFreq);
-                  float bounce = 0.0 - (bCurve * tMod) * exp(1.0 - bCurve * tMod);
+                  
+                  // ✨ EXTRACTED BCURVE MULTIPLICATION
+                  float a = bCurve * tMod;
+                  float bounce = -a * exp(1.0 - a);
                   
                   y += bounce * u_bRange;
                   y = min(y, uv.y);
 
-                  float f = y + tMod * u_fallSpeed * u_bRange;
+                  float f = y + tMod * fallSpeedRange;
 
-                  float d = distance(vec2(x, y), uv);
+                  // ✨ SQUARED DISTANCES (No sqrt)
+                  vec2 p1 = vec2(x, y) - uv;
+                  float d2 = dot(p1, p1);
                   
-                  o *= clamp(d / max(s, 0.001), 0.0, 1.0);
-                  drip = smin(drip, distance(vec2(x, f), uv), k);
+                  // ✨ MULTIPLY INSTEAD OF DIVIDE
+                  o *= clamp(d2 * invS2, 0.0, 1.0);
+                  
+                  vec2 p2 = vec2(x, f) - uv;
+                  float currentDripD2 = dot(p2, p2);
+                  drip2 = smin(drip2, currentDripD2, k);
               }
           }
 
-          o = smin(o, clamp(drip / max(s, 0.001), 0.0, 1.0), k);
+          o = smin(o, clamp(drip2 * invS2, 0.0, 1.0), k);
 
-          // SEAMLESS LOOP FIX: Phase-lock the ceiling sine wave to exactly one TAU rotation
           float ceilS = sin(uv.x * 20.0 + (iTime * TAU)) * 0.3 + 0.4;
-          return o * clamp(distance(0.0, uv.y) / max(ceilS, 0.001), 0.0, 1.0);
+          
+          // ✨ REMOVED UNNECESSARY 1D DISTANCE()
+          return o * clamp(uv.y / max(ceilS, 0.001), 0.0, 1.0);
       }
 
       void main() {
@@ -5856,7 +5875,7 @@
 
           gl_FragColor = vec4(mix(bg, ribbonColor, mask), 1.0);
       }
-      `;
+  `;
     }
 
     /* ── Ribbon Wave Fragment Shader (compile-time injected) ── */
@@ -6377,7 +6396,7 @@ void main() {
 
     /* ── Build config for publishing (colors excluded) ── */
     function buildPublishConfig() {
-      const out = {};
+      const out = { shaderType: liveConfig.shaderType };
       const groups = [
         "thickness",
         "wave",
@@ -6646,8 +6665,28 @@ void main() {
           }
           // Preserve colors from saved profile if present
           if (saved.colors) liveConfig.colors = deepClone(saved.colors);
+
+          // Restore shader type
+          if (saved.shaderType) {
+            liveConfig.shaderType = saved.shaderType;
+            if (bEl.shaderSelect) bEl.shaderSelect.value = saved.shaderType;
+            document.body.dataset.activeShader = saved.shaderType;
+
+            // Switch local preview engine target
+            if (typeof previewState !== "undefined") {
+              previewState.blendTarget =
+                saved.shaderType === "paint_drip" ? 1.0 : 0.0;
+            }
+          }
+
           syncControls();
           rebuildPreview();
+
+          // Force transition
+          if (window.transitionShader && saved.shaderType) {
+            window.transitionShader(saved.shaderType);
+          }
+
           showProfileMsg(`Loaded "${profiles[idx].name}".`, "success");
           Trace.log("PROFILE_LOADED", { name: profiles[idx].name });
         } else if (action === "rename") {

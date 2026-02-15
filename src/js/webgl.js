@@ -311,11 +311,149 @@ function initWebGL() {
   }
 
   // ── Paint Drip Fragment Shader (MINIMAL DEBUG VERSION) ──
+  // ── Paint Drip Fragment Shader (SDF-based O(1) drip physics) ──
   const createPaintShader = () => `
-    precision highp float;
+    ${precisionLine}
+
+    uniform vec2 iResolution;
+    uniform float iTime;
+
+    uniform float u_density;
+    uniform float u_dripDistance;
+    uniform float u_sdfWidth;
+    uniform float u_fallSpeed;
+    uniform float u_bFreq;
+    uniform float u_bRange;
+    uniform float u_viscosity;
+
+    const float PI = 3.14159265359;
+    const float TAU = 6.28318530718;
+    const float seed = 0.25;
+    const float bCurve = 1.5;
+    const float LOOP_SECONDS = 12.0;
+
+    vec3 c0 = ${vec3(WEBGL_CONFIG.colors.c0)};
+    vec3 c1 = ${vec3(WEBGL_CONFIG.colors.c1)};
+    vec3 c2 = ${vec3(WEBGL_CONFIG.colors.c2)};
+    vec3 c3 = ${vec3(WEBGL_CONFIG.colors.c3)};
+    vec3 c4 = ${vec3(WEBGL_CONFIG.colors.c4)};
+    vec3 bg = ${vec3(WEBGL_CONFIG.colors.background)};
+
+    vec3 getColor(int i) {
+        if (i == 0) return c0;
+        if (i == 1) return c1;
+        if (i == 2) return c2;
+        if (i == 3) return c3;
+        if (i == 4) return c4;
+        return vec3(1.0);
+    }
+
+    float rand(float x, float y) {
+        return fract(sin(dot(vec2(x, y), vec2(12.9898, 78.233))) * 43758.5453);
+    }
+
+    float smin(float a, float b, float k) {
+        k = max(k, 0.001); 
+        float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+        return mix(b, a, h) - k * h * (1.0 - h);
+    }
+
+    float dripSDF(vec2 uv) {
+        float safeSdfWidth = max(u_sdfWidth, 0.001);
+        float safeDripDist = max(u_dripDistance, 0.001);
+        float k = max(u_viscosity * 0.05, 0.001);
+
+        // SEAMLESS LOOP FIX
+        float safeFreq = max(u_bFreq, 0.001);
+        float cycleDivisor = max(1.0, floor((LOOP_SECONDS / safeFreq) + 0.5));
+        float lockedFreq = LOOP_SECONDS / cycleDivisor;
+
+        float s = safeSdfWidth * abs((1.0 - uv.y) - 0.75) + 0.05;
+        float o = 1.0;
+        
+        // Initialize to a large number since we are using squared distances now
+        float drip2 = 999999.0;
+
+        // ✨ PRE-COMPUTED CONSTANTS & HOISTED MATH
+        float loopTime = iTime * LOOP_SECONDS;
+        float fallSpeedRange = u_fallSpeed * u_bRange;
+        float invS2 = 1.0 / max(s * s, 0.000001); 
+        float densityThreshold = 1.0 - u_density; 
+
+        float x = uv.x - safeSdfWidth;
+        x += safeDripDist - mod(x, safeDripDist);
+        x -= safeDripDist;
+
+        for(int i = 0; i < 150; i++) {
+            if (x > uv.x + safeSdfWidth) break;
+            
+            x += safeDripDist;
+            
+            // ✨ HARDWARE STEP INSTEAD OF FLOOR+ADD
+            float isLine = step(densityThreshold, rand(x, seed));
+            
+            if (isLine > 0.0) {
+                float y = rand(seed, x) * 0.8 + 0.1;
+                
+                float animTime = loopTime + (y * 10.0);
+                float tMod = mod(animTime, lockedFreq);
+                
+                // ✨ EXTRACTED BCURVE MULTIPLICATION
+                float a = bCurve * tMod;
+                float bounce = -a * exp(1.0 - a);
+                
+                y += bounce * u_bRange;
+                y = min(y, uv.y);
+
+                float f = y + tMod * fallSpeedRange;
+
+                // ✨ SQUARED DISTANCES (No sqrt)
+                vec2 p1 = vec2(x, y) - uv;
+                float d2 = dot(p1, p1);
+                
+                // ✨ MULTIPLY INSTEAD OF DIVIDE
+                o *= clamp(d2 * invS2, 0.0, 1.0);
+                
+                vec2 p2 = vec2(x, f) - uv;
+                float currentDripD2 = dot(p2, p2);
+                drip2 = smin(drip2, currentDripD2, k);
+            }
+        }
+
+        o = smin(o, clamp(drip2 * invS2, 0.0, 1.0), k);
+
+        float ceilS = sin(uv.x * 20.0 + (iTime * TAU)) * 0.3 + 0.4;
+        
+        // ✨ REMOVED UNNECESSARY 1D DISTANCE()
+        return o * clamp(uv.y / max(ceilS, 0.001), 0.0, 1.0);
+    }
+
     void main() {
-        // Nuclear Green - minimal shader
-        gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+        vec2 normUV = gl_FragCoord.xy / iResolution.xy;
+        vec2 uv = normUV;
+        uv.x *= iResolution.x / iResolution.y; 
+        uv.y = 1.0 - uv.y; 
+
+        float t = normUV.x * 4.0;
+        int idx = int(floor(t));
+        float fBand = smoothstep(0.0, 1.0, fract(t));
+
+        vec3 cLeft = getColor(idx);
+        
+        int idx2 = idx + 1;
+        if (idx2 > 4) idx2 = 4;
+        vec3 cRight = getColor(idx2);
+
+        vec3 ribbonColor = mix(cLeft, cRight, fBand);
+
+        float safeSdfWidth = max(u_sdfWidth, 0.001);
+        float c = 1.0 / safeSdfWidth * 0.025;
+        float w = 0.03;
+
+        float d = dripSDF(uv);
+        float mask = 1.0 - smoothstep(c - w, c + w, d);
+
+        gl_FragColor = vec4(mix(bg, ribbonColor, mask), 1.0);
     }
   `;
 
