@@ -5732,7 +5732,7 @@
       return `vec3(${fmtF(c.r)}, ${fmtF(c.g)}, ${fmtF(c.b)})`;
     }
 
-    /* ── Paint Drip Fragment Shader ── */
+    /* ── Paint Drip Fragment Shader (Fixed Math) ── */
     function buildDripShader(cfg) {
       return `
       precision highp float;
@@ -5794,13 +5794,15 @@
           float s = safeSdfWidth * abs((1.0 - uv.y) - 0.75) + 0.05;
           float o = 1.0;
           
-          // Initialize to a large number since we are using squared distances now
-          float drip2 = 999999.0;
+          // ✨ FIX 1: Reset to a standard high value, not a squared one
+          float dripDist = 999.0;
 
-          // ✨ PRE-COMPUTED CONSTANTS & HOISTED MATH
+          // PRE-COMPUTED CONSTANTS
           float loopTime = iTime * LOOP_SECONDS;
           float fallSpeedRange = u_fallSpeed * u_bRange;
-          float invS2 = 1.0 / max(s * s, 0.000001); 
+          
+          // ✨ FIX 2: Linear inverse scale (no longer squared)
+          float invS = 1.0 / max(s, 0.000001); 
           float densityThreshold = 1.0 - u_density; 
 
           float x = uv.x - safeSdfWidth;
@@ -5812,7 +5814,6 @@
               
               x += safeDripDist;
               
-              // ✨ HARDWARE STEP INSTEAD OF FLOOR+ADD
               float isLine = step(densityThreshold, rand(x, seed));
               
               if (isLine > 0.0) {
@@ -5821,7 +5822,6 @@
                   float animTime = loopTime + (y * 10.0);
                   float tMod = mod(animTime, lockedFreq);
                   
-                  // ✨ EXTRACTED BCURVE MULTIPLICATION
                   float a = bCurve * tMod;
                   float bounce = -a * exp(1.0 - a);
                   
@@ -5830,24 +5830,22 @@
 
                   float f = y + tMod * fallSpeedRange;
 
-                  // ✨ SQUARED DISTANCES (No sqrt)
-                  vec2 p1 = vec2(x, y) - uv;
-                  float d2 = dot(p1, p1);
+                  // ✨ FIX 3: True Euclidean distances for accurate SDF gradients
+                  float d1 = distance(vec2(x, y), uv);
+                  o *= clamp(d1 * invS, 0.0, 1.0);
                   
-                  // ✨ MULTIPLY INSTEAD OF DIVIDE
-                  o *= clamp(d2 * invS2, 0.0, 1.0);
+                  float currentDripD = distance(vec2(x, f), uv);
                   
-                  vec2 p2 = vec2(x, f) - uv;
-                  float currentDripD2 = dot(p2, p2);
-                  drip2 = smin(drip2, currentDripD2, k);
+                  // ✨ FIX 4: smin now works correctly because the distance gradient is linear
+                  dripDist = smin(dripDist, currentDripD, k);
               }
           }
 
-          o = smin(o, clamp(drip2 * invS2, 0.0, 1.0), k);
+          // ✨ FIX 5: Clamp logic using the linear distance
+          o = smin(o, clamp(dripDist * invS, 0.0, 1.0), k);
 
           float ceilS = sin(uv.x * 20.0 + (iTime * TAU)) * 0.3 + 0.4;
           
-          // ✨ REMOVED UNNECESSARY 1D DISTANCE()
           return o * clamp(uv.y / max(ceilS, 0.001), 0.0, 1.0);
       }
 

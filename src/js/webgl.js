@@ -311,8 +311,7 @@ function initWebGL() {
     return shader;
   }
 
-  // ── Paint Drip Fragment Shader (MINIMAL DEBUG VERSION) ──
-  // ── Paint Drip Fragment Shader (SDF-based O(1) drip physics) ──
+  // ── Paint Drip Fragment Shader  ──
   const createPaintShader = () => `
     ${precisionLine}
 
