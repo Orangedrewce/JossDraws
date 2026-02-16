@@ -446,12 +446,13 @@ export function buildGroovyShader(cfg) {
       float mouseInfluence = exp(-u_groovy_mouseInfl * dist * dist);
       float mixingPower = mix(u_groovy_mixMin, u_groovy_mixMax, mouseInfluence);
 
-      // Domain warping loop
-      for (float i = 2.0; i < 25.0; i++) {
-          if (i >= u_groovy_iterations) break;
+      // Domain warping loop (int loop for mobile GLSL ES 1.0 compat)
+      for (int i = 2; i < 25; i++) {
+          float fi = float(i);
+          if (fi >= u_groovy_iterations) break;
           // Notice 't' is now used directly, ensuring exact cyclic boundary conditions
-          uv.x += (mixingPower / i) * cos(i * 2.0 * uv.y + t);
-          uv.y += (mixingPower / i) * cos(i * 2.0 * uv.x + t);
+          uv.x += (mixingPower / fi) * cos(fi * 2.0 * uv.y + t);
+          uv.y += (mixingPower / fi) * cos(fi * 2.0 * uv.x + t);
       }
 
       // Final scalar map (removed the '/ 2.0' to preserve the integer 2*PI period)

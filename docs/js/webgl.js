@@ -620,11 +620,12 @@ function initWebGL() {
           float mouseInfluence = exp(-u_groovy_mouseInfluence * dist * dist);
           float mixingPower = mix(u_groovy_mixPowerMin, u_groovy_mixPowerMax, mouseInfluence);
 
-          // Domain warping
-          for (float i = 2.0; i < 25.0; i++) {
-              if (i >= u_groovy_iterations) break;
-              uv.x += (mixingPower / i) * cos(i * 2.0 * uv.y + t);
-              uv.y += (mixingPower / i) * cos(i * 2.0 * uv.x + t);
+          // Domain warping (int loop for mobile GLSL ES 1.0 compat)
+          for (int i = 2; i < 25; i++) {
+              float fi = float(i);
+              if (fi >= u_groovy_iterations) break;
+              uv.x += (mixingPower / fi) * cos(fi * 2.0 * uv.y + t);
+              uv.y += (mixingPower / fi) * cos(fi * 2.0 * uv.x + t);
           }
 
           // Final scalar map (integers only)
@@ -1507,6 +1508,11 @@ function initWebGL() {
     crossfadeFactor = 0.0;
     // Reset painter canvas when transitioning to it
     if (type === "painter") painterFrameCount = 0;
+    // Toggle touch-action for painter mode (prevent scroll on mobile)
+    const headerEl = initWebGL._headerEl;
+    if (headerEl) {
+      headerEl.style.touchAction = type === "painter" ? "none" : "";
+    }
   };
 
   // Gooey shader bakes config at compile time (no runtime uniforms to upload).
@@ -1627,10 +1633,10 @@ function initWebGL() {
       if (uni.time)
         gl.uniform1f(
           uni.time,
-          uni.time,
           prog === gooeyProg || prog === painterProg ? animTime : phase,
         );
       if (prog === paintProg) uploadDripUniforms();
+      if (prog === gooeyProg) uploadGooeyUniforms();
       if (prog === groovyProg) uploadGroovyUniforms();
       if (prog === painterProg) uploadPainterUniforms();
 
@@ -1729,6 +1735,30 @@ function initWebGL() {
     header.addEventListener("pointerenter", initWebGL._onHeaderEnter);
     header.addEventListener("pointerleave", initWebGL._onHeaderLeave);
     header.addEventListener("pointermove", initWebGL._onHeaderMove);
+
+    // Painter touch: capture initial contact + release for mobile painting
+    initWebGL._onHeaderDown = (e) => {
+      if (shaderTo !== "painter") return;
+      const rect = header.getBoundingClientRect();
+      initWebGL._mouseX = e.clientX - rect.left;
+      initWebGL._mouseY = header.clientHeight - (e.clientY - rect.top);
+      initWebGL._painterMouseX =
+        ((e.clientX - rect.left) / rect.width) * canvas.width;
+      initWebGL._painterMouseY =
+        (1.0 - (e.clientY - rect.top) / rect.height) * canvas.height;
+      initWebGL._painterMouseOver = true;
+    };
+    initWebGL._onHeaderUp = () => {
+      initWebGL._painterMouseOver = false;
+    };
+    header.addEventListener("pointerdown", initWebGL._onHeaderDown);
+    header.addEventListener("pointerup", initWebGL._onHeaderUp);
+    header.addEventListener("pointercancel", initWebGL._onHeaderUp);
+
+    // Set touch-action based on initial shader type
+    if (WEBGL_CONFIG.shaderType === "painter") {
+      header.style.touchAction = "none";
+    }
   }
 
   // ── Debug helper [P3] ──
