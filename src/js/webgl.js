@@ -582,7 +582,6 @@ function initWebGL() {
   // ── Groovy Shader Fragment (swirling color-mix) ──
   const createGroovyShader = () => {
     const cfg = WEBGL_CONFIG;
-    // Adapted from banner-shaders.js to match Dashboard preview
     return `
       ${precisionLine}
       uniform vec2 iResolution;
@@ -644,6 +643,97 @@ function initWebGL() {
           }
 
           gl_FragColor = vec4(mix(bg, col, 0.8), 1.0);
+      }
+    `;
+  };
+
+  // ── Kinematic Wave Fragment Shader (Simple Ribbon) ──
+  const createSimpleRibbonShader = () => {
+    const cfg = WEBGL_CONFIG;
+    // Helper formatted vals
+    const c0 = vec3(cfg.colors.c0);
+    const c1 = vec3(cfg.colors.c1);
+    const c2 = vec3(cfg.colors.c2);
+    const c3 = vec3(cfg.colors.c3);
+    const c4 = vec3(cfg.colors.c4);
+    const bg = vec3(cfg.colors.background);
+
+    // timeScale removed from kinematics: handle speed in JS to preserve the loop
+    const k = {
+      waveAmp: 0.3,
+      waveFreq1: 2.0,
+      waveSpeed1: 3.0, // Must remain an integer
+      waveFreq2: 1.0,
+      waveSpeed2: 2.0, // Must remain an integer
+      layerPhase: 0.3,
+      spaceAmp: 0.3,
+    };
+
+    return `
+      ${extLine}
+      ${precisionLine}
+  
+      uniform vec2 iResolution;
+      uniform float iTime;
+  
+      vec3 c0 = ${c0};
+      vec3 c1 = ${c1};
+      vec3 c2 = ${c2};
+      vec3 c3 = ${c3};
+      vec3 c4 = ${c4};
+      vec3 bg = ${bg};
+  
+      const float waveAmp    = ${f(k.waveAmp)};
+      const float waveFreq1  = ${f(k.waveFreq1)};
+      const float waveSpeed1 = floor(${f(k.waveSpeed1)}); // Forced integer
+      const float waveFreq2  = ${f(k.waveFreq2)};
+      const float waveSpeed2 = floor(${f(k.waveSpeed2)}); // Forced integer
+      const float layerPhase = ${f(k.layerPhase)};
+      const float spaceAmp   = ${f(k.spaceAmp)};
+  
+      vec3 getPalette(int idx) {
+          if (idx == 0) return c0;
+          if (idx == 1) return c1;
+          if (idx == 2) return c2;
+          if (idx == 3) return c3;
+          return c4;
+      }
+  
+      void main() {
+          vec2 uv = gl_FragCoord.xy / iResolution.xy;
+          
+          // Multiply normalized iTime by 2*PI. 
+          // Do not apply fractional timeScales here.
+          float t = iTime * 6.28318530718; 
+          vec3 color = bg;
+          
+          const float line_count = 5.0;
+          
+          for (int idx = 0; idx < 5; idx++) {
+              float i = float(idx);
+              
+              // Wave speeds applied
+              float line = 0.5 + waveAmp * sin(waveSpeed1 * t + waveFreq1 * uv.x + layerPhase * i) * sin(waveSpeed2 * t + waveFreq2 * uv.x);
+              
+              // Corrected fractions: 1.5 -> 2.0, and 0.5 -> 1.0
+              float width = 1.4 * (0.14 + (0.12 * sin(2.0 * t + sin(1.0 * t) * 1.5 * uv.x + i) * sin(1.0 * t + 0.5 * uv.x)));
+              
+              float line_ratio = (line_count - i) / line_count;
+              float space = spaceAmp * sin(1.0 * t + 2.0 * uv.x) * line_ratio;
+              
+              float dist = abs(uv.y - line + space) - width * line_ratio * 0.5;
+              
+              #ifdef GL_OES_standard_derivatives
+                float aa_width = fwidth(dist);
+                float alpha = 1.0 - smoothstep(0.0, aa_width, dist);
+              #else
+                float alpha = 1.0 - smoothstep(0.0, 0.002, dist);
+              #endif
+              
+              color = mix(color, getPalette(idx), alpha);
+          }
+          
+          gl_FragColor = vec4(color, 1.0);
       }
     `;
   };
@@ -1005,6 +1095,15 @@ function initWebGL() {
       "[WebGL] Painter program creation failed — painter mode unavailable.",
     );
   }
+  const simpleRibbonProg = createProgramSafe(
+    vertexShaderSource,
+    createSimpleRibbonShader(),
+  );
+  if (!simpleRibbonProg) {
+    console.warn(
+      "[WebGL] Simple Ribbon program creation failed — simple ribbon mode unavailable.",
+    );
+  }
 
   const dsVsSrc = `attribute vec2 a_position; varying vec2 v; void main(){v=a_position*0.5+0.5;gl_Position=vec4(a_position,0.0,1.0);}`;
   const dsFsSrc = `${precisionLine} varying vec2 v; uniform sampler2D t; uniform vec2 s;
@@ -1199,6 +1298,11 @@ function initWebGL() {
         gl.useProgram(painterProg);
         if (painterUni.res) gl.uniform2f(painterUni.res, pixelW, pixelH);
       }
+      if (simpleRibbonProg) {
+        gl.useProgram(simpleRibbonProg);
+        const loc = gl.getUniformLocation(simpleRibbonProg, "iResolution");
+        if (loc) gl.uniform2f(loc, pixelW, pixelH);
+      }
       return;
     }
 
@@ -1282,6 +1386,11 @@ function initWebGL() {
     if (painterProg) {
       gl.useProgram(painterProg);
       if (painterUni.res) gl.uniform2f(painterUni.res, targetW, targetH);
+    }
+    if (simpleRibbonProg) {
+      gl.useProgram(simpleRibbonProg);
+      const loc = gl.getUniformLocation(simpleRibbonProg, "iResolution");
+      if (loc) gl.uniform2f(loc, targetW, targetH);
     }
     gl.useProgram(dsProg);
     if (dsSize) gl.uniform2f(dsSize, 1.0 / targetW, 1.0 / targetH);
@@ -1555,6 +1664,18 @@ function initWebGL() {
         gooey: false,
         groovy: false,
         painter: true,
+      };
+    if (type === "simple_ribbon" && simpleRibbonProg)
+      return {
+        prog: simpleRibbonProg,
+        uni: {
+          res: gl.getUniformLocation(simpleRibbonProg, "iResolution"),
+          time: gl.getUniformLocation(simpleRibbonProg, "iTime"),
+        },
+        drip: false,
+        gooey: false,
+        groovy: false,
+        painter: false,
       };
     return {
       prog: ribbonProg,

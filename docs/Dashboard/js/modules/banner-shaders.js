@@ -569,3 +569,84 @@ export function buildPainterShader(cfg) {
   }
 `;
 }
+/* ── Kinematic Wave Fragment Shader ── */
+export function buildSimpleRibbonShader(cfg) {
+  // Configurable kinematic defaults
+  const k = cfg.kinematics || {
+    waveAmp: 0.3,
+    waveFreq1: 2.0,
+    waveSpeed1: 3.0,
+    waveFreq2: 1.0,
+    waveSpeed2: 2.0,
+    layerPhase: 0.3,
+    spaceAmp: 0.3,
+  };
+
+  return `
+  // Enable derivatives for fwidth() antialiasing
+  #extension GL_OES_standard_derivatives : enable
+  precision highp float;
+
+  uniform vec2 iResolution;
+  uniform float iTime;
+
+  // External Color Palette Integration
+  vec3 c0 = ${fmtVec3(cfg.colors.c0)};
+  vec3 c1 = ${fmtVec3(cfg.colors.c1)};
+  vec3 c2 = ${fmtVec3(cfg.colors.c2)};
+  vec3 c3 = ${fmtVec3(cfg.colors.c3)};
+  vec3 c4 = ${fmtVec3(cfg.colors.c4)};
+  vec3 bg = ${fmtVec3(cfg.colors.background)};
+
+  // Static Configuration Injection
+  const float waveAmp    = ${k.waveAmp.toFixed(3)};
+  const float waveFreq1  = ${k.waveFreq1.toFixed(3)};
+  const float waveSpeed1 = floor(${k.waveSpeed1.toFixed(3)});
+  const float waveFreq2  = ${k.waveFreq2.toFixed(3)};
+  const float waveSpeed2 = floor(${k.waveSpeed2.toFixed(3)});
+  const float layerPhase = ${k.layerPhase.toFixed(3)};
+  const float spaceAmp   = ${k.spaceAmp.toFixed(3)};
+
+  // Hardware-safe lookup to avoid dynamic array indexing errors
+  vec3 getPalette(int idx) {
+      if (idx == 0) return c0;
+      if (idx == 1) return c1;
+      if (idx == 2) return c2;
+      if (idx == 3) return c3;
+      return c4;
+  }
+
+  void main() {
+      // Normalize UV directly from fragCoord
+      vec2 uv = gl_FragCoord.xy / iResolution.xy;
+      
+      // Multiply normalized iTime by 2*PI.
+      float t = iTime * 6.28318530718;
+      vec3 color = bg;
+      
+      const float line_count = 5.0;
+      
+      // Hardware-safe integer loop
+      for (int idx = 0; idx < 5; idx++) {
+          float i = float(idx);
+          
+          float line = 0.5 + waveAmp * sin(waveSpeed1 * t + waveFreq1 * uv.x + layerPhase * i) * sin(waveSpeed2 * t + waveFreq2 * uv.x);
+          float width = 1.4 * (0.14 + (0.12 * sin(2.0 * t + sin(1.0 * t) * 1.5 * uv.x + i) * sin(1.0 * t + 0.5 * uv.x)));
+          
+          float line_ratio = (line_count - i) / line_count;
+          float space = spaceAmp * sin(1.0 * t + 2.0 * uv.x) * line_ratio;
+          
+          float dist = abs(uv.y - line + space) - width * line_ratio * 0.5;
+          
+          // Adaptive antialiasing using derivatives
+          float aa_width = fwidth(dist);
+          float alpha = 1.0 - smoothstep(0.0, aa_width, dist);
+          
+          // Mix color payload
+          color = mix(color, getPalette(idx), alpha);
+      }
+      
+      gl_FragColor = vec4(color, 1.0);
+  }
+`;
+}

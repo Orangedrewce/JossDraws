@@ -1880,6 +1880,7 @@ details.param-category[open] > .param-grid {
 /* ====== SHADER MODE PARAMETER FILTERING ====== */
 /* Hide all mode-specific sections by default */
 .param-category[data-shader-mode="ribbon_wave"],
+.param-category[data-shader-mode="simple_ribbon"],
 .param-category[data-shader-mode="paint_drip"],
 .param-category[data-shader-mode="gooey_drip"],
 .param-category[data-shader-mode="groovy"],
@@ -1914,5 +1915,11 @@ body[data-active-shader="groovy"] .param-category[data-shader-mode="all"] {
 /* Show painter sections when active */
 body[data-active-shader="painter"] .param-category[data-shader-mode="painter"],
 body[data-active-shader="painter"] .param-category[data-shader-mode="all"] {
+    display: block;
+}
+
+/* Show simple ribbon sections when active */
+body[data-active-shader="simple_ribbon"] .param-category[data-shader-mode="simple_ribbon"],
+body[data-active-shader="simple_ribbon"] .param-category[data-shader-mode="all"] {
     display: block;
 }

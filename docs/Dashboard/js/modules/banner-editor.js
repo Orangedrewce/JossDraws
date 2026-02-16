@@ -11,6 +11,7 @@ import {
   buildRibbonShader,
   buildGroovyShader,
   buildPainterShader,
+  buildSimpleRibbonShader,
 } from "./banner-shaders.js";
 
 export function initBannerEditor() {
@@ -460,11 +461,13 @@ export function initBannerEditor() {
   const previewState = {
     gl: null,
     ribbonProg: null,
+    simpleRibbonProg: null,
     paintProg: null,
     gooeyProg: null,
     groovyProg: null,
     painterProg: null,
     ribbonUni: null,
+    simpleRibbonUni: null,
     paintUni: null,
     gooeyUni: null,
     groovyUni: null,
@@ -481,11 +484,14 @@ export function initBannerEditor() {
     mouseX: 0,
     mouseY: 0,
     // Painter feedback FBO state (ping-pong)
-    painterFbA: null, painterTexA: null,
-    painterFbB: null, painterTexB: null,
+    painterFbA: null,
+    painterTexA: null,
+    painterFbB: null,
+    painterTexB: null,
     painterPing: 0,
     painterFrameCount: 0,
-    painterFbW: 0, painterFbH: 0,
+    painterFbW: 0,
+    painterFbH: 0,
     painterMouseX: 0,
     painterMouseY: 0,
     painterMouseOver: false,
@@ -599,9 +605,15 @@ export function initBannerEditor() {
       vsSrc,
       buildPainterShader(liveConfig),
     );
+    const simpleRibbonProg = createPreviewProgram(
+      gl,
+      vsSrc,
+      buildSimpleRibbonShader(liveConfig),
+    );
     if (!ribbonProg) return false;
 
     previewState.ribbonProg = ribbonProg;
+    previewState.simpleRibbonProg = simpleRibbonProg;
     previewState.paintProg = paintProg;
     previewState.gooeyProg = gooeyProg;
     previewState.groovyProg = groovyProg;
@@ -611,6 +623,10 @@ export function initBannerEditor() {
     previewState.ribbonUni = {
       res: gl.getUniformLocation(ribbonProg, "iResolution"),
       time: gl.getUniformLocation(ribbonProg, "iTime"),
+    };
+    previewState.simpleRibbonUni = {
+      res: gl.getUniformLocation(simpleRibbonProg, "iResolution"),
+      time: gl.getUniformLocation(simpleRibbonProg, "iTime"),
     };
     previewState.paintUni = paintProg
       ? {
@@ -709,6 +725,22 @@ export function initBannerEditor() {
       previewState.ribbonUni = {
         res: gl.getUniformLocation(newRibbon, "iResolution"),
         time: gl.getUniformLocation(newRibbon, "iTime"),
+      };
+    }
+
+    // Rebuild simple ribbon
+    const newSimpleRibbon = createPreviewProgram(
+      gl,
+      vsSrc,
+      buildSimpleRibbonShader(liveConfig),
+    );
+    if (newSimpleRibbon) {
+      if (previewState.simpleRibbonProg)
+        gl.deleteProgram(previewState.simpleRibbonProg);
+      previewState.simpleRibbonProg = newSimpleRibbon;
+      previewState.simpleRibbonUni = {
+        res: gl.getUniformLocation(newSimpleRibbon, "iResolution"),
+        time: gl.getUniformLocation(newSimpleRibbon, "iTime"),
       };
     }
 
@@ -837,6 +869,11 @@ export function initBannerEditor() {
       if (previewState.gooeyUni?.res)
         gl.uniform2f(previewState.gooeyUni.res, w, h);
     }
+    if (previewState.simpleRibbonProg) {
+      gl.useProgram(previewState.simpleRibbonProg);
+      if (previewState.simpleRibbonUni?.res)
+        gl.uniform2f(previewState.simpleRibbonUni.res, w, h);
+    }
     if (previewState.groovyProg) {
       gl.useProgram(previewState.groovyProg);
       if (previewState.groovyUni?.res)
@@ -914,7 +951,17 @@ export function initBannerEditor() {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA,
+      w,
+      h,
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      null,
+    );
     return tex;
   }
 
@@ -923,8 +970,12 @@ export function initBannerEditor() {
     if (!gl || !previewState.painterProg) return;
     const w = bEl.canvas.width;
     const h = bEl.canvas.height;
-    if (w === previewState.painterFbW && h === previewState.painterFbH
-        && previewState.painterFbA) return;
+    if (
+      w === previewState.painterFbW &&
+      h === previewState.painterFbH &&
+      previewState.painterFbA
+    )
+      return;
 
     // Tear down old
     if (previewState.painterFbA) gl.deleteFramebuffer(previewState.painterFbA);
@@ -935,12 +986,24 @@ export function initBannerEditor() {
     previewState.painterTexA = makePreviewPainterTex(gl, w, h);
     previewState.painterFbA = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, previewState.painterFbA);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, previewState.painterTexA, 0);
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT0,
+      gl.TEXTURE_2D,
+      previewState.painterTexA,
+      0,
+    );
 
     previewState.painterTexB = makePreviewPainterTex(gl, w, h);
     previewState.painterFbB = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, previewState.painterFbB);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, previewState.painterTexB, 0);
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT0,
+      gl.TEXTURE_2D,
+      previewState.painterTexB,
+      0,
+    );
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.bindTexture(gl.TEXTURE_2D, null);
@@ -959,10 +1022,14 @@ export function initBannerEditor() {
     const h = previewState.painterFbH;
 
     // Determine read/write targets
-    const readTex = previewState.painterPing === 0
-      ? previewState.painterTexA : previewState.painterTexB;
-    const writeFb = previewState.painterPing === 0
-      ? previewState.painterFbB : previewState.painterFbA;
+    const readTex =
+      previewState.painterPing === 0
+        ? previewState.painterTexA
+        : previewState.painterTexB;
+    const writeFb =
+      previewState.painterPing === 0
+        ? previewState.painterFbB
+        : previewState.painterFbA;
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, writeFb);
     gl.viewport(0, 0, w, h);
@@ -1011,8 +1078,10 @@ export function initBannerEditor() {
 
   function blitPreviewPainterToScreen(gl, blended, alpha) {
     // The most recently written texture is the "write" side after flip
-    const displayTex = previewState.painterPing === 0
-      ? previewState.painterTexA : previewState.painterTexB;
+    const displayTex =
+      previewState.painterPing === 0
+        ? previewState.painterTexA
+        : previewState.painterTexB;
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, bEl.canvas.width, bEl.canvas.height);
@@ -1117,6 +1186,15 @@ export function initBannerEditor() {
           groovy: false,
           painter: true,
         };
+      if (type === "simple_ribbon" && previewState.simpleRibbonProg)
+        return {
+          prog: previewState.simpleRibbonProg,
+          uni: previewState.simpleRibbonUni,
+          drip: false,
+          gooey: false,
+          groovy: false,
+          painter: false,
+        };
       return {
         prog: previewState.ribbonProg,
         uni: previewState.ribbonUni,
@@ -1131,8 +1209,9 @@ export function initBannerEditor() {
     const toInfo = resolvePreviewShader(previewState.shaderTo);
 
     // Painter feedback: step before any draw calls
-    const painterActive = (previewState.shaderTo === "painter" ||
-      (cf < 1.0 && previewState.shaderFrom === "painter"));
+    const painterActive =
+      previewState.shaderTo === "painter" ||
+      (cf < 1.0 && previewState.shaderFrom === "painter");
     if (painterActive && previewState.painterProg && previewState.painterFbA) {
       stepPreviewPainterFeedback();
     }
@@ -1650,8 +1729,10 @@ export function initBannerEditor() {
         bEl.canvas.height / (window.devicePixelRatio || 1) -
         (e.clientY - rect.top);
       // Painter: precise GL pixel coordinates
-      previewState.painterMouseX = (e.clientX - rect.left) / rect.width * bEl.canvas.width;
-      previewState.painterMouseY = (1.0 - (e.clientY - rect.top) / rect.height) * bEl.canvas.height;
+      previewState.painterMouseX =
+        ((e.clientX - rect.left) / rect.width) * bEl.canvas.width;
+      previewState.painterMouseY =
+        (1.0 - (e.clientY - rect.top) / rect.height) * bEl.canvas.height;
       previewState.painterMouseOver = true;
     });
   }
