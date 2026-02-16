@@ -1881,7 +1881,9 @@ details.param-category[open] > .param-grid {
 /* Hide all mode-specific sections by default */
 .param-category[data-shader-mode="ribbon_wave"],
 .param-category[data-shader-mode="paint_drip"],
-.param-category[data-shader-mode="gooey_drip"] {
+.param-category[data-shader-mode="gooey_drip"],
+.param-category[data-shader-mode="groovy"],
+.param-category[data-shader-mode="painter"] {
     display: none;
 }
 
@@ -1900,5 +1902,17 @@ body[data-active-shader="paint_drip"] .param-category[data-shader-mode="all"] {
 /* Show gooey drip sections when active */
 body[data-active-shader="gooey_drip"] .param-category[data-shader-mode="gooey_drip"],
 body[data-active-shader="gooey_drip"] .param-category[data-shader-mode="all"] {
+    display: block;
+}
+
+/* Show groovy sections when active */
+body[data-active-shader="groovy"] .param-category[data-shader-mode="groovy"],
+body[data-active-shader="groovy"] .param-category[data-shader-mode="all"] {
+    display: block;
+}
+
+/* Show painter sections when active */
+body[data-active-shader="painter"] .param-category[data-shader-mode="painter"],
+body[data-active-shader="painter"] .param-category[data-shader-mode="all"] {
     display: block;
 }
