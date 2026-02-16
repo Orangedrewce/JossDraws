@@ -1006,7 +1006,7 @@ function initWebGL() {
     );
   }
 
-  const dsVsSrc = `attribute vec2 p; varying vec2 v; void main(){v=p*0.5+0.5;gl_Position=vec4(p,0,1);}`;
+  const dsVsSrc = `attribute vec2 a_position; varying vec2 v; void main(){v=a_position*0.5+0.5;gl_Position=vec4(a_position,0.0,1.0);}`;
   const dsFsSrc = `${precisionLine} varying vec2 v; uniform sampler2D t; uniform vec2 s;
     void main(){
       vec2 o=s*0.5;
@@ -1355,20 +1355,79 @@ function initWebGL() {
   function setupPainterFeedback(w, h) {
     if (!painterProg) return;
     if (painterFbW === w && painterFbH === h && painterFbA) return;
-    if (painterFbA) gl.deleteFramebuffer(painterFbA);
-    if (painterTexA) gl.deleteTexture(painterTexA);
-    if (painterFbB) gl.deleteFramebuffer(painterFbB);
-    if (painterTexB) gl.deleteTexture(painterTexB);
+
+    // Detect if we have existing content to preserve [Persistence]
+    let preservedTex = null;
+    let otherTex = null;
+    let otherFb = null;
+    let preservedFb = null;
+
+    if (painterFbA && painterFrameCount > 0) {
+      // The valid content is in the READ texture of the NEXT step.
+      // If ping=0, we read A. So A has the content.
+      preservedTex = painterPing === 0 ? painterTexA : painterTexB;
+      preservedFb = painterPing === 0 ? painterFbA : painterFbB;
+
+      otherTex = painterPing === 0 ? painterTexB : painterTexA;
+      otherFb = painterPing === 0 ? painterFbB : painterFbA;
+    } else {
+      // Just explicit delete if no content to save
+      if (painterFbA) gl.deleteFramebuffer(painterFbA);
+      if (painterTexA) gl.deleteTexture(painterTexA);
+      if (painterFbB) gl.deleteFramebuffer(painterFbB);
+      if (painterTexB) gl.deleteTexture(painterTexB);
+    }
+
     const a = makePainterFb(w, h);
     const b = makePainterFb(w, h);
+
+    // Blit preserved content into new A
+    if (preservedTex) {
+      // Use A as the target
+      gl.bindFramebuffer(gl.FRAMEBUFFER, a.fbo);
+      gl.viewport(0, 0, w, h);
+      gl.clearColor(0, 0, 0, 0); // ensure clean
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      // Simple blit using dsProg (passthrough)
+      gl.useProgram(dsProg);
+      // Reset scale uniform
+      if (dsSize) gl.uniform2f(dsSize, 0.0, 0.0);
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, preservedTex);
+
+      bindAttributes(dsProg);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+      // Restore dsSize default
+      if (dsSize) gl.uniform2f(dsSize, 1.0 / w, 1.0 / h);
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+
+      // Now delete the old resources
+      gl.deleteTexture(preservedTex);
+      gl.deleteFramebuffer(preservedFb);
+      if (otherTex) gl.deleteTexture(otherTex);
+      if (otherFb) gl.deleteFramebuffer(otherFb);
+
+      // IMPORTANT: Set frame count > 0 so shader doesn't clear it
+      painterFrameCount = Math.max(1, painterFrameCount);
+    } else {
+      painterFrameCount = 0;
+    }
+
     painterFbA = a.fbo;
     painterTexA = a.tex;
     painterFbB = b.fbo;
     painterTexB = b.tex;
     painterFbW = w;
     painterFbH = h;
-    painterPing = 0;
-    painterFrameCount = 0;
+    painterPing = 0; // Reset ping to 0 (Read A, Write B).
+    // But wait, we wrote the preserved content into A.
+    // So we want the NEXT step to Read A.
+    // If ping=0, stepPainterFeedback Reads A. Correct.
   }
 
   // Run one feedback iteration: read previous frame → painter shader → write new frame
@@ -1518,8 +1577,7 @@ function initWebGL() {
     shaderFrom = shaderTo;
     shaderTo = type;
     crossfadeFactor = 0.0;
-    // Reset painter canvas when transitioning to it
-    if (type === "painter") painterFrameCount = 0;
+
     // Toggle touch-action for painter mode (prevent scroll on mobile)
     const headerEl = initWebGL._headerEl;
     if (headerEl) {
@@ -1735,6 +1793,11 @@ function initWebGL() {
 
     // Mouse tracking for interactive shaders (Groovy + Painter)
     initWebGL._onHeaderMove = (e) => {
+      // Disable painting if on Reviews tab [User Request]
+      if (document.getElementById("tab-reviews")?.checked) {
+        initWebGL._painterMouseOver = false;
+        return;
+      }
       const rect = header.getBoundingClientRect();
       initWebGL._mouseX = e.clientX - rect.left;
       initWebGL._mouseY = header.clientHeight - (e.clientY - rect.top); // Flip Y
@@ -1753,6 +1816,11 @@ function initWebGL() {
     // Painter touch: capture initial contact + release for mobile painting
     initWebGL._onHeaderDown = (e) => {
       if (shaderTo !== "painter") return;
+      // Disable painting if on Reviews tab
+      if (document.getElementById("tab-reviews")?.checked) {
+        initWebGL._painterMouseOver = false;
+        return;
+      }
       const rect = header.getBoundingClientRect();
       initWebGL._mouseX = e.clientX - rect.left;
       initWebGL._mouseY = header.clientHeight - (e.clientY - rect.top);
@@ -1907,6 +1975,142 @@ function initWebGL() {
     initWebGL._onWindowResize = handleResize;
     window.addEventListener("resize", initWebGL._onWindowResize);
   }
+
+  // ── Persistence: Save/Restore Painter State [Persistence] ──
+  function savePainterState() {
+    if (!painterFbA || !painterProg || painterFrameCount === 0) return;
+
+    // Identify valid framebuffer (the one we read from)
+    const sourceFb = painterPing === 0 ? painterFbA : painterFbB;
+    const w = painterFbW;
+    const h = painterFbH;
+
+    // Read pixels
+    const pixels = new Uint8Array(w * h * 4);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, sourceFb);
+    gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    // Draw to temporary 2D canvas to encode
+    const c2d = document.createElement("canvas");
+    c2d.width = w;
+    c2d.height = h;
+    const ctx2d = c2d.getContext("2d");
+    const imgData = ctx2d.createImageData(w, h);
+
+    // Flip Y (WebGL is bottom-up, Canvas is top-down)
+    // Also, readPixels returns bottom-up? Yes.
+    // So we need to flip rows.
+    for (let y = 0; y < h; y++) {
+      const srcRow = (h - 1 - y) * w * 4;
+      const dstRow = y * w * 4;
+      // Copy row
+      for (let i = 0; i < w * 4; i++) {
+        imgData.data[dstRow + i] = pixels[srcRow + i];
+      }
+    }
+
+    ctx2d.putImageData(imgData, 0, 0);
+
+    try {
+      const dataUrl = c2d.toDataURL("image/png");
+      localStorage.setItem("joss_painter_state", dataUrl);
+      // console.log("[WebGL] Painter state saved.");
+    } catch (e) {
+      console.warn("[WebGL] Failed to save painter state:", e);
+    }
+  }
+
+  function restorePainterState() {
+    const dataUrl = localStorage.getItem("joss_painter_state");
+    if (!dataUrl) return;
+
+    const img = new Image();
+    img.onload = () => {
+      if (!painterProg || !painterFbA) return;
+      console.log("[WebGL] Restoring painter state...");
+
+      // Draw image to A
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      // Upload flipped? browser handles image flip?
+      // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); // needed?
+      // WebGL 0,0 is bottom-left. Texture 0,0 is usually bottom-left?
+      // HTML Image 0,0 is top-left.
+      // Usually we need flip.
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, painterFbA); // Write to A
+      gl.viewport(0, 0, painterFbW, painterFbH);
+      gl.useProgram(dsProg);
+      if (dsSize) gl.uniform2f(dsSize, 0.0, 0.0);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      bindAttributes(dsProg);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.deleteTexture(tex);
+
+      // Force init
+      painterPing = 0; // Read A next frame (which we just wrote to? No wait)
+      // If ping=0, read A, write B.
+      // We wrote to A.
+      // So next frame reads A. Correct.
+      painterFrameCount = Math.max(1, painterFrameCount);
+    };
+    img.onerror = () => {
+      console.warn("[WebGL] Failed to load saved painter state.");
+    };
+    img.src = dataUrl;
+  }
+
+  // Attach auto-save listeners
+  if (header) {
+    // Save when finishing a stroke (globally, in case they drag off)
+    window.addEventListener("pointerup", savePainterState);
+    window.addEventListener("touchend", savePainterState);
+    window.addEventListener("pointercancel", savePainterState);
+
+    // Save on visibility change/unload
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) savePainterState();
+    });
+    window.addEventListener("pagehide", savePainterState);
+    window.addEventListener("beforeunload", savePainterState);
+  }
+
+  // Clear painter state when Reviews tab is selected [User Request]
+  const reviewsTab = document.getElementById("tab-reviews");
+  if (reviewsTab) {
+    reviewsTab.addEventListener("change", () => {
+      if (reviewsTab.checked) {
+        console.log("[WebGL] Reviews tab selected -> Clearing painter state.");
+        initWebGL._painterMouseOver = false; // Disable brush
+        painterFrameCount = 0;
+        if (painterFbA) {
+          // Clear FBOs to black/transparent
+          gl.bindFramebuffer(gl.FRAMEBUFFER, painterFbA);
+          gl.clearColor(0, 0, 0, 0);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, painterFbB);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+        localStorage.removeItem("joss_painter_state");
+      }
+    });
+  }
+
+  // Attempt restore on boot (regardless of current mode, so it's ready if we switch)
+  requestAnimationFrame(restorePainterState);
 }
 
 // Ensure DOM is ready before initializing
