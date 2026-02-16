@@ -125,6 +125,7 @@ export function initBannerEditor() {
       noiseScale: 4.0,
       noiseInfluence: 0.4,
       cycleSpeed: 0.2,
+      colorIndex: 0.0,
     },
   };
 
@@ -664,6 +665,10 @@ export function initBannerEditor() {
             painterProg,
             "u_painter_cycleSpeed",
           ),
+          colorIndex: gl.getUniformLocation(
+            painterProg,
+            "u_painter_colorIndex",
+          ),
         }
       : null;
 
@@ -790,6 +795,7 @@ export function initBannerEditor() {
           "u_painter_noiseInfluence",
         ),
         cycleSpeed: gl.getUniformLocation(newPainter, "u_painter_cycleSpeed"),
+        colorIndex: gl.getUniformLocation(newPainter, "u_painter_colorIndex"),
       };
       // Reset feedback so it re-initializes with new shader
       previewState.painterFrameCount = 0;
@@ -897,6 +903,7 @@ export function initBannerEditor() {
     if (u.noiseScale) gl.uniform1f(u.noiseScale, p.noiseScale);
     if (u.noiseInfluence) gl.uniform1f(u.noiseInfluence, p.noiseInfluence);
     if (u.cycleSpeed) gl.uniform1f(u.cycleSpeed, p.cycleSpeed);
+    if (u.colorIndex) gl.uniform1f(u.colorIndex, p.colorIndex ?? 0.0);
   }
 
   /* ── Painter ping-pong FBO helpers ── */

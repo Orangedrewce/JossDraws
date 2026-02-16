@@ -128,6 +128,7 @@ const WEBGL_CONFIG = {
     noiseScale: 4.0,
     noiseInfluence: 0.4,
     cycleSpeed: 0.2,
+    colorIndex: 0.0, // Active tab color: 0=home/c0, 1=gallery/c1, 2=about/c2, 3=shop/c3, 4=contact/c4, 5=reviews/c0
   },
 };
 
@@ -662,6 +663,7 @@ function initWebGL() {
       uniform float u_painter_noiseScale;
       uniform float u_painter_noiseInfluence;
       uniform float u_painter_cycleSpeed;
+      uniform float u_painter_colorIndex;
 
       vec3 c0 = ${vec3(cfg.colors.c0)};
       vec3 c1 = ${vec3(cfg.colors.c1)};
@@ -680,6 +682,15 @@ function initWebGL() {
               mix(n1(F.x + n1(F.y + 1.0)), n1(F.x + 1.0 + n1(F.y + 1.0)), S.x),
               S.y
           );
+      }
+
+      vec3 getTabColor(float idx) {
+          if (idx < 0.5) return c0;
+          if (idx < 1.5) return c1;
+          if (idx < 2.5) return c2;
+          if (idx < 3.5) return c3;
+          if (idx < 4.5) return c4;
+          return c0;
       }
 
       vec3 getPaletteColor(float t) {
@@ -713,7 +724,7 @@ function initWebGL() {
               float intensity = 1.0 - smoothstep(0.0, outerRadius, dist / brushPattern);
 
               if (u_mouse.z > 0.0) {
-                  vec3 brushColor = getPaletteColor(iTime);
+                  vec3 brushColor = getTabColor(u_painter_colorIndex);
                   C = mix(C, vec4(brushColor, 1.0), intensity * 0.5);
               }
           }
@@ -1111,6 +1122,7 @@ function initWebGL() {
           "u_painter_noiseInfluence",
         ),
         cycleSpeed: gl.getUniformLocation(painterProg, "u_painter_cycleSpeed"),
+        colorIndex: gl.getUniformLocation(painterProg, "u_painter_colorIndex"),
       }
     : null;
   const dsTex = gl.getUniformLocation(dsProg, "t");
@@ -1553,6 +1565,8 @@ function initWebGL() {
       gl.uniform1f(painterUni.noiseInfluence, p.noiseInfluence);
     if (painterUni.cycleSpeed)
       gl.uniform1f(painterUni.cycleSpeed, p.cycleSpeed);
+    if (painterUni.colorIndex)
+      gl.uniform1f(painterUni.colorIndex, p.colorIndex ?? 0.0);
   }
 
   let _debugDripLogged = false;

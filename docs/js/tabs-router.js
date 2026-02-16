@@ -21,6 +21,14 @@
   const TAB_NAMES = ["home", "gallery", "about", "shop", "contact", "reviews"];
   const idFor = (name) => `tab-${name}`;
 
+  // Map tab index to painter brush color (c0–c4, reviews wraps to c0)
+  function syncPainterColor(tabName) {
+    if (window.WEBGL_CONFIG && window.WEBGL_CONFIG.painter) {
+      const idx = TAB_NAMES.indexOf(tabName);
+      window.WEBGL_CONFIG.painter.colorIndex = idx >= 0 ? idx % 5 : 0;
+    }
+  }
+
   function pickTabFromHash() {
     const raw = (location.hash || "").replace(/^#/, "").toLowerCase();
     if (!raw) return "home";
@@ -62,6 +70,9 @@
     const { replace = false, scroll = false } = opts;
     const ok = setChecked(idFor(name));
     if (!ok) return;
+
+    // Sync painter brush color to this tab
+    syncPainterColor(name);
 
     // Update ARIA selected state
     updateAriaSelected(name);

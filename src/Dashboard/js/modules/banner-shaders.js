@@ -498,6 +498,7 @@ export function buildPainterShader(cfg) {
   uniform float u_painter_noiseScale;
   uniform float u_painter_noiseInfluence;
   uniform float u_painter_cycleSpeed;
+  uniform float u_painter_colorIndex;
 
   vec3 c0 = ${fmtVec3(cfg.colors.c0)};
   vec3 c1 = ${fmtVec3(cfg.colors.c1)};
@@ -517,6 +518,15 @@ export function buildPainterShader(cfg) {
           mix(n1(F.x + n1(F.y + 1.0)), n1(F.x + 1.0 + n1(F.y + 1.0)), S.x),
           S.y
       );
+  }
+
+  vec3 getTabColor(float idx) {
+      if (idx < 0.5) return c0;
+      if (idx < 1.5) return c1;
+      if (idx < 2.5) return c2;
+      if (idx < 3.5) return c3;
+      if (idx < 4.5) return c4;
+      return c0;
   }
 
   vec3 getPaletteColor(float t) {
@@ -550,7 +560,7 @@ export function buildPainterShader(cfg) {
           float intensity = 1.0 - smoothstep(0.0, outerRadius, dist / brushPattern);
 
           if (u_mouse.z > 0.0) {
-              vec3 brushColor = getPaletteColor(iTime);
+              vec3 brushColor = getTabColor(u_painter_colorIndex);
               C = mix(C, vec4(brushColor, 1.0), intensity * 0.5);
           }
       }
