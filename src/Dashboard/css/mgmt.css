@@ -1001,9 +1001,52 @@ body.is-dragging ::-moz-selection {
     min-height: 60px;
 }
 
+/* Bulk selection bar */
+.review-bulk-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.6rem;
+    background: var(--color-surface-2);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border-soft);
+    flex-wrap: wrap;
+}
+.review-select-all {
+    width: 1.1rem; height: 1.1rem;
+    cursor: pointer; accent-color: var(--color-primary);
+}
+.review-select-count {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    flex: 1 1 auto;
+}
+.review-bulk-btns {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+.review-bulk-btns.is-hidden { display: none; }
+
+/* Checkbox on each card */
+.review-select-cb {
+    position: absolute;
+    top: 0.6rem; left: 0.6rem;
+    width: 1.1rem; height: 1.1rem;
+    cursor: pointer;
+    accent-color: var(--color-primary);
+    z-index: 3;
+}
+.review-mgmt-card.selected {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface));
+}
+
 .review-mgmt-card {
     background: var(--color-surface);
-    padding: 1rem;
+    padding: 1rem 1rem 1rem 2.2rem;
     border-radius: var(--radius-md);
     border: 1px solid var(--color-border-soft);
     margin-bottom: 0.6rem;
