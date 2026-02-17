@@ -71,6 +71,31 @@ export function initReviews() {
       reviewData.approved = data.approved || [];
       reviewData.deleted = data.deleted || [];
 
+      // Auto-normalize: if 2+ approved reviews share the same sort_order
+      // (e.g. all 0 from bulk import), fix them with sequential 1..N
+      if (reviewData.approved.length > 1) {
+        const sortVals = reviewData.approved.map((r) => r.review_sort_order || 0);
+        const unique = new Set(sortVals);
+        if (unique.size < sortVals.length) {
+          console.log("[Reviews] Detected duplicate sort_order values — normalizing...");
+          try {
+            const { data: normData } = await ctx.db.rpc("admin_normalize_review_sort_orders", {
+              p_admin_code: ctx.adminCode,
+            });
+            if (normData?.success) {
+              console.log("[Reviews] Normalized", normData.updated, "rows — reloading");
+              // Re-fetch with corrected values (non-recursive, one-shot)
+              const { data: d2 } = await ctx.db.rpc("admin_list_reviews", {
+                p_admin_code: ctx.adminCode,
+              });
+              if (d2?.success) {
+                reviewData.approved = d2.approved || [];
+              }
+            }
+          } catch (_) { /* best-effort */ }
+        }
+      }
+
       rEl.pendingCount.textContent = reviewData.pending.length;
       rEl.approvedCount.textContent = reviewData.approved.length;
       rEl.deletedCount.textContent = reviewData.deleted.length;
@@ -125,12 +150,36 @@ export function initReviews() {
     card.className = "review-mgmt-card";
     card.setAttribute("data-review-id", String(review.id));
 
-    // Drag handle (approved tab only)
+    // Top bar with drag handle + sort input (approved tab only)
     if (activeReviewTab === "approved") {
+      const topBar = document.createElement("div");
+      topBar.className = "review-topbar";
+
       const handle = document.createElement("span");
       handle.className = "drag-handle";
+      handle.title = "Drag to reorder";
       handle.textContent = "⠿";
-      card.appendChild(handle);
+
+      const sortLabel = document.createElement("span");
+      sortLabel.className = "review-sort-label";
+      sortLabel.textContent = "#";
+
+      const sortInput = document.createElement("input");
+      sortInput.type = "number";
+      sortInput.className = "review-sort-input";
+      sortInput.min = "1";
+      sortInput.max = "9999";
+      sortInput.title = "Position (1 = first on carousel)";
+      sortInput.setAttribute("data-review-sort", "true");
+      sortInput.setAttribute("data-review-id", String(review.id));
+      sortInput.setAttribute("aria-label", "Sort order for " + (review.client_name || "review"));
+      const safeSort = Number.isFinite(Number(review.review_sort_order))
+        ? Math.max(1, Number(review.review_sort_order))
+        : 1;
+      sortInput.value = String(safeSort);
+
+      topBar.append(handle, sortLabel, sortInput);
+      card.appendChild(topBar);
     }
 
     // Header: name + stars + source
@@ -320,6 +369,77 @@ export function initReviews() {
     }
   });
 
+  // ----- Sync sort-order values from server (like gallery's syncSortOrders) -----
+  async function syncReviewSortOrders() {
+    if (!ctx.db || !ctx.adminCode) return;
+    try {
+      const { data, error } = await ctx.db.rpc("admin_list_reviews", {
+        p_admin_code: ctx.adminCode,
+      });
+      if (error || !data || !data.success) return;
+      const serverItems = data.approved || [];
+      const serverMap = new Map(serverItems.map((i) => [String(i.id), i]));
+      reviewData.approved.forEach((item) => {
+        const server = serverMap.get(String(item.id));
+        if (server) item.review_sort_order = server.review_sort_order;
+      });
+      reviewData.approved.sort(
+        (a, b) => (a.review_sort_order || 0) - (b.review_sort_order || 0),
+      );
+      reviewData.approved.forEach((item) => {
+        const input = rEl.list.querySelector(
+          `input.review-sort-input[data-review-id="${item.id}"]`,
+        );
+        if (input) input.value = item.review_sort_order;
+      });
+    } catch (_) {
+      /* best-effort */
+    }
+  }
+
+  // ----- Inline Sort-Order Save (numeric input) -----
+  async function saveReviewSortOrder(input) {
+    const id = input.getAttribute("data-review-id");
+    const review = reviewData.approved.find((r) => String(r.id) === String(id));
+    if (!review) return;
+    let newVal = parseInt(input.value, 10);
+    if (isNaN(newVal) || newVal < 1) {
+      input.value = Math.max(1, review.review_sort_order || 1);
+      return;
+    }
+    if (newVal === review.review_sort_order) return;
+
+    input.disabled = true;
+    try {
+      const { data, error } = await ctx.db.rpc("admin_reorder_review", {
+        p_admin_code: ctx.adminCode,
+        p_item_id: parseInt(id, 10),
+        p_new_sort_order: newVal,
+      });
+      if (error) throw new Error(error.message);
+      if (!data || !data.success) {
+        showReviewMsg(data?.error || "Sort update failed", true);
+        return;
+      }
+      showReviewMsg(`Review moved to position ${newVal}`, false);
+      await loadReviews();
+    } catch (err) {
+      showReviewMsg("Error: " + err.message, true);
+    } finally {
+      input.disabled = false;
+    }
+  }
+
+  rEl.list.addEventListener("change", (e) => {
+    if (e.target.matches(".review-sort-input")) saveReviewSortOrder(e.target);
+  });
+  rEl.list.addEventListener("keydown", (e) => {
+    if (e.target.matches(".review-sort-input") && e.key === "Enter") {
+      e.preventDefault();
+      e.target.blur();
+    }
+  });
+
   // ----- Drag & Drop Reorder for Approved Reviews (Desktop + Touch) -----
   let reviewDragSrcId = null;
   let reviewCurrentDropTarget = null;
@@ -398,6 +518,13 @@ export function initReviews() {
       items.forEach((item, i) => {
         item.review_sort_order = i + 1;
       });
+      // Sync sort input values in the DOM
+      items.forEach((item) => {
+        const input = rEl.list.querySelector(
+          `input.review-sort-input[data-review-id="${item.id}"]`,
+        );
+        if (input) input.value = item.review_sort_order;
+      });
     }
   }
 
@@ -425,6 +552,7 @@ export function initReviews() {
         renderReviews();
         return;
       }
+      syncReviewSortOrders();
     } catch (err) {
       showReviewMsg("Error: " + (err?.message || err) + " — reverting", true);
       reviewData.approved = snapshot;

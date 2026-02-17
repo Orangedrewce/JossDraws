@@ -696,6 +696,14 @@ details:not([open]) .section-summary::after {
 .gallery-form textarea {
     resize: vertical; min-height: 4em; font-family: inherit; line-height: 1.5;
 }
+
+/* Bulk-import two-button row */
+.bulk-import-actions {
+    display: flex; gap: 0.5rem; align-items: center;
+}
+.bulk-import-actions button[type="submit"] {
+    flex: 1;
+}
 .gallery-form input:focus, .gallery-form select:focus, .gallery-form textarea:focus {
     outline: 2px solid var(--color-primary); outline-offset: -1px;
     border-color: var(--color-primary);
@@ -1058,10 +1066,17 @@ body.is-dragging ::-moz-selection {
 
 /* Review card drag-and-drop */
 .review-mgmt-card { position: relative; }
+
+/* Top bar: drag handle + sort input — inline flex row */
+.review-topbar {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+}
+
 .review-mgmt-card .drag-handle {
-    position: absolute;
-    top: 0.6rem;
-    right: 0.6rem;
+    flex: 0 0 auto;
     cursor: grab;
     font-size: 1.1rem;
     color: var(--text-muted);
@@ -1075,6 +1090,26 @@ body.is-dragging ::-moz-selection {
 }
 .review-mgmt-card:hover .drag-handle { opacity: 1; }
 .review-mgmt-card .drag-handle:active { cursor: grabbing; }
+
+.review-sort-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    line-height: 1;
+}
+
+.review-sort-input {
+    width: 3.2rem; flex: 0 0 auto;
+    padding: 0.25rem 0.3rem; text-align: center;
+    border: 1px solid var(--color-border-soft); border-radius: var(--radius-sm);
+    background: var(--color-bg); color: var(--color-text);
+    font-size: 0.75rem; font-family: inherit;
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+.review-sort-input::-webkit-inner-spin-button,
+.review-sort-input::-webkit-outer-spin-button { -webkit-appearance: none; appearance: none; margin: 0; }
+.review-sort-input:focus { outline: 2px solid var(--color-primary); border-color: var(--color-primary); }
 
 .review-mgmt-card.dragging {
     opacity: 0.4;

@@ -20,6 +20,7 @@ import { initShop }         from './modules/shop.js';
 import { initReviews }      from './modules/reviews.js';
 import { initAbout }        from './modules/about.js';
 import { initBannerEditor } from './modules/banner-editor.js';
+import { initBulkImport }  from './modules/bulk-import.js';
 
 // ============================================
 // 1. AUTH PROMPT
@@ -95,6 +96,7 @@ if (ctx.db) {
     initReviews();
     initAbout();
     initBannerEditor();
+    initBulkImport();
   })();
 }
 

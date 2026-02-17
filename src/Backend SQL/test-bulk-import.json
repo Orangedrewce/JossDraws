@@ -1,0 +1,107 @@
+[
+  {
+    "reviewer": "Test-Normal",
+    "date_reviewed": "01/15/2025",
+    "star_rating": 5,
+    "message": "Great sticker! Love it!",
+    "order_id": 9999900001
+  },
+  {
+    "reviewer": "Test-Normal",
+    "date_reviewed": "01/15/2025",
+    "star_rating": 5,
+    "message": "Great sticker! Love it!",
+    "order_id": 9999900001
+  },
+  {
+    "reviewer": "Test-EmptyMsg",
+    "date_reviewed": "02/14/2025",
+    "star_rating": 4,
+    "message": "",
+    "order_id": 9999900002
+  },
+  {
+    "reviewer": "Test-LongReview",
+    "date_reviewed": "03/01/2025",
+    "star_rating": 5,
+    "message": "This is a really really really long review that is meant to exceed the 280 character limit in the database so we can verify the truncation logic works correctly. I am typing a lot of words here to pad this out past two hundred and eighty characters. Almost there, just a few more words needed to push it over the edge. This should do it!",
+    "order_id": 9999900003
+  },
+  {
+    "reviewer": "",
+    "date_reviewed": "04/20/2025",
+    "star_rating": 5,
+    "message": "No name provided — should become 'Buyer'",
+    "order_id": 9999900004
+  },
+  {
+    "reviewer": "Test-BadDate",
+    "date_reviewed": "not-a-date",
+    "star_rating": 3,
+    "message": "This review has a malformed date — should default to now",
+    "order_id": 9999900005
+  },
+  {
+    "reviewer": "Test-Rating0",
+    "date_reviewed": "05/05/2025",
+    "star_rating": 0,
+    "message": "Rating zero — should clamp to 1",
+    "order_id": 9999900006
+  },
+  {
+    "reviewer": "Test-Rating99",
+    "date_reviewed": "06/06/2025",
+    "star_rating": 99,
+    "message": "Rating 99 — should clamp to 5",
+    "order_id": 9999900007
+  },
+  {
+    "reviewer": "Test-AutoSticker",
+    "date_reviewed": "07/07/2025",
+    "star_rating": 5,
+    "message": "Love these stickers! Great quality and they look awesome on my laptop.",
+    "order_id": 9999900008
+  },
+  {
+    "reviewer": "Test-AutoPrint",
+    "date_reviewed": "08/08/2025",
+    "star_rating": 5,
+    "message": "Beautiful print, the colors are vibrant and it looks great framed.",
+    "order_id": 9999900009
+  },
+  {
+    "reviewer": "Test-AutoBookmark",
+    "date_reviewed": "09/09/2025",
+    "star_rating": 5,
+    "message": "These bookmarks are gorgeous! Perfect gift for my book-loving friend.",
+    "order_id": 9999900010
+  },
+  {
+    "reviewer": "Test-AutoColoring",
+    "date_reviewed": "10/10/2025",
+    "star_rating": 5,
+    "message": "Love this coloring book! The illustrations are so detailed and fun.",
+    "order_id": 9999900011
+  },
+  {
+    "reviewer": "Test-AutoFallback",
+    "date_reviewed": "11/11/2025",
+    "star_rating": 5,
+    "message": "Great item, very happy with my purchase!",
+    "order_id": 9999900012
+  },
+  {
+    "reviewer": "Test-Emoji 🎨✨",
+    "date_reviewed": "12/25/2025",
+    "star_rating": 5,
+    "message": "Absolutely gorgeous work 💜 Can't wait to buy more! 🍄✌🏻",
+    "order_id": 9999900013
+  },
+  {
+    "reviewer": "abcdefghij-abcdefghij-abcdefghij-abcdefghij-abcdefghij-abcdefghij-TOOLONG",
+    "date_reviewed": "01/01/2026",
+    "star_rating": 5,
+    "message": "This reviewer name is over 60 chars — should be truncated",
+    "order_id": 9999900014
+  }
+]

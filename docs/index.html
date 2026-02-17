@@ -1,497 +1,792 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>JossDraws | Custom Pet Portraits & Digital Art</title>
-  <meta name="description" content="Custom pet portraits, digital illustration, and artist prints by Joslynn Losee (JossDraws). Serving clients nationwide from Salt Lake City, UT.">
-  <meta name="google-site-verification" content="Zob4a3nz-oEosKHOzlOR3IIFAGUzhpi37JFwtu1eOKI">
-  <meta name="referrer" content="strict-origin-when-cross-origin">
-  
-  <!-- DNS prefetch & preconnect for external image/CDN hosts -->
-  <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
-  <link rel="preconnect" href="https://i.etsystatic.com" crossorigin>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="dns-prefetch" href="https://lh3.googleusercontent.com">
-  <link rel="dns-prefetch" href="https://i.etsystatic.com">
-  <link rel="dns-prefetch" href="https://v.etsystatic.com">
-  <link rel="dns-prefetch" href="https://pciubbwphwpnptgawgok.supabase.co">
-  
-  <!-- Defer Supabase — not needed until reviews tab is opened -->
-  <!-- SRI: Pin version and add integrity hash for supply chain security -->
-  <!-- Generate hash: curl https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js | openssl dgst -sha384 -binary | openssl base64 -A -->
-  <script defer 
-          src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js" 
-          integrity="sha384-4gGeyPSquYHrZEJmJCQzoCNHpg6DDGf2QladEfZjglbzKQ9rnJtLT7kDFMJS3LIN"
-          crossorigin="anonymous"></script>
-  
-  <link rel="stylesheet" href="css/Styles.css">
-  
-  <!-- Open Graph / Social Media -->
-  <meta property="og:title" content="JossDraws | Custom Pet Portraits & Digital Art">
-  <meta property="og:description" content="Commission custom pet portraits and digital illustration by Joslynn Losee. Artist prints and coloring books available.">
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="JossDraws">
-  <meta property="og:locale" content="en_US">
-  <meta property="og:image" content="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw">
-  <meta property="og:url" content="https://www.jossdraws.com">
-  <link rel="canonical" href="https://www.jossdraws.com">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="JossDraws | Custom Pet Portraits & Digital Art">
-  <meta name="twitter:description" content="Commission custom pet portraits and digital illustration by Joslynn Losee. Artist prints and coloring books available.">
-  <meta name="twitter:image" content="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw">
-  <link rel="icon" href="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw=s32" type="image/png" sizes="32x32">
-  <link rel="icon" href="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw=s192" type="image/png" sizes="192x192">
-  <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw=s180">
-  
-  <!-- JSON-LD Structured Data for SEO -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@graph": [
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JossDraws | Custom Pet Portraits & Digital Art</title>
+    <meta
+      name="description"
+      content="Custom pet portraits, digital illustration, and artist prints by Joslynn Losee (JossDraws). Serving clients nationwide from Salt Lake City, UT."
+    />
+    <meta
+      name="google-site-verification"
+      content="Zob4a3nz-oEosKHOzlOR3IIFAGUzhpi37JFwtu1eOKI"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <!-- DNS prefetch & preconnect for external image/CDN hosts -->
+    <link
+      rel="preconnect"
+      href="https://lh3.googleusercontent.com"
+      crossorigin
+    />
+    <link rel="preconnect" href="https://i.etsystatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="dns-prefetch" href="https://lh3.googleusercontent.com" />
+    <link rel="dns-prefetch" href="https://i.etsystatic.com" />
+    <link rel="dns-prefetch" href="https://v.etsystatic.com" />
+    <link rel="dns-prefetch" href="https://pciubbwphwpnptgawgok.supabase.co" />
+
+    <!-- Defer Supabase — not needed until reviews tab is opened -->
+    <!-- SRI: Pin version and add integrity hash for supply chain security -->
+    <!-- Generate hash: curl https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js | openssl dgst -sha384 -binary | openssl base64 -A -->
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"
+      integrity="sha384-4gGeyPSquYHrZEJmJCQzoCNHpg6DDGf2QladEfZjglbzKQ9rnJtLT7kDFMJS3LIN"
+      crossorigin="anonymous"
+    ></script>
+
+    <link rel="stylesheet" href="css/Styles.css" />
+
+    <!-- Open Graph / Social Media -->
+    <meta
+      property="og:title"
+      content="JossDraws | Custom Pet Portraits & Digital Art"
+    />
+    <meta
+      property="og:description"
+      content="Commission custom pet portraits and digital illustration by Joslynn Losee. Artist prints and coloring books available."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="JossDraws" />
+    <meta property="og:locale" content="en_US" />
+    <meta
+      property="og:image"
+      content="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw"
+    />
+    <meta property="og:url" content="https://www.jossdraws.com" />
+    <link rel="canonical" href="https://www.jossdraws.com" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="JossDraws | Custom Pet Portraits & Digital Art"
+    />
+    <meta
+      name="twitter:description"
+      content="Commission custom pet portraits and digital illustration by Joslynn Losee. Artist prints and coloring books available."
+    />
+    <meta
+      name="twitter:image"
+      content="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw"
+    />
+    <link
+      rel="icon"
+      href="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw=s32"
+      type="image/png"
+      sizes="32x32"
+    />
+    <link
+      rel="icon"
+      href="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw=s192"
+      type="image/png"
+      sizes="192x192"
+    />
+    <link
+      rel="apple-touch-icon"
+      href="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw=s180"
+    />
+
+    <!-- JSON-LD Structured Data for SEO -->
+    <script type="application/ld+json">
       {
-        "@type": "Person",
-        "name": "Joslynn Losee",
-        "alternateName": "JossDraws",
-        "jobTitle": "Artist & Graphic Designer",
-        "description": "Artist creating custom pet portraits, digital illustration, and artist prints.",
-        "url": "https://www.jossdraws.com/",
-        "image": "https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw",
-        "address": {
-          "@type": "PostalAddress",
-          "addressLocality": "Salt Lake City",
-          "addressRegion": "UT",
-          "postalCode": "84107"
-        },
-        "sameAs": [
-          "https://www.etsy.com/shop/JossDrawsLLC",
-          "https://www.instagram.com/joss.draws/",
-          "https://www.facebook.com/Timeless.Artss"
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Person",
+            "name": "Joslynn Losee",
+            "alternateName": "JossDraws",
+            "jobTitle": "Artist & Graphic Designer",
+            "description": "Artist creating custom pet portraits, digital illustration, and artist prints.",
+            "url": "https://www.jossdraws.com/",
+            "image": "https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Salt Lake City",
+              "addressRegion": "UT",
+              "postalCode": "84107"
+            },
+            "sameAs": [
+              "https://www.etsy.com/shop/JossDrawsLLC",
+              "https://www.instagram.com/joss.draws/",
+              "https://www.facebook.com/Timeless.Artss"
+            ]
+          },
+          {
+            "@type": "ProfessionalService",
+            "name": "JossDraws",
+            "url": "https://www.jossdraws.com/",
+            "image": "https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw",
+            "description": "Custom pet portraits, digital illustration, and artist prints by Joslynn Losee.",
+            "areaServed": "US",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Salt Lake City",
+              "addressRegion": "UT",
+              "postalCode": "84107"
+            },
+            "serviceType": [
+              "Custom pet portraits",
+              "Digital illustration",
+              "Artist prints",
+              "Coloring books"
+            ]
+          },
+          {
+            "@type": "Product",
+            "name": "Custom Pet Portrait",
+            "description": "Custom digital pet portrait, hand-illustrated from your photo by Joslynn Losee.",
+            "image": "https://i.etsystatic.com/25958263/r/il/015511/5965017745/il_794xN.5965017745_b06b.jpg",
+            "brand": { "@type": "Brand", "name": "JossDraws" },
+            "offers": {
+              "@type": "Offer",
+              "url": "https://www.etsy.com/listing/1517173888/custom-pet-portrait",
+              "priceCurrency": "USD",
+              "price": "80.00",
+              "availability": "https://schema.org/InStock",
+              "shippingDetails": {
+                "@type": "OfferShippingDetails",
+                "shippingRate": {
+                  "@type": "MonetaryAmount",
+                  "value": "0.00",
+                  "currency": "USD"
+                },
+                "shippingDestination": [
+                  {
+                    "@type": "DefinedRegion",
+                    "addressCountry": "US"
+                  }
+                ],
+                "deliveryTime": {
+                  "@type": "ShippingDeliveryTime",
+                  "handlingTime": {
+                    "@type": "QuantitativeValue",
+                    "minValue": 1,
+                    "maxValue": 3,
+                    "unitCode": "d"
+                  },
+                  "transitTime": {
+                    "@type": "QuantitativeValue",
+                    "minValue": 1,
+                    "maxValue": 5,
+                    "unitCode": "d"
+                  }
+                }
+              },
+              "hasMerchantReturnPolicy": {
+                "@type": "MerchantReturnPolicy",
+                "applicableCountry": "US",
+                "returnPolicyCategory": "https://schema.org/ReturnsNotAccepted",
+                "description": "Returns are usually not accepted due to the custom nature of the work, but we offer refunds or resolutions on a case-by-case basis if we deem it fair."
+              },
+              "priceValidUntil": "2026-12-31"
+            },
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": "5",
+              "reviewCount": "1"
+            },
+            "review": {
+              "@type": "Review",
+              "reviewRating": {
+                "@type": "Rating",
+                "ratingValue": "5",
+                "bestRating": "5"
+              },
+              "author": {
+                "@type": "Person",
+                "name": "Customer"
+              }
+            }
+          },
+          {
+            "@type": "Product",
+            "name": "Bugs & Blossoms Coloring Book",
+            "description": "A coloring book featuring intricate insect and flower illustrations by Joslynn Losee.",
+            "image": "https://i.etsystatic.com/25958263/r/il/b95b4f/7362253835/il_1140xN.7362253835_4a4u.jpg",
+            "brand": { "@type": "Brand", "name": "JossDraws" },
+            "offers": {
+              "@type": "Offer",
+              "url": "https://www.etsy.com/listing/4391097322/bugs-blossoms-coloring-book",
+              "priceCurrency": "USD",
+              "price": "23.50",
+              "availability": "https://schema.org/InStock",
+              "shippingDetails": {
+                "@type": "OfferShippingDetails",
+                "shippingRate": {
+                  "@type": "MonetaryAmount",
+                  "value": "5.00",
+                  "currency": "USD"
+                },
+                "shippingDestination": [
+                  {
+                    "@type": "DefinedRegion",
+                    "addressCountry": "US"
+                  }
+                ],
+                "deliveryTime": {
+                  "@type": "ShippingDeliveryTime",
+                  "handlingTime": {
+                    "@type": "QuantitativeValue",
+                    "minValue": 1,
+                    "maxValue": 3,
+                    "unitCode": "d"
+                  },
+                  "transitTime": {
+                    "@type": "QuantitativeValue",
+                    "minValue": 1,
+                    "maxValue": 5,
+                    "unitCode": "d"
+                  }
+                }
+              },
+              "hasMerchantReturnPolicy": {
+                "@type": "MerchantReturnPolicy",
+                "applicableCountry": "US",
+                "returnPolicyCategory": "https://schema.org/ReturnsNotAccepted",
+                "description": "Returns are usually not accepted, but we offer refunds or resolutions on a case-by-case basis if we deem it fair."
+              },
+              "priceValidUntil": "2026-12-31"
+            },
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": "5",
+              "reviewCount": "1"
+            },
+            "review": {
+              "@type": "Review",
+              "reviewRating": {
+                "@type": "Rating",
+                "ratingValue": "5",
+                "bestRating": "5"
+              },
+              "author": {
+                "@type": "Person",
+                "name": "Customer"
+              }
+            }
+          },
+          {
+            "@type": "Product",
+            "name": "Faceless Portrait on Canvas",
+            "description": "Faceless portrait printed on canvas, a minimalist figure illustration by Joslynn Losee.",
+            "image": "https://lh3.googleusercontent.com/d/16euNg2ICjjUo9f_3dCspbOeqGbhtHVel",
+            "brand": { "@type": "Brand", "name": "JossDraws" },
+            "offers": {
+              "@type": "Offer",
+              "url": "https://www.etsy.com/listing/1517686781/faceless-portrait-printed-on-canvas",
+              "priceCurrency": "USD",
+              "price": "79.00",
+              "availability": "https://schema.org/InStock",
+              "shippingDetails": {
+                "@type": "OfferShippingDetails",
+                "shippingRate": {
+                  "@type": "MonetaryAmount",
+                  "value": "0.00",
+                  "currency": "USD"
+                },
+                "shippingDestination": [
+                  {
+                    "@type": "DefinedRegion",
+                    "addressCountry": "US"
+                  }
+                ],
+                "deliveryTime": {
+                  "@type": "ShippingDeliveryTime",
+                  "handlingTime": {
+                    "@type": "QuantitativeValue",
+                    "minValue": 1,
+                    "maxValue": 3,
+                    "unitCode": "d"
+                  },
+                  "transitTime": {
+                    "@type": "QuantitativeValue",
+                    "minValue": 1,
+                    "maxValue": 5,
+                    "unitCode": "d"
+                  }
+                }
+              },
+              "hasMerchantReturnPolicy": {
+                "@type": "MerchantReturnPolicy",
+                "applicableCountry": "US",
+                "returnPolicyCategory": "https://schema.org/ReturnsNotAccepted",
+                "description": "Returns are usually not accepted, but we offer refunds or resolutions on a case-by-case basis if we deem it fair."
+              },
+              "priceValidUntil": "2026-12-31"
+            },
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": "5",
+              "reviewCount": "1"
+            },
+            "review": {
+              "@type": "Review",
+              "reviewRating": {
+                "@type": "Rating",
+                "ratingValue": "5",
+                "bestRating": "5"
+              },
+              "author": {
+                "@type": "Person",
+                "name": "Customer"
+              }
+            }
+          }
         ]
-      },
-      {
-        "@type": "ProfessionalService",
-        "name": "JossDraws",
-        "url": "https://www.jossdraws.com/",
-        "image": "https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw",
-        "description": "Custom pet portraits, digital illustration, and artist prints by Joslynn Losee.",
-        "areaServed": "US",
-        "address": {
-          "@type": "PostalAddress",
-          "addressLocality": "Salt Lake City",
-          "addressRegion": "UT",
-          "postalCode": "84107"
-        },
-        "serviceType": [
-          "Custom pet portraits",
-          "Digital illustration",
-          "Artist prints",
-          "Coloring books"
-        ]
-      },
-      {
-        "@type": "Product",
-        "name": "Custom Pet Portrait",
-        "description": "Custom digital pet portrait, hand-illustrated from your photo by Joslynn Losee.",
-        "image": "https://i.etsystatic.com/25958263/r/il/015511/5965017745/il_794xN.5965017745_b06b.jpg",
-        "brand": { "@type": "Brand", "name": "JossDraws" },
-        "offers": {
-          "@type": "Offer",
-          "url": "https://www.etsy.com/listing/1517173888/custom-pet-portrait",
-          "priceCurrency": "USD",
-          "price": "80.00",
-          "availability": "https://schema.org/InStock",
-          "shippingDetails": {
-            "@type": "OfferShippingDetails",
-            "shippingRate": {
-              "@type": "MonetaryAmount",
-              "value": "0.00",
-              "currency": "USD"
-            },
-            "shippingDestination": [
-              {
-                "@type": "DefinedRegion",
-                "addressCountry": "US"
-              }
-            ],
-            "deliveryTime": {
-              "@type": "ShippingDeliveryTime",
-              "handlingTime": {
-                "@type": "QuantitativeValue",
-                "minValue": 1,
-                "maxValue": 3,
-                "unitCode": "d"
-              },
-              "transitTime": {
-                "@type": "QuantitativeValue",
-                "minValue": 1,
-                "maxValue": 5,
-                "unitCode": "d"
-              }
-            }
-          },
-          "hasMerchantReturnPolicy": {
-            "@type": "MerchantReturnPolicy",
-            "applicableCountry": "US",
-            "returnPolicyCategory": "https://schema.org/ReturnsNotAccepted",
-            "description": "Returns are usually not accepted due to the custom nature of the work, but we offer refunds or resolutions on a case-by-case basis if we deem it fair."
-          },
-          "priceValidUntil": "2026-12-31"
-        },
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "5",
-          "reviewCount": "1"
-        },
-        "review": {
-          "@type": "Review",
-          "reviewRating": {
-            "@type": "Rating",
-            "ratingValue": "5",
-            "bestRating": "5"
-          },
-          "author": {
-            "@type": "Person",
-            "name": "Customer"
-          }
-        }
-      },
-      {
-        "@type": "Product",
-        "name": "Bugs & Blossoms Coloring Book",
-        "description": "A coloring book featuring intricate insect and flower illustrations by Joslynn Losee.",
-        "image": "https://i.etsystatic.com/25958263/r/il/b95b4f/7362253835/il_1140xN.7362253835_4a4u.jpg",
-        "brand": { "@type": "Brand", "name": "JossDraws" },
-        "offers": {
-          "@type": "Offer",
-          "url": "https://www.etsy.com/listing/4391097322/bugs-blossoms-coloring-book",
-          "priceCurrency": "USD",
-          "price": "23.50",
-          "availability": "https://schema.org/InStock",
-          "shippingDetails": {
-            "@type": "OfferShippingDetails",
-            "shippingRate": {
-              "@type": "MonetaryAmount",
-              "value": "5.00",
-              "currency": "USD"
-            },
-            "shippingDestination": [
-              {
-                "@type": "DefinedRegion",
-                "addressCountry": "US"
-              }
-            ],
-            "deliveryTime": {
-              "@type": "ShippingDeliveryTime",
-              "handlingTime": {
-                "@type": "QuantitativeValue",
-                "minValue": 1,
-                "maxValue": 3,
-                "unitCode": "d"
-              },
-              "transitTime": {
-                "@type": "QuantitativeValue",
-                "minValue": 1,
-                "maxValue": 5,
-                "unitCode": "d"
-              }
-            }
-          },
-          "hasMerchantReturnPolicy": {
-            "@type": "MerchantReturnPolicy",
-            "applicableCountry": "US",
-            "returnPolicyCategory": "https://schema.org/ReturnsNotAccepted",
-            "description": "Returns are usually not accepted, but we offer refunds or resolutions on a case-by-case basis if we deem it fair."
-          },
-          "priceValidUntil": "2026-12-31"
-        },
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "5",
-          "reviewCount": "1"
-        },
-        "review": {
-          "@type": "Review",
-          "reviewRating": {
-            "@type": "Rating",
-            "ratingValue": "5",
-            "bestRating": "5"
-          },
-          "author": {
-            "@type": "Person",
-            "name": "Customer"
-          }
-        }
-      },
-      {
-        "@type": "Product",
-        "name": "Faceless Portrait on Canvas",
-        "description": "Faceless portrait printed on canvas, a minimalist figure illustration by Joslynn Losee.",
-        "image": "https://lh3.googleusercontent.com/d/16euNg2ICjjUo9f_3dCspbOeqGbhtHVel",
-        "brand": { "@type": "Brand", "name": "JossDraws" },
-        "offers": {
-          "@type": "Offer",
-          "url": "https://www.etsy.com/listing/1517686781/faceless-portrait-printed-on-canvas",
-          "priceCurrency": "USD",
-          "price": "79.00",
-          "availability": "https://schema.org/InStock",
-          "shippingDetails": {
-            "@type": "OfferShippingDetails",
-            "shippingRate": {
-              "@type": "MonetaryAmount",
-              "value": "0.00",
-              "currency": "USD"
-            },
-            "shippingDestination": [
-              {
-                "@type": "DefinedRegion",
-                "addressCountry": "US"
-              }
-            ],
-            "deliveryTime": {
-              "@type": "ShippingDeliveryTime",
-              "handlingTime": {
-                "@type": "QuantitativeValue",
-                "minValue": 1,
-                "maxValue": 3,
-                "unitCode": "d"
-              },
-              "transitTime": {
-                "@type": "QuantitativeValue",
-                "minValue": 1,
-                "maxValue": 5,
-                "unitCode": "d"
-              }
-            }
-          },
-          "hasMerchantReturnPolicy": {
-            "@type": "MerchantReturnPolicy",
-            "applicableCountry": "US",
-            "returnPolicyCategory": "https://schema.org/ReturnsNotAccepted",
-            "description": "Returns are usually not accepted, but we offer refunds or resolutions on a case-by-case basis if we deem it fair."
-          },
-          "priceValidUntil": "2026-12-31"
-        },
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "5",
-          "reviewCount": "1"
-        },
-        "review": {
-          "@type": "Review",
-          "reviewRating": {
-            "@type": "Rating",
-            "ratingValue": "5",
-            "bestRating": "5"
-          },
-          "author": {
-            "@type": "Person",
-            "name": "Customer"
-          }
-        }
       }
-    ]
-  }
-  </script>
-</head>
-<body>
-  <!-- Skip link for accessibility -->
-  <a href="#main" class="skip-link">Skip to main content</a>
+    </script>
+  </head>
+  <body>
+    <!-- Skip link for accessibility -->
+    <a href="#main" class="skip-link">Skip to main content</a>
 
-  <!-- Tab radio inputs - must come before header for CSS sibling selector -->
-  <input type="radio" name="tabs" id="tab-home" checked aria-label="Home tab" hidden aria-hidden="true">
-  <input type="radio" name="tabs" id="tab-gallery" aria-label="Gallery tab" hidden aria-hidden="true">
-  <input type="radio" name="tabs" id="tab-about" aria-label="About tab" hidden aria-hidden="true">
-  <input type="radio" name="tabs" id="tab-shop" aria-label="Shop tab" hidden aria-hidden="true">
-  <input type="radio" name="tabs" id="tab-contact" aria-label="Contact tab" hidden aria-hidden="true">
-  <input type="radio" name="tabs" id="tab-reviews" aria-label="Reviews tab" hidden aria-hidden="true">
+    <!-- Tab radio inputs - must come before header for CSS sibling selector -->
+    <input
+      type="radio"
+      name="tabs"
+      id="tab-home"
+      checked
+      aria-label="Home tab"
+      hidden
+      aria-hidden="true"
+    />
+    <input
+      type="radio"
+      name="tabs"
+      id="tab-gallery"
+      aria-label="Gallery tab"
+      hidden
+      aria-hidden="true"
+    />
+    <input
+      type="radio"
+      name="tabs"
+      id="tab-about"
+      aria-label="About tab"
+      hidden
+      aria-hidden="true"
+    />
+    <input
+      type="radio"
+      name="tabs"
+      id="tab-shop"
+      aria-label="Shop tab"
+      hidden
+      aria-hidden="true"
+    />
+    <input
+      type="radio"
+      name="tabs"
+      id="tab-contact"
+      aria-label="Contact tab"
+      hidden
+      aria-hidden="true"
+    />
+    <input
+      type="radio"
+      name="tabs"
+      id="tab-reviews"
+      aria-label="Reviews tab"
+      hidden
+      aria-hidden="true"
+    />
 
-  <script defer src="js/page-inline.js"></script>
+    <script defer src="js/page-inline.js"></script>
 
-  <!-- Header -->
-  <header role="banner">
-    <canvas id="shaderCanvas" class="header-background" aria-hidden="true"></canvas>
-    <div class="header-container">
-      <h1 class="logo">
-        <div class="img-loading-wrapper">
-          <img src="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw" width="250" height="250" alt="JossDraws Home" fetchpriority="high" decoding="async">
+    <!-- Header -->
+    <header role="banner">
+      <canvas
+        id="shaderCanvas"
+        class="header-background"
+        aria-hidden="true"
+      ></canvas>
+      <div class="header-container">
+        <h1 class="logo">
+          <div class="img-loading-wrapper">
+            <img
+              src="https://lh3.googleusercontent.com/d/1qhr_pVLlV7T-yDEEx8Mh5rZt-wme8lXw"
+              width="250"
+              height="250"
+              alt="JossDraws Home"
+              fetchpriority="high"
+              decoding="async"
+            />
+          </div>
+        </h1>
+
+        <nav aria-label="Main navigation">
+          <ul role="tablist">
+            <li role="presentation">
+              <label
+                for="tab-home"
+                role="tab"
+                aria-controls="panel-home"
+                tabindex="0"
+                ><strong>Home</strong></label
+              >
+            </li>
+            <li role="presentation">
+              <label
+                for="tab-gallery"
+                role="tab"
+                aria-controls="panel-gallery"
+                tabindex="0"
+                ><strong>Gallery</strong></label
+              >
+            </li>
+            <li role="presentation">
+              <label
+                for="tab-about"
+                role="tab"
+                aria-controls="panel-about"
+                tabindex="0"
+                ><strong>About</strong></label
+              >
+            </li>
+            <li role="presentation">
+              <label
+                for="tab-shop"
+                role="tab"
+                aria-controls="panel-shop"
+                tabindex="0"
+                ><strong>Shop</strong></label
+              >
+            </li>
+            <li role="presentation">
+              <label
+                for="tab-contact"
+                role="tab"
+                aria-controls="panel-contact"
+                tabindex="0"
+                ><strong>Contact</strong></label
+              >
+            </li>
+            <li role="presentation">
+              <label
+                for="tab-reviews"
+                role="tab"
+                aria-controls="panel-reviews"
+                tabindex="0"
+                ><strong>Reviews</strong></label
+              >
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Main content -->
+    <main id="main" role="main">
+      <!-- Home Tab -->
+      <section
+        id="panel-home"
+        class="tab-home hero"
+        role="tabpanel"
+        aria-labelledby="hero-heading"
+      >
+        <h2 id="hero-heading" class="sr-only">Welcome</h2>
+        <a
+          href="#contact-heading"
+          class="hero-image-link"
+          data-tab-target="contact"
+          aria-label="Contact for commissions"
+        >
+          <div class="hero-slideshow">
+            <!-- Random image will be injected here by JavaScript -->
+          </div>
+          <div class="hero-overlay-text">
+            <p>Want something created? Tap here.</p>
+          </div>
+        </a>
+      </section>
+
+      <!-- Gallery Tab -->
+      <section
+        id="panel-gallery"
+        class="tab-gallery"
+        role="tabpanel"
+        aria-labelledby="gallery-title"
+      >
+        <div class="hero">
+          <h2 id="gallery-heading">Joslynn Losee</h2>
         </div>
-      </h1>
-      
-      <nav aria-label="Main navigation">
-        <ul role="tablist">
-          <li role="presentation"><label for="tab-home" role="tab" aria-controls="panel-home" tabindex="0"><strong>Home</strong></label></li>
-          <li role="presentation"><label for="tab-gallery" role="tab" aria-controls="panel-gallery" tabindex="0"><strong>Gallery</strong></label></li>
-          <li role="presentation"><label for="tab-about" role="tab" aria-controls="panel-about" tabindex="0"><strong>About</strong></label></li>
-          <li role="presentation"><label for="tab-shop" role="tab" aria-controls="panel-shop" tabindex="0"><strong>Shop</strong></label></li>
-          <li role="presentation"><label for="tab-contact" role="tab" aria-controls="panel-contact" tabindex="0"><strong>Contact</strong></label></li>
-          <li role="presentation"><label for="tab-reviews" role="tab" aria-controls="panel-reviews" tabindex="0"><strong>Reviews</strong></label></li>
+
+        <div class="container">
+          <h3 id="gallery-title" class="sr-only">Gallery</h3>
+          <div id="gallery-filters" class="gallery-filters" hidden>
+            <select id="filterMedium" aria-label="Filter by medium">
+              <option value="">All Mediums</option>
+            </select>
+            <select id="filterYear" aria-label="Filter by year">
+              <option value="">All Years</option>
+            </select>
+            <select id="sortDate" aria-label="Sort by date">
+              <option value="default">Default Order</option>
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+          </div>
+          <div
+            id="masonry-gallery"
+            aria-busy="true"
+            aria-label="Gallery loading"
+          >
+            <!-- Loading spinner will be created by masonry-gallery.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- About Tab -->
+      <section
+        id="panel-about"
+        class="tab-about container"
+        role="tabpanel"
+        aria-labelledby="about-heading"
+      >
+        <h2 id="about-heading">About</h2>
+
+        <div class="grid grid-2">
+          <div class="img-loading-wrapper">
+            <img
+              id="about-photo"
+              src="https://lh3.googleusercontent.com/d/1t-dOjZJLTpkC2UdUmhvdRNWlfm8wM1pG"
+              loading="lazy"
+              decoding="async"
+              width="800"
+              height="800"
+              alt="Joslynn Losee - The artist behind the work"
+            />
+          </div>
+          <div id="about-text">
+            <p>
+              My name is <strong>Joslynn Losee</strong> I am a 25 year old
+              multidisciplinary artist who specializes in illustration and
+              graphic design. <br /><br />
+            </p>
+            <h3>A <em>bit</em> about me</h3>
+            <p>
+              I'm a local Salt Lake City artist whose creative career began in
+              2019 with the launch of my Etsy shop. After graduating from MTECH
+              in 2021 with a degree in graphic design, one of my earliest
+              listings unexpectedly went viral, propelling me into the world of
+              professional art. <br /><br />Through experimentation, learning
+              from mistakes, and persistent dedication, I've honed my techniques
+              and refined my artistic process. I'm deeply grateful to the
+              friends and family who have supported me along the way.
+              <br /><br />I look forward to continuing to create art that brings
+              joy to everyone who encounters it.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Shop Tab -->
+      <section
+        id="panel-shop"
+        class="tab-shop container"
+        role="tabpanel"
+        aria-labelledby="shop-heading"
+      >
+        <h2 id="shop-heading">Shop</h2>
+
+        <!-- Page title — updated dynamically per pagination page -->
+        <h3
+          id="shop-page-title"
+          class="shop-page-title"
+          style="display: none"
+        ></h3>
+
+        <div class="shop-grid-wrapper">
+          <div
+            class="grid grid-3"
+            id="shop-grid"
+            aria-busy="true"
+            aria-label="Shop loading"
+          >
+            <!-- Products loaded dynamically by shop-renderer.js -->
+          </div>
+        </div>
+
+        <!-- Pagination - Rendered dynamically by shop-renderer.js -->
+        <nav
+          aria-label="Shop pagination"
+          class="shop-pagination-nav"
+          style="display: none"
+        >
+          <ul class="pagination"></ul>
+        </nav>
+      </section>
+
+      <!-- Reviews Tab -->
+      <section
+        id="panel-reviews"
+        class="tab-reviews container"
+        role="tabpanel"
+        aria-labelledby="reviews-heading"
+      >
+        <h2 id="reviews-heading">Client Love</h2>
+        <p class="muted-center section-subtitle">
+          Kind words from happy customers.
+        </p>
+
+        <div id="review-carousel-container" class="carousel-wrapper">
+          <button class="review-arrow left" aria-label="Previous review" hidden>
+            &lt;
+          </button>
+          <button class="review-arrow right" aria-label="Next review" hidden>
+            &gt;
+          </button>
+          <div class="carousel-track" id="track">
+            <div class="review-placeholder tab-loader" aria-live="polite">
+              <div
+                class="loader-spinner loader-spinner--reviews"
+                role="status"
+                aria-label="Loading reviews"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Contact Tab -->
+      <section
+        id="panel-contact"
+        class="tab-contact container"
+        role="tabpanel"
+        aria-labelledby="contact-heading"
+      >
+        <h2 id="contact-heading">Contact</h2>
+
+        <div class="grid grid-2">
+          <form
+            id="contact-form"
+            action="https://formspree.io/f/mqaglzrb"
+            method="POST"
+          >
+            <div id="form-message" role="alert" aria-live="polite"></div>
+
+            <div>
+              <label for="name">Name</label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                autocomplete="name"
+                required
+              />
+              <span
+                id="name-error"
+                role="alert"
+                class="error-message"
+                style="display: none"
+              ></span>
+            </div>
+
+            <div>
+              <label for="email">Email</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                autocomplete="email"
+                aria-describedby="email-error"
+                required
+              />
+              <span
+                id="email-error"
+                role="alert"
+                class="error-message"
+                style="display: none"
+              ></span>
+            </div>
+
+            <div>
+              <label for="message">Message</label>
+              <textarea
+                id="message"
+                name="message"
+                rows="5"
+                aria-describedby="message-error"
+                required
+              ></textarea>
+              <span
+                id="message-error"
+                role="alert"
+                class="error-message"
+                style="display: none"
+              ></span>
+              <div id="message-counter" class="char-counter">280 remaining</div>
+            </div>
+
+            <button type="submit" class="btn">Send Message</button>
+          </form>
+
+          <div class="contact-info">
+            <h3>I'd love to make you something!</h3>
+            <p>Let's bring your idea to life.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer role="contentinfo">
+      <svg
+        class="footer-background"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 1200 100"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path
+          d="M0,50 Q300,100 600,50 T1200,50 L1200,0 L0,0 Z"
+          fill="#f0f0f0"
+        />
+      </svg>
+
+      <nav aria-label="Social media">
+        <ul>
+          <li>
+            <a
+              href="https://www.etsy.com/shop/JossDrawsLLC"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Etsy</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://www.instagram.com/joss.draws/"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Instagram</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://www.facebook.com/Timeless.Artss"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Facebook</a
+            >
+          </li>
         </ul>
       </nav>
-    </div>
-  </header>
 
-  <!-- Main content -->
-  <main id="main" role="main">
-    
-    <!-- Home Tab -->
-    <section id="panel-home" class="tab-home hero" role="tabpanel" aria-labelledby="hero-heading">
-      <h2 id="hero-heading" class="sr-only">Welcome</h2>
-      <a href="#contact-heading" class="hero-image-link" data-tab-target="contact" aria-label="Contact for commissions">
-        <div class="hero-slideshow">
-          <!-- Random image will be injected here by JavaScript -->
-        </div>
-        <div class="hero-overlay-text">
-          <p>Want something created? Tap here.</p>
-        </div>
-      </a>
-    </section>
+      <p>&copy; 2026 JossDrawsLLC.</p>
+      <p class="ai-notice">
+        <strong>None</strong> of this work is authorized to be used in
+        AI-generated content or training.
+      </p>
+    </footer>
 
-    <!-- Gallery Tab -->
-    <section id="panel-gallery" class="tab-gallery" role="tabpanel" aria-labelledby="gallery-title">
-      <div class="hero">
-        <h2 id="gallery-heading">Joslynn Losee</h2>
-      </div>
-
-      <div class="container">
-        <h3 id="gallery-title" class="sr-only">Gallery</h3>
-        <div id="gallery-filters" class="gallery-filters" hidden>
-          <select id="filterMedium" aria-label="Filter by medium">
-            <option value="">All Mediums</option>
-          </select>
-          <select id="filterYear" aria-label="Filter by year">
-            <option value="">All Years</option>
-          </select>
-          <select id="sortDate" aria-label="Sort by date">
-            <option value="default">Default Order</option>
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-          </select>
-        </div>
-        <div id="masonry-gallery" aria-busy="true" aria-label="Gallery loading">
-          <!-- Loading spinner will be created by masonry-gallery.js -->
-        </div>
-      </div>
-    </section>
-
-    <!-- About Tab -->
-    <section id="panel-about" class="tab-about container" role="tabpanel" aria-labelledby="about-heading">
-      <h2 id="about-heading">About</h2>
-      
-      <div class="grid grid-2">
-        <div class="img-loading-wrapper">
-          <img id="about-photo" src="https://lh3.googleusercontent.com/d/1t-dOjZJLTpkC2UdUmhvdRNWlfm8wM1pG" loading="lazy" decoding="async" width="800" height="800" alt="Joslynn Losee - The artist behind the work">
-        </div>
-        <div id="about-text">
-          <p>My name is <strong>Joslynn Losee</strong> I am a 25 year old multidisciplinary artist who specializes in illustration and graphic design.
-          <br><br></p>
-          <h3>A <em>bit</em> about me</h3>
-<p>I'm a local Salt Lake City artist whose creative career began in 2019 with the launch of my Etsy shop. After graduating from MTECH in 2021 with a degree in graphic design, one of my earliest listings unexpectedly went viral, propelling me into the world of professional art.
-<br><br>Through experimentation, learning from mistakes, and persistent dedication, I've honed my techniques and refined my artistic process. I'm deeply grateful to the friends and family who have supported me along the way.
-<br><br>I look forward to continuing to create art that brings joy to everyone who encounters it.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Shop Tab -->
-    <section id="panel-shop" class="tab-shop container" role="tabpanel" aria-labelledby="shop-heading">
-      <h2 id="shop-heading">Shop</h2>
-
-      <!-- Page title — updated dynamically per pagination page -->
-      <h3 id="shop-page-title" class="shop-page-title" style="display:none"></h3>
-
-      <div class="shop-grid-wrapper">
-        <div class="grid grid-3" id="shop-grid" aria-busy="true" aria-label="Shop loading">
-          <!-- Products loaded dynamically by shop-renderer.js -->
-        </div>
-      </div>
-
-      <!-- Pagination - Rendered dynamically by shop-renderer.js -->
-      <nav aria-label="Shop pagination" class="shop-pagination-nav" style="display:none">
-        <ul class="pagination"></ul>
-      </nav>
-    </section>
-
-    <!-- Reviews Tab -->
-    <section id="panel-reviews" class="tab-reviews container" role="tabpanel" aria-labelledby="reviews-heading">
-      <h2 id="reviews-heading">Client Love</h2>
-      <p class="muted-center section-subtitle">Kind words from happy customers.</p>
-      
-      <div id="review-carousel-container" class="carousel-wrapper">
-        <div class="carousel-track" id="track">
-          <div class="review-placeholder tab-loader" aria-live="polite">
-            <div class="loader-spinner loader-spinner--reviews" role="status" aria-label="Loading reviews"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Contact Tab -->
-    <section id="panel-contact" class="tab-contact container" role="tabpanel" aria-labelledby="contact-heading">
-      <h2 id="contact-heading">Contact</h2>
-      
-      <div class="grid grid-2">
-        <form id="contact-form" action="https://formspree.io/f/mqaglzrb" method="POST">
-          <div id="form-message" role="alert" aria-live="polite"></div>
-          
-          <div>
-            <label for="name">Name</label>
-            <input type="text" id="name" name="name" autocomplete="name" required>
-            <span id="name-error" role="alert" class="error-message" style="display:none;"></span>
-          </div>
-          
-          <div>
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email" autocomplete="email" aria-describedby="email-error" required>
-            <span id="email-error" role="alert" class="error-message" style="display:none;"></span>
-          </div>
-          
-          <div>
-            <label for="message">Message</label>
-            <textarea id="message" name="message" rows="5" aria-describedby="message-error" required></textarea>
-            <span id="message-error" role="alert" class="error-message" style="display:none;"></span>
-            <div id="message-counter" class="char-counter">280 remaining</div>
-          </div>
-          
-          <button type="submit" class="btn">Send Message</button>
-        </form>
-
-    <div class="contact-info">
-      <h3>I'd love to make you something!</h3>
-      <p>Let's bring your idea to life.</p>
-
-      </div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- Footer -->
-  <footer role="contentinfo">
-    <svg class="footer-background" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 100" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M0,50 Q300,100 600,50 T1200,50 L1200,0 L0,0 Z" fill="#f0f0f0"/>
-    </svg>
-  
-    
-    <nav aria-label="Social media">
-      <ul>
-        <li><a href="https://www.etsy.com/shop/JossDrawsLLC" target="_blank" rel="noopener noreferrer">Etsy</a></li>
-        <li><a href="https://www.instagram.com/joss.draws/" target="_blank" rel="noopener noreferrer">Instagram</a></li>
-        <li><a href="https://www.facebook.com/Timeless.Artss" target="_blank" rel="noopener noreferrer">Facebook</a></li>
-      </ul>
-    </nav>
-
-    <p>&copy; 2026 JossDrawsLLC.</p>
-    <p class="ai-notice"><strong>None</strong> of this work is authorized to be used in AI-generated content or training.</p>
-  </footer>
-
-<script defer src="js/hero-slideshow.js"></script>
-<script defer src="js/click-spark.js"></script>
-<script defer src="js/tabs-router.js"></script>
-<script defer src="js/masonry-gallery.js"></script>
-<script defer src="js/shop-renderer.js"></script>
-<script defer src="js/FormSubmission.js"></script>
-<script defer src="js/webgl.js"></script>
-
-</body>
+    <script defer src="js/hero-slideshow.js"></script>
+    <script defer src="js/click-spark.js"></script>
+    <script defer src="js/tabs-router.js"></script>
+    <script defer src="js/masonry-gallery.js"></script>
+    <script defer src="js/shop-renderer.js"></script>
+    <script defer src="js/FormSubmission.js"></script>
+    <script defer src="js/webgl.js"></script>
+  </body>
 </html>

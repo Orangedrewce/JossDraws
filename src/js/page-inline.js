@@ -39,7 +39,10 @@
     var track = document.getElementById("track");
     if (!track) return;
 
-    if (!window.supabase || typeof window.supabase.createClient !== "function") {
+    if (
+      !window.supabase ||
+      typeof window.supabase.createClient !== "function"
+    ) {
       return;
     }
 
@@ -47,7 +50,10 @@
     var SUPABASE_KEY = "sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv";
     // Use shared client instance to avoid multiple HTTP connection pools
     if (!window.__supabaseClient) {
-      window.__supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      window.__supabaseClient = window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY,
+      );
     }
     var db = window.__supabaseClient;
 
@@ -61,7 +67,8 @@
       pet_portrait: "🐾 Pet Portrait",
       faceless_portrait: "👤 Faceless Portrait",
       coloring_book: "🖍️ Coloring Book",
-      general: "Verified Review"
+      etsy_api: "🛍️ Etsy Review",
+      general: "Verified Review",
     };
 
     function normalizeSourceKey(value) {
@@ -80,25 +87,25 @@
 
         var rpcData = result && result.data;
         var error = result && result.error;
-        var data = (rpcData && rpcData.success) ? rpcData.reviews : null;
+        var data = rpcData && rpcData.success ? rpcData.reviews : null;
 
         if (error || !data || data.length === 0) {
-            // Fallback content if empty
-            track.textContent = "";
-            var fallback = document.createElement("div");
-            fallback.className = "review-card active";
-            fallback.innerHTML = `
+          // Fallback content if empty
+          track.textContent = "";
+          var fallback = document.createElement("div");
+          fallback.className = "review-card active";
+          fallback.innerHTML = `
               <span class="review-source-badge">Verified Review</span>
               <div class="review-stars">⭐⭐⭐⭐⭐</div>
               <p class="review-text">"I make art."</p>
               <div class="review-author">Joss</div>
             `;
-            track.appendChild(fallback);
-            return;
+          track.appendChild(fallback);
+          return;
         }
 
         track.textContent = "";
-        
+
         data.forEach(function (review, index) {
           var card = document.createElement("div");
           card.className = index === 0 ? "review-card active" : "review-card";
@@ -111,11 +118,11 @@
             var fallbackLabel = String(rawSource || "").trim();
             badgeLabel = fallbackLabel || sourceMap["general"];
           }
-          
+
           var badgeEl = document.createElement("span");
           badgeEl.className = "review-source-badge";
           badgeEl.textContent = badgeLabel;
-          badgeEl.style.marginBottom = "0.5rem"; 
+          badgeEl.style.marginBottom = "0.5rem";
           badgeEl.style.display = "inline-block";
 
           // --- 2. STARS ---
@@ -125,10 +132,14 @@
           starsEl.className = "review-stars";
           starsEl.textContent = "⭐".repeat(safeRating);
 
-          // --- 4. REVIEW TEXT ---
-          var textEl = document.createElement("p");
-          textEl.className = "review-text";
-          textEl.textContent = '"' + (review.review_text || "") + '"';
+          // --- 4. REVIEW TEXT (only if non-empty) ---
+          var reviewText = (review.review_text || "").trim();
+          var textEl = null;
+          if (reviewText.length > 0) {
+            textEl = document.createElement("p");
+            textEl.className = "review-text";
+            textEl.textContent = '"' + reviewText + '"';
+          }
 
           // --- 5. NAME ---
           var authorEl = document.createElement("div");
@@ -136,38 +147,153 @@
           authorEl.textContent = "- " + (review.client_name || "Anonymous");
 
           // --- BUILD CARD ---
-          card.appendChild(badgeEl);  // Top
+          card.appendChild(badgeEl); // Top
           card.appendChild(starsEl);
-          card.appendChild(textEl);
+          if (textEl) card.appendChild(textEl);
           card.appendChild(authorEl); // Bottom
 
           track.appendChild(card);
         });
 
-        // Start Animation
+        // Start Animation — Infinite Loop Carousel (two-sided cloning)
         if (data.length > 1) {
-          var currentIndex = 0;
-          var cards = document.querySelectorAll(".review-card");
+          var realCount = data.length;
           var intervalId = null;
+          var snapTimeout = null;
+
+          // --- TWO-SIDED CLONE TECHNIQUE for seamless infinite loop ---
+          // Track layout: [prepend clones][real cards][append clones]
+          //                indices 0..N-1   N..2N-1    2N..3N-1
+          // Start at index N (first real card).
+          // Forward: when index >= 2N, snap back to index - N
+          // Backward: when index < N, snap forward to index + N
+          var originalCards = Array.from(track.querySelectorAll(".review-card"));
+
+          // Prepend clones (all real cards, inserted before the first real card)
+          var firstReal = originalCards[0];
+          originalCards.forEach(function (card) {
+            var clone = card.cloneNode(true);
+            clone.classList.add("review-card-clone");
+            clone.setAttribute("aria-hidden", "true");
+            track.insertBefore(clone, firstReal);
+          });
+
+          // Append clones (all real cards, added after the last real card)
+          originalCards.forEach(function (card) {
+            var clone = card.cloneNode(true);
+            clone.classList.add("review-card-clone");
+            clone.setAttribute("aria-hidden", "true");
+            track.appendChild(clone);
+          });
+
+          // All cards including clones (3 × realCount total)
+          var allCards = track.querySelectorAll(".review-card");
+          var currentIndex = realCount; // Start at first real card
+
+          // --- ARROWS ---
+          var arrowLeft = document.querySelector(".review-arrow.left");
+          var arrowRight = document.querySelector(".review-arrow.right");
+
+          if (arrowLeft && arrowRight) {
+            arrowLeft.hidden = false;
+            arrowRight.hidden = false;
+
+            arrowLeft.addEventListener("click", function () {
+              stopCarousel();
+              goTo(currentIndex - 1, true);
+              startCarousel();
+            });
+
+            arrowRight.addEventListener("click", function () {
+              stopCarousel();
+              goTo(currentIndex + 1, true);
+              startCarousel();
+            });
+          }
+
+          function getMetrics() {
+            var firstCard = allCards[0];
+            if (!firstCard) return { cardWidth: 300, gap: 32 };
+            var cardWidth = firstCard.offsetWidth;
+            var gap = parseFloat(window.getComputedStyle(track).gap) || 32;
+            return { cardWidth: cardWidth, gap: gap };
+          }
+
+          function goTo(index, animate) {
+            // Cancel any pending snap from a previous call
+            if (snapTimeout) {
+              clearTimeout(snapTimeout);
+              snapTimeout = null;
+            }
+
+            var m = getMetrics();
+            var step = m.cardWidth + m.gap;
+
+            if (animate !== false) {
+              track.style.transition = "transform 0.4s ease";
+            } else {
+              track.style.transition = "none";
+            }
+
+            currentIndex = index;
+            track.style.transform = "translateX(" + -(currentIndex * step) + "px)";
+
+            // --- SEAMLESS WRAP ---
+            // Forward: scrolled into appended clone zone
+            if (currentIndex >= 2 * realCount) {
+              snapTimeout = setTimeout(function () {
+                snapTimeout = null;
+                currentIndex = currentIndex - realCount;
+                track.style.transition = "none";
+                track.style.transform = "translateX(" + -(currentIndex * step) + "px)";
+              }, 420);
+            }
+            // Backward: scrolled into prepended clone zone
+            else if (currentIndex < realCount) {
+              snapTimeout = setTimeout(function () {
+                snapTimeout = null;
+                currentIndex = currentIndex + realCount;
+                track.style.transition = "none";
+                track.style.transform = "translateX(" + -(currentIndex * step) + "px)";
+              }, 420);
+            }
+          }
+
+          // Set initial position (no animation)
+          goTo(currentIndex, false);
 
           function startCarousel() {
-            if (intervalId) return;
+            stopCarousel();
             intervalId = setInterval(function () {
-              cards[currentIndex].classList.remove("active");
-              currentIndex = (currentIndex + 1) % cards.length;
-              cards[currentIndex].classList.add("active");
+              goTo(currentIndex + 1, true);
             }, 6000);
           }
 
           function stopCarousel() {
-            if (intervalId) { clearInterval(intervalId); intervalId = null; }
+            if (intervalId) {
+              clearInterval(intervalId);
+              intervalId = null;
+            }
           }
+
+          // Recalculate offset on window resize
+          var resizeTimer = null;
+          window.addEventListener("resize", function () {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function () {
+              goTo(currentIndex, false);
+            }, 150);
+          });
 
           // Pause carousel when page is hidden (guarded against duplicate listeners)
           if (!window.__carouselVisListenerAdded) {
             window.__carouselVisListenerAdded = true;
             document.addEventListener("visibilitychange", function () {
-              if (document.hidden) { stopCarousel(); } else { startCarousel(); }
+              if (document.hidden) {
+                stopCarousel();
+              } else {
+                startCarousel();
+              }
             });
           }
 
@@ -175,8 +301,8 @@
           var reviewsTab = document.getElementById("tab-reviews");
           if (reviewsTab) {
             var allTabs = document.querySelectorAll('input[name="tabs"]');
-            allTabs.forEach(function(tab) {
-              tab.addEventListener("change", function() {
+            allTabs.forEach(function (tab) {
+              tab.addEventListener("change", function () {
                 if (this.checked && this.id === "tab-reviews") {
                   startCarousel();
                 } else if (this.checked && this.id !== "tab-reviews") {
@@ -192,7 +318,6 @@
             startCarousel();
           }
         }
-
       } catch (e) {
         console.error("Carousel Error:", e);
       }
@@ -212,13 +337,17 @@
     var photoEl = document.getElementById("about-photo");
     var textEl = document.getElementById("about-text");
     if (!photoEl || !textEl) return;
-    if (!window.supabase || typeof window.supabase.createClient !== "function") return;
+    if (!window.supabase || typeof window.supabase.createClient !== "function")
+      return;
 
     var SUPABASE_URL = "https://pciubbwphwpnptgawgok.supabase.co";
     var SUPABASE_KEY = "sb_publishable_jz1pWpo7TDvURxQ8cqP06A_xc4ckSwv";
     // Use shared client instance to avoid multiple HTTP connection pools
     if (!window.__supabaseClient) {
-      window.__supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      window.__supabaseClient = window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY,
+      );
     }
     var db = window.__supabaseClient;
 
@@ -233,18 +362,24 @@
         }
         if (data.bio_text) {
           // Sanitize HTML: allow safe formatting tags, strip dangerous ones
-          var doc = new DOMParser().parseFromString(data.bio_text, 'text/html');
+          var doc = new DOMParser().parseFromString(data.bio_text, "text/html");
           // Remove all script, iframe, object, embed, form, and event-handler-bearing elements
-          doc.querySelectorAll('script,iframe,object,embed,form,link,style,meta').forEach(function(el) { el.remove(); });
+          doc
+            .querySelectorAll("script,iframe,object,embed,form,link,style,meta")
+            .forEach(function (el) {
+              el.remove();
+            });
           // Strip event handler attributes (onclick, onerror, onload, etc.) from all elements
-          doc.body.querySelectorAll('*').forEach(function(el) {
-            Array.from(el.attributes).forEach(function(attr) {
-              if (attr.name.startsWith('on') || attr.name === 'srcdoc') el.removeAttribute(attr.name);
+          doc.body.querySelectorAll("*").forEach(function (el) {
+            Array.from(el.attributes).forEach(function (attr) {
+              if (attr.name.startsWith("on") || attr.name === "srcdoc")
+                el.removeAttribute(attr.name);
             });
             // Strip javascript: from href/src
-            ['href', 'src', 'action'].forEach(function(a) {
+            ["href", "src", "action"].forEach(function (a) {
               var val = el.getAttribute(a);
-              if (val && /^\s*(javascript|data|vbscript):/i.test(val)) el.removeAttribute(a);
+              if (val && /^\s*(javascript|data|vbscript):/i.test(val))
+                el.removeAttribute(a);
             });
           });
           textEl.innerHTML = doc.body.innerHTML;
@@ -265,23 +400,23 @@
   // 3. Image Loading Indicators
   // ---------------------------------------------------------------------------
   function initImageLoading() {
-    var wrappers = document.querySelectorAll('.img-loading-wrapper');
-    wrappers.forEach(function(wrapper) {
-      var img = wrapper.querySelector('img');
+    var wrappers = document.querySelectorAll(".img-loading-wrapper");
+    wrappers.forEach(function (wrapper) {
+      var img = wrapper.querySelector("img");
       if (!img) return;
-      
+
       // If image is already cached/loaded
       if (img.complete && img.naturalWidth > 0) {
-        wrapper.classList.add('loaded');
+        wrapper.classList.add("loaded");
         return;
       }
-      
-      img.addEventListener('load', function() {
-        wrapper.classList.add('loaded');
+
+      img.addEventListener("load", function () {
+        wrapper.classList.add("loaded");
       });
-      
-      img.addEventListener('error', function() {
-        wrapper.classList.add('loaded');
+
+      img.addEventListener("error", function () {
+        wrapper.classList.add("loaded");
       });
     });
   }
@@ -296,44 +431,47 @@
   // 4. Decorative Tab Loading (First Visit Only)
   // ---------------------------------------------------------------------------
   var visitedTabs = {};
-  
+
   function showDecorativeLoading(tabName, container, spinnerClass) {
     // Skip if already visited (except home tab which reloads images)
-    if (visitedTabs[tabName] && tabName !== 'tab-home') return;
-    
+    if (visitedTabs[tabName] && tabName !== "tab-home") return;
+
     // Mark as visited
     visitedTabs[tabName] = true;
-    
+
     // For home tab, the hero-slideshow.js handles the spinner via img-loading-wrapper
     // So we skip the decorative overlay for home
-    if (tabName === 'tab-home') return;
-    
+    if (tabName === "tab-home") return;
+
     // Create decorative overlay for other tabs
-    var overlay = document.createElement('div');
-    overlay.className = 'decorative-loading-overlay';
-    overlay.innerHTML = '<div class="loader-spinner ' + spinnerClass + '"></div>';
+    var overlay = document.createElement("div");
+    overlay.className = "decorative-loading-overlay";
+    overlay.innerHTML =
+      '<div class="loader-spinner ' + spinnerClass + '"></div>';
     container.appendChild(overlay);
-    
+
     // Remove after brief moment
-    setTimeout(function() {
-      overlay.style.opacity = '0';
-      setTimeout(function() {
+    setTimeout(function () {
+      overlay.style.opacity = "0";
+      setTimeout(function () {
         if (overlay.parentNode) overlay.remove();
       }, 300);
     }, 400);
   }
-  
+
   // Monitor tab changes
   var tabRadios = document.querySelectorAll('input[name="tabs"]');
-  tabRadios.forEach(function(radio) {
-    radio.addEventListener('change', function() {
+  tabRadios.forEach(function (radio) {
+    radio.addEventListener("change", function () {
       if (!this.checked) return;
-      
+
       var tabId = this.id;
-      var tabSection = document.querySelector('.tab-' + tabId.replace('tab-', ''));
+      var tabSection = document.querySelector(
+        ".tab-" + tabId.replace("tab-", ""),
+      );
       if (!tabSection) return;
-      
-      var spinnerClass = 'loader-spinner--' + tabId.replace('tab-', '');
+
+      var spinnerClass = "loader-spinner--" + tabId.replace("tab-", "");
       showDecorativeLoading(tabId, tabSection, spinnerClass);
     });
   });

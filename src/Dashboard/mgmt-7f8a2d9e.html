@@ -81,6 +81,43 @@
         </div>
 
         <!-- ================================================ -->
+        <!-- BULK IMPORT REVIEWS — Paste JSON here             -->
+        <!-- ================================================ -->
+        <details class="recent-links" id="bulkImportSection">
+            <summary class="section-summary">
+                <span>Bulk Import Reviews</span>
+            </summary>
+
+            <div class="gallery-section-content">
+                <p class="description section-description">Paste an Etsy reviews JSON export below, then click Import. Duplicates are auto-skipped.</p>
+
+                <form id="bulkImportForm" class="gallery-form">
+                    <label for="bulkImportSource">Import Source</label>
+                    <select id="bulkImportSource">
+                        <option value="auto" selected>🔍 Auto-detect (by keywords)</option>
+                        <option value="etsy">🛍️ Etsy (generic)</option>
+                        <option value="sticker">🏷️ Sticker</option>
+                        <option value="print">🖨️ Art Print</option>
+                        <option value="bookmark">🔖 Bookmark</option>
+                        <option value="coloring_book">🖍️ Coloring Book</option>
+                        <option value="commission">🎨 Commission</option>
+                        <option value="general">📋 General</option>
+                    </select>
+
+                    <label for="bulkImportJson">Paste Review JSON</label>
+                    <textarea id="bulkImportJson" rows="10" placeholder='[{"reviewer":"Name","date_reviewed":"MM/DD/YYYY","star_rating":5,"message":"...","order_id":123}]' spellcheck="false"></textarea>
+
+                    <div class="bulk-import-actions">
+                        <button id="bulkImportBtn" type="submit">Import Reviews</button>
+                        <button id="bulkImportClearBtn" type="button" class="mini-btn">Clear</button>
+                    </div>
+                </form>
+
+                <div id="bulkImportMessage" class="gallery-msg is-hidden" role="status" aria-live="polite"></div>
+            </div>
+        </details>
+
+        <!-- ================================================ -->
         <!-- REVIEW MANAGER — Approve / Deny / Delete / Restore -->
         <!-- ================================================ -->
         <details class="recent-links" id="reviewSection">

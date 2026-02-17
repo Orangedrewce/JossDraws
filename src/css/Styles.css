@@ -127,9 +127,7 @@ button {
   background: none;
 }
 
-.review-card {
-  padding: 1.5rem 0; /*  spacing between reviews */
-}
+/* .review-card removed (redefined below) */
 
 /* =============================================================================
    ACCESSIBILITY
@@ -426,22 +424,23 @@ nav label:focus-visible {
   display: block;
   width: 100%;
   max-width: var(--container-max);
-  overflow: hidden;
   margin: 0 auto;
   border-radius: var(--border-radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
 }
 
 .hero-image-link img {
   width: 100%;
   height: auto;
   display: block;
-  transition: transform var(--transition-speed-slow);
   border-radius: var(--border-radius);
 }
 
-.hero-image-link:hover img {
-  transform: scale(1.02);
-  border-radius: var(--border-radius);
+/* Subtle lift */
+.hero-image-link:hover {
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
 }
 
 .hero-image-link:focus-visible {
@@ -449,40 +448,81 @@ nav label:focus-visible {
   outline-offset: 2px;
 }
 
+/* Slideshow image container */
+.hero-slideshow {
+  position: relative;
+  width: 100%;
+  min-height: 400px;
+  background-position: center;
+  transition: transform 0.6s ease, filter 0.6s ease;
+  display: flex; /* Keep layout for loader */
+  align-items: center;
+  justify-content: center;
+}
+
+/* Image zoom effect - disabled per request */
+.hero-image-link:hover .hero-slideshow {
+  filter: brightness(0.85);
+}
+
+/* Dark overlay layer */
+.hero-image-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.2),
+    rgba(0, 0, 0, 0.55)
+  );
+  opacity: 0.6;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  border-radius: var(--border-radius);
+}
+
+.hero-image-link:hover::after {
+  opacity: 0.8;
+}
+
+/* Overlay text */
 .hero-overlay-text {
   position: absolute;
-  top: 50%;
+  bottom: 30px;
   left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  color: var(--color-bg);
-  background: var(--color-overlay);
-  padding: var(--spacing-md);
-  border-radius: var(--border-radius);
-  font-size: var(--font-size-xl);
+  transform: translateX(-50%);
+  color: white;
+  font-size: 1.3rem;
   font-weight: 600;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-  transition: background var(--transition-speed-slow);
-  pointer-events: none;
-  max-width: 90%;
-  box-sizing: border-box;
-  word-break: break-word;
+  letter-spacing: 0.5px;
+  text-align: center;
+  transition: transform 0.4s ease, opacity 0.4s ease;
   z-index: var(--z-content);
+  width: 90%;
+  max-width: 90%;
+  pointer-events: none;
 }
 
+/* Text animation */
 .hero-image-link:hover .hero-overlay-text {
-  background: var(--color-overlay-hover);
+  transform: translate(-50%, -6px);
+  opacity: 1;
 }
 
-.hero-overlay-text label {
-  text-decoration: underline;
-  color: var(--color-bg);
-  pointer-events: auto;
-}
-
+/* Optional: subtle glow pulse */
 .hero-overlay-text p {
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  border-radius: 50px;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(6px);
+  transition: background 0.4s ease;
+  color: #fff;
   margin: 0;
-  color: var(--color-bg);
+}
+
+.hero-image-link:hover .hero-overlay-text p {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .hero h1 {
@@ -1044,6 +1084,160 @@ footer a:focus-visible {
 }
 
 /* =============================================================================
+   REVIEWS SECTION ONLY
+   ============================================================================= */
+
+/* Reviews Tab Container */
+#panel-reviews.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+#reviews-heading {
+  font-size: 2.5rem;
+  font-weight: 400;
+  line-height: 1.2;
+  color: #1a1a1a;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+#panel-reviews .section-subtitle {
+  text-align: center;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+/* Carousel Wrapper */
+.carousel-wrapper {
+  overflow: hidden;
+  position: relative;
+  padding: 1rem 0;
+}
+
+/* Carousel Track - holds all review cards */
+.carousel-track {
+  display: flex;
+  gap: 2rem;
+  transition: transform 0.4s ease;
+}
+
+/* Individual Review Card */
+.review-card {
+  flex: 0 0 300px;
+  background: #f9f9f9;
+  border-radius: var(--border-radius); /* Match tabs */
+  padding: 1.8rem;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.02);
+  border: 1px solid #f0f0f0;
+}
+
+/* Review Arrows */
+.review-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex; /* Ensure centering */
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+  z-index: 10;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.review-arrow:hover {
+  background: #f0f0f0;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.review-arrow.left {
+  left: 0;
+}
+
+.review-arrow.right {
+  right: 0;
+}
+
+/* Source badge pill (e.g. "🛍️ Etsy Order") */
+.review-source-badge {
+  display: inline-block;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: #f0f0f0;
+  color: #555;
+  margin-bottom: 0.5rem;
+}
+
+/* Star rating row */
+.review-stars {
+  color: #f5b342;
+  margin-bottom: 0.5rem;
+  letter-spacing: 2px;
+  font-size: 1.1rem;
+}
+
+.review-card p {
+  font-style: italic;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+  color: #2d2d2d;
+  word-break: break-word;
+}
+
+.review-author {
+  font-weight: 600;
+  color: #2d2d2d;
+}
+
+/* Loading State */
+.review-placeholder {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.loader-spinner--reviews {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f0f0f0;
+  border-top-color: #888;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 2rem auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive Adjustments for Reviews */
+@media (max-width: 768px) {
+  #reviews-heading {
+    font-size: 2rem;
+  }
+  
+  .carousel-track {
+    gap: 1rem;
+  }
+  
+  .review-card {
+    flex: 0 0 260px;
+    padding: 1.5rem;
+  }
+}
+
+/* =============================================================================
    RESPONSIVE ADJUSTMENTS
    ============================================================================= */
 @media (max-width: 768px) {
@@ -1367,10 +1561,7 @@ footer a:focus-visible {
   border-top-color: var(--tab-contact-color);
 }
 
-.loader-spinner--reviews {
-  border-color: var(--tab-reviews-color);
-  border-top-color: var(--color-text);
-}
+/* .loader-spinner--reviews removed (redefined in reviews section) */
 
 /* Small spinner variant — used inside individual gallery cards */
 .loader-spinner--small {
@@ -1489,14 +1680,7 @@ footer a:focus-visible {
 }
 
 /* Hero slideshow container should maintain aspect ratio */
-.hero-slideshow {
-  position: relative;
-  min-height: 400px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-}
+/* .hero-slideshow moved to Hero Section around line 420 */
 
 /* When image hasn't loaded yet, show spinner in center of hero area */
 .hero-slideshow .img-loading-wrapper:not(.loaded) {

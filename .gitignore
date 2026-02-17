@@ -24,6 +24,9 @@ yarn-error.log
 dist/
 build/
 
+# Supabase Edge Functions (secrets / .env in there)
+supabase/
+
 # Temporary files
 *.tmp
 *.bak
