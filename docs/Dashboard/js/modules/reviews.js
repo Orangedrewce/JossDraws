@@ -19,6 +19,7 @@ export function initReviews() {
   let activeReviewTab = "pending";
   const reviewDeletePending = new Map();
   const REVIEW_DELETE_MS = 3000;
+  const selectedReviewIds = new Set();
 
   // ----- Show Review Message -----
   function showReviewMsg(text, isError) {
@@ -122,6 +123,7 @@ export function initReviews() {
   function renderReviews() {
     const items = reviewData[activeReviewTab] || [];
     rEl.list.textContent = "";
+    selectedReviewIds.clear();
 
     if (items.length === 0) {
       const p = document.createElement("p");
@@ -137,11 +139,106 @@ export function initReviews() {
       return;
     }
 
+    // Bulk selection bar
+    const bar = document.createElement("div");
+    bar.className = "review-bulk-bar";
+
+    const selectAllCb = document.createElement("input");
+    selectAllCb.type = "checkbox";
+    selectAllCb.className = "review-select-all";
+    selectAllCb.title = "Select / deselect all";
+    selectAllCb.setAttribute("aria-label", "Select all reviews");
+
+    const selectLabel = document.createElement("span");
+    selectLabel.className = "review-select-count";
+    selectLabel.textContent = "Select all";
+
+    const bulkBtns = document.createElement("div");
+    bulkBtns.className = "review-bulk-btns is-hidden";
+
+    if (activeReviewTab === "pending") {
+      const approveBtn = document.createElement("button");
+      approveBtn.type = "button";
+      approveBtn.className = "mini-btn";
+      approveBtn.dataset.bulkAction = "approve";
+      approveBtn.textContent = "✅ Approve selected";
+      bulkBtns.appendChild(approveBtn);
+    }
+
+    if (activeReviewTab === "approved") {
+      const denyBtn = document.createElement("button");
+      denyBtn.type = "button";
+      denyBtn.className = "mini-btn secondary";
+      denyBtn.dataset.bulkAction = "deny";
+      denyBtn.textContent = "⏸️ Unpublish selected";
+      bulkBtns.appendChild(denyBtn);
+    }
+
+    if (activeReviewTab !== "deleted") {
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "mini-btn danger";
+      delBtn.dataset.bulkAction = "delete";
+      delBtn.textContent = "🗑️ Delete selected";
+      bulkBtns.appendChild(delBtn);
+    }
+
+    if (activeReviewTab === "deleted") {
+      const restoreBtn = document.createElement("button");
+      restoreBtn.type = "button";
+      restoreBtn.className = "mini-btn secondary";
+      restoreBtn.dataset.bulkAction = "restore";
+      restoreBtn.textContent = "♻️ Restore selected";
+      bulkBtns.appendChild(restoreBtn);
+
+      const purgeBtn = document.createElement("button");
+      purgeBtn.type = "button";
+      purgeBtn.className = "mini-btn danger";
+      purgeBtn.dataset.bulkAction = "purge";
+      purgeBtn.textContent = "💀 Purge selected";
+      bulkBtns.appendChild(purgeBtn);
+    }
+
+    bar.append(selectAllCb, selectLabel, bulkBtns);
+    rEl.list.appendChild(bar);
+
+    // Select-all toggle
+    selectAllCb.addEventListener("change", () => {
+      const cards = rEl.list.querySelectorAll(".review-select-cb");
+      cards.forEach((cb) => {
+        cb.checked = selectAllCb.checked;
+        const id = cb.dataset.reviewId;
+        if (selectAllCb.checked) selectedReviewIds.add(id);
+        else selectedReviewIds.delete(id);
+        cb.closest(".review-mgmt-card")?.classList.toggle("selected", selectAllCb.checked);
+      });
+      updateBulkBar();
+    });
+
     const fragment = document.createDocumentFragment();
     for (const review of items) {
       fragment.appendChild(renderReviewCard(review));
     }
     rEl.list.appendChild(fragment);
+  }
+
+  function updateBulkBar() {
+    const bar = rEl.list.querySelector(".review-bulk-bar");
+    if (!bar) return;
+    const label = bar.querySelector(".review-select-count");
+    const btns = bar.querySelector(".review-bulk-btns");
+    const n = selectedReviewIds.size;
+    if (n > 0) {
+      label.textContent = `${n} selected`;
+      btns.classList.remove("is-hidden");
+    } else {
+      label.textContent = "Select all";
+      btns.classList.add("is-hidden");
+    }
+    // Sync select-all checkbox state
+    const allCb = bar.querySelector(".review-select-all");
+    const items = reviewData[activeReviewTab] || [];
+    if (allCb) allCb.checked = n > 0 && n === items.length;
   }
 
   // ----- Render Review Card -----
@@ -150,15 +247,32 @@ export function initReviews() {
     card.className = "review-mgmt-card";
     card.setAttribute("data-review-id", String(review.id));
 
-    // Top bar with drag handle + sort input (approved tab only)
-    if (activeReviewTab === "approved") {
-      const topBar = document.createElement("div");
-      topBar.className = "review-topbar";
+    // Select checkbox
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.className = "review-select-cb";
+    cb.dataset.reviewId = String(review.id);
+    cb.setAttribute("aria-label", "Select " + (review.client_name || "review"));
+    cb.addEventListener("change", () => {
+      if (cb.checked) selectedReviewIds.add(String(review.id));
+      else selectedReviewIds.delete(String(review.id));
+      card.classList.toggle("selected", cb.checked);
+      updateBulkBar();
+    });
 
+    // Top bar: [⠿ handle] [☑ select] [spacer] [# input]  (approved)
+    // Or just: [☑ select]  (pending/deleted)
+    const topBar = document.createElement("div");
+    topBar.className = "review-topbar";
+
+    if (activeReviewTab === "approved") {
       const handle = document.createElement("span");
       handle.className = "drag-handle";
       handle.title = "Drag to reorder";
       handle.textContent = "⠿";
+
+      const spacer = document.createElement("span");
+      spacer.className = "review-topbar-spacer";
 
       const sortLabel = document.createElement("span");
       sortLabel.className = "review-sort-label";
@@ -178,9 +292,12 @@ export function initReviews() {
         : 1;
       sortInput.value = String(safeSort);
 
-      topBar.append(handle, sortLabel, sortInput);
-      card.appendChild(topBar);
+      topBar.append(handle, cb, spacer, sortLabel, sortInput);
+    } else {
+      topBar.append(cb);
     }
+
+    card.appendChild(topBar);
 
     // Header: name + stars + source
     const header = document.createElement("div");
@@ -366,6 +483,68 @@ export function initReviews() {
       showReviewMsg("Error: " + err.message, true);
       btn.disabled = false;
       btn.textContent = origText;
+    }
+  });
+
+  // ----- Bulk Action Handler (select multiple + act) -----
+  let bulkConfirmArmed = false;
+  rEl.list.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-bulk-action]");
+    if (!btn || !ctx.db || !ctx.adminCode) return;
+    if (selectedReviewIds.size === 0) return;
+
+    const action = btn.dataset.bulkAction;
+    const count = selectedReviewIds.size;
+    const isDangerous = action === "delete" || action === "purge";
+
+    // Two-click confirm for destructive bulk actions
+    if (isDangerous && !bulkConfirmArmed) {
+      bulkConfirmArmed = true;
+      const origLabel = btn.textContent;
+      btn.textContent = `⚠️ ${action === "purge" ? "Purge" : "Delete"} ${count} forever?`;
+      btn.classList.remove("danger");
+      btn.classList.add("confirm-armed");
+      setTimeout(() => {
+        bulkConfirmArmed = false;
+        btn.textContent = origLabel;
+        btn.classList.remove("confirm-armed");
+        btn.classList.add("danger");
+      }, 4000);
+      return;
+    }
+    bulkConfirmArmed = false;
+
+    const ids = Array.from(selectedReviewIds);
+    btn.disabled = true;
+    btn.textContent = `Working (${count})...`;
+
+    try {
+      const { data, error } = await ctx.db.rpc("admin_bulk_review_action", {
+        p_admin_code: ctx.adminCode,
+        p_ids: JSON.stringify(ids.map(Number)),
+        p_action: action,
+      });
+      if (error) throw new Error(error.message);
+      if (!data || !data.success) {
+        if (data?.error === "Unauthorized") {
+          ctx.adminCode = null;
+          showAuthLockout("Invalid admin code.");
+          return;
+        }
+        throw new Error(data?.error || "Bulk action failed");
+      }
+
+      const verbs = {
+        approve: "approved", deny: "unpublished",
+        delete: "deleted", restore: "restored", purge: "purged",
+      };
+      showReviewMsg(`${data.affected} review(s) ${verbs[action] || action}`, false);
+      selectedReviewIds.clear();
+      await loadReviews();
+    } catch (err) {
+      showReviewMsg("Error: " + err.message, true);
+      btn.disabled = false;
+      btn.textContent = "Retry";
     }
   });
 

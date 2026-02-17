@@ -247,7 +247,7 @@ export function initReviews() {
     card.className = "review-mgmt-card";
     card.setAttribute("data-review-id", String(review.id));
 
-    // Select checkbox (all tabs)
+    // Select checkbox
     const cb = document.createElement("input");
     cb.type = "checkbox";
     cb.className = "review-select-cb";
@@ -259,17 +259,20 @@ export function initReviews() {
       card.classList.toggle("selected", cb.checked);
       updateBulkBar();
     });
-    card.appendChild(cb);
 
-    // Top bar with drag handle + sort input (approved tab only)
+    // Top bar: [⠿ handle] [☑ select] [spacer] [# input]  (approved)
+    // Or just: [☑ select]  (pending/deleted)
+    const topBar = document.createElement("div");
+    topBar.className = "review-topbar";
+
     if (activeReviewTab === "approved") {
-      const topBar = document.createElement("div");
-      topBar.className = "review-topbar";
-
       const handle = document.createElement("span");
       handle.className = "drag-handle";
       handle.title = "Drag to reorder";
       handle.textContent = "⠿";
+
+      const spacer = document.createElement("span");
+      spacer.className = "review-topbar-spacer";
 
       const sortLabel = document.createElement("span");
       sortLabel.className = "review-sort-label";
@@ -289,9 +292,12 @@ export function initReviews() {
         : 1;
       sortInput.value = String(safeSort);
 
-      topBar.append(handle, sortLabel, sortInput);
-      card.appendChild(topBar);
+      topBar.append(handle, cb, spacer, sortLabel, sortInput);
+    } else {
+      topBar.append(cb);
     }
+
+    card.appendChild(topBar);
 
     // Header: name + stars + source
     const header = document.createElement("div");
