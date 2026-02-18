@@ -9,8 +9,6 @@
   --color-border: #e0e0e0;
   --color-shadow: rgba(0, 0, 0, 0.1);
   --color-hover-bg: #e0e0e0;
-  --color-overlay: rgba(0, 0, 0, 0.6);
-  --color-overlay-hover: rgba(0, 0, 0, 0.8);
   
   /* UI Colors */
   --color-light-bg: #f9f9f9;
@@ -65,7 +63,6 @@
   --z-content: 2;        /* Main content layer */
   --z-ui: 3;             /* UI elements (arrows, controls) */
   --z-elevated-card: 10; /* Focused/expanded cards */
-  --z-sticky: 50;        /* Sticky elements (future use) */
   --z-overlay: 100;      /* Overlays, spinners */
   --z-modal: 200;        /* Modals, skip links */
   --z-dropdown: 300;     /* Dropdowns (future use) */
@@ -83,7 +80,7 @@
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
+  box-sizing: border-box; 
   margin: 0;
   padding: 0;
 }
@@ -93,7 +90,13 @@ html {
   line-height: var(--line-height-base);
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Firefox doesn't recognise -moz-osx-font-smoothing as a CSS property;
+   wrapping it in @supports silences the console warning on non-macOS Firefox
+   while still applying on macOS Firefox/Safari where it's valid. */
+@supports (-moz-appearance: none) {
+  html { -moz-osx-font-smoothing: grayscale; }
 }
 
 body {
@@ -127,24 +130,23 @@ button {
   background: none;
 }
 
-/* .review-card removed (redefined below) */
-
 /* =============================================================================
    ACCESSIBILITY
    ============================================================================= */
 .skip-link {
   position: absolute;
-  top: -40px;
+  top: 0;
   left: 0;
+  transform: translateY(-100%);
   background: var(--color-text);
   color: var(--color-bg);
   padding: var(--spacing-sm) var(--spacing-md);
   z-index: var(--z-modal);
-  transition: top var(--transition-speed);
+  transition: transform var(--transition-speed);
 }
 
 .skip-link:focus {
-  top: 0;
+  transform: translateY(0);
 }
 
 /* Screen reader only content */
@@ -179,9 +181,6 @@ input[type="radio"][name="tabs"] {
 main > section {
   display: none;
   padding: var(--spacing-2xl) var(--spacing-xl);
-  /* Occlusion culling: skip layout/paint for hidden tab sections */
-  content-visibility: hidden;
-  contain-intrinsic-size: auto 800px;
 }
 
 #tab-home:checked ~ main .tab-home,
@@ -192,8 +191,14 @@ main > section {
 #tab-contact:checked ~ main .tab-contact {
   display: flex;
   flex-direction: column;
-  /* Restore rendering for the active tab */
-  content-visibility: visible;
+  /* Occlusion culling: skip layout/paint for off-screen content within visible tabs */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 800px;
+}
+
+/* Home section — full-bleed hero, no padding */
+.tab-home {
+  padding: 0;
 }
 
 /* Gallery section specific layout */
@@ -416,122 +421,102 @@ nav label:focus-visible {
    HERO SECTION
    ============================================================================= */
 .hero {
-  width: 100%;
-}
-
-.hero-image-link {
   position: relative;
-  display: block;
   width: 100%;
-  max-width: var(--container-max);
-  margin: 0 auto;
-  border-radius: var(--border-radius);
   overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.4s ease, box-shadow 0.4s ease;
 }
 
-.hero-image-link img {
-  width: 100%;
-  height: auto;
-  display: block;
-  border-radius: var(--border-radius);
-}
-
-/* Subtle lift */
-.hero-image-link:hover {
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
-}
-
-.hero-image-link:focus-visible {
-  outline: 3px solid var(--color-text);
-  outline-offset: 2px;
-}
-
-/* Slideshow image container */
+/* ---- Slideshow (background layer) ---- */
 .hero-slideshow {
   position: relative;
   width: 100%;
-  min-height: 400px;
-  background-position: center;
-  transition: transform 0.6s ease, filter 0.6s ease;
-  display: flex; /* Keep layout for loader */
+  min-height: 520px;
+  display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Image zoom effect - disabled per request */
-.hero-image-link:hover .hero-slideshow {
-  filter: brightness(0.85);
-}
-
-/* Dark overlay layer */
-.hero-image-link::after {
-  content: "";
+/* ---- Overlay (gradient, brand-tinted) ---- */
+.hero-overlay {
   position: absolute;
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0.2),
-    rgba(0, 0, 0, 0.55)
+    rgba(0, 0, 0, 0.15) 0%,
+    rgba(4, 162, 189, 0.25) 50%,
+    rgba(0, 0, 0, 0.6) 100%
   );
-  opacity: 0.6;
-  transition: opacity 0.4s ease;
   pointer-events: none;
-  border-radius: var(--border-radius);
 }
 
-.hero-image-link:hover::after {
-  opacity: 0.8;
-}
-
-/* Overlay text */
-.hero-overlay-text {
+/* ---- Foreground content ---- */
+.hero-content {
   position: absolute;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: white;
-  font-size: 1.3rem;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 3rem;
+  z-index: var(--z-content);
+  pointer-events: none; /* let clicks through to slideshow, except on the button */
+}
+
+.hero-label {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.hero-name {
+  color: #fff;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* 1. Define the color cycling sequence */
+@keyframes colorCycle {
+  0%, 100% { background-color: rgb(1, 145, 169); }    /* Home (Blue) */
+  20%      { background-color: rgb(123, 205, 203); }  /* Gallery (Teal) */
+  40%      { background-color: rgb(252, 218, 6); }    /* About (Yellow) */
+  60%      { background-color: rgb(248, 143, 44); }   /* Shop (Orange) */
+  80%      { background-color: rgb(239, 87, 141); }   /* Contact (Pink) */
+}
+
+.hero-cta {
+  pointer-events: auto;
+  display: inline-block;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
   font-weight: 600;
   letter-spacing: 0.5px;
-  text-align: center;
-  transition: transform 0.4s ease, opacity 0.4s ease;
-  z-index: var(--z-content);
-  width: 90%;
-  max-width: 90%;
-  pointer-events: none;
-}
-
-/* Text animation */
-.hero-image-link:hover .hero-overlay-text {
-  transform: translate(-50%, -6px);
-  opacity: 1;
-}
-
-/* Optional: subtle glow pulse */
-.hero-overlay-text p {
-  display: inline-block;
-  padding: 0.6rem 1.2rem;
-  border-radius: 50px;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(6px);
-  transition: background 0.4s ease;
   color: #fff;
-  margin: 0;
+  background: var(--tab-home-color);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50px;
+  cursor: pointer;
+  /* Maintain transitions for transform and shadow */
+  transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.hero-image-link:hover .hero-overlay-text p {
-  background: rgba(255, 255, 255, 0.25);
+.hero-cta:hover {
+  /* 2. Execute the animation on hover */
+  /* Duration: 3s, Timing: linear, Loop: infinite */
+  animation: colorCycle 3s linear infinite;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(4, 162, 189, 0.4);
 }
 
-.hero h1 {
-  font-size: var(--font-size-3xl);
-  margin-bottom: var(--spacing-sm);
-}
-
-.hero p {
-  margin-bottom: var(--spacing-sm);
+.hero-cta:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
 }
 
 /* =============================================================================
@@ -546,6 +531,8 @@ nav label:focus-visible {
   font-weight: 500;
   text-align: center;
   border-radius: var(--border-radius);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .btn:hover {
@@ -802,7 +789,7 @@ nav label:focus-visible {
 }
 
 .image-carousel .arrow:hover {
-  opacity: 1 !important;
+  opacity: 1;
   background: var(--color-bg);
 }
 
@@ -991,8 +978,6 @@ footer a:focus-visible {
 /* =============================================================================
    PAGINATION (Unified for Gallery & Shop)
    ============================================================================= */
-.pagination-nav,
-.gallery-pagination-nav,
 .shop-pagination-nav {
   position: sticky;
   bottom: 0;
@@ -1025,6 +1010,8 @@ footer a:focus-visible {
   border-radius: 5px; /* consistent rounded edges for pagination */
   background: var(--color-bg);
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .pagination a:hover,
@@ -1179,7 +1166,8 @@ footer a:focus-visible {
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
   background: var(--color-lighter-bg);
-  color: var(--color-border-light);
+  color: var(--color-text);
+  opacity: 0.6;
   margin-bottom: 0.5rem;
 }
 
@@ -1289,18 +1277,23 @@ footer a:focus-visible {
     margin-right: auto;
   }
   
-  /* Smaller overlay text on hero for mobile */
-  .hero-overlay-text {
-    font-size: 0.9rem;
-    padding: var(--spacing-sm);
-    max-width: 95%;
-    line-height: 1.4;
+  /* Hero adjustments for mobile */
+  .hero-slideshow {
+    min-height: 380px;
   }
-  
-  /* Ensure hero image has enough height on mobile */
-  .hero-image-link img {
-    min-height: 200px;
-    object-fit: cover;
+
+  .hero-content {
+    padding-bottom: 2rem;
+  }
+
+  .hero-label {
+    font-size: 0.7rem;
+    letter-spacing: 1.5px;
+  }
+
+  .hero-cta {
+    padding: 0.65rem 1.5rem;
+    font-size: 0.9rem;
   }
   
   /* Cover the header background on narrow screens to avoid huge header */
@@ -1368,6 +1361,9 @@ footer a:focus-visible {
    MASONRY GALLERY CARD WRAPPER
    - Isolate reflows so image-load ratio changes don't trigger full-page layout
    ============================================================================= */
+/* contain: layout paint isolates reflows so that image-load aspect-ratio changes
+   don't trigger full-page relayout. Tradeoff: breaks position:fixed descendants
+   and may clip unexpected overflow. Intentional here — cards have no fixed children. */
 .masonry-item-wrapper {
   contain: layout paint;
 }
@@ -1508,6 +1504,8 @@ footer a:focus-visible {
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .masonry-video-controls .mvc-btn:hover,
@@ -1566,7 +1564,7 @@ footer a:focus-visible {
   border-top-color: var(--tab-contact-color);
 }
 
-/* .loader-spinner--reviews removed (redefined in reviews section) */
+
 
 /* Small spinner variant — used inside individual gallery cards */
 .loader-spinner--small {
@@ -1690,7 +1688,7 @@ footer a:focus-visible {
 /* When image hasn't loaded yet, show spinner in center of hero area */
 .hero-slideshow .img-loading-wrapper:not(.loaded) {
   width: 100%;
-  min-height: 400px;
+  min-height: 520px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1703,8 +1701,17 @@ footer a:focus-visible {
 
 /* Once loaded, wrapper shouldn't add extra space */
 .hero-slideshow .img-loading-wrapper.loaded {
+  position: absolute;
+  inset: 0;
   min-height: 0;
-  display: block;
+}
+
+.hero-slideshow .img-loading-wrapper.loaded img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .hero-slideshow .img-loading-wrapper.loaded::before {

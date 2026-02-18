@@ -486,19 +486,27 @@
         aria-labelledby="hero-heading"
       >
         <h2 id="hero-heading" class="sr-only">Welcome</h2>
-        <a
-          href="#contact-heading"
-          class="hero-image-link"
-          data-tab-target="contact"
-          aria-label="Contact for commissions"
-        >
-          <div class="hero-slideshow">
-            <!-- Random image will be injected here by JavaScript -->
-          </div>
-          <div class="hero-overlay-text">
-            <p>Want something created? Tap here.</p>
-          </div>
-        </a>
+
+        <!-- Slideshow background (JS injects random image) -->
+        <div class="hero-slideshow">
+          <!-- Random image will be injected here by JavaScript -->
+        </div>
+
+        <!-- Gradient overlay -->
+        <div class="hero-overlay" aria-hidden="true"></div>
+
+        <!-- Foreground content -->
+        <div class="hero-content">
+          <p class="hero-label">Illustration &#183; Design &#183; Commissions</p>
+          <p class="hero-name">JossDraws</p>
+          <button
+            class="hero-cta"
+            data-tab-target="contact"
+            type="button"
+          >
+            Commission Something
+          </button>
+        </div>
       </section>
 
       <!-- Gallery Tab -->
