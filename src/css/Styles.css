@@ -92,10 +92,9 @@ html {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Firefox doesn't recognise -moz-osx-font-smoothing as a CSS property;
-   wrapping it in @supports silences the console warning on non-macOS Firefox
-   while still applying on macOS Firefox/Safari where it's valid. */
-@supports (-moz-appearance: none) {
+/* Only apply -moz-osx-font-smoothing where the property is actually supported
+   (macOS Firefox). Direct feature-query avoids the warning on other platforms. */
+@supports (-moz-osx-font-smoothing: grayscale) {
   html { -moz-osx-font-smoothing: grayscale; }
 }
 
@@ -1186,6 +1185,22 @@ footer a:focus-visible {
 .review-author {
   font-weight: 600;
   color: var(--color-text);
+}
+
+/* Review attached image */
+.review-image {
+  margin: 0.6rem 0;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  max-width: 200px;
+}
+.review-image img {
+  display: block;
+  width: 100%;
+  max-height: 160px;
+  object-fit: cover;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border);
 }
 
 /* Loading State */

@@ -141,6 +141,21 @@
             textEl.textContent = '"' + reviewText + '"';
           }
 
+          // --- 4b. REVIEW IMAGE (if attached) ---
+          var imgEl = null;
+          if (review.image_url) {
+            imgEl = document.createElement("div");
+            imgEl.className = "review-image";
+            var imgTag = document.createElement("img");
+            imgTag.src = review.image_url;
+            imgTag.alt = (review.client_name || "Customer") + " review photo";
+            imgTag.loading = "lazy";
+            imgTag.addEventListener("error", function () {
+              imgEl.style.display = "none";
+            }, { once: true });
+            imgEl.appendChild(imgTag);
+          }
+
           // --- 5. NAME ---
           var authorEl = document.createElement("div");
           authorEl.className = "review-author";
@@ -150,6 +165,7 @@
           card.appendChild(badgeEl); // Top
           card.appendChild(starsEl);
           if (textEl) card.appendChild(textEl);
+          if (imgEl) card.appendChild(imgEl);
           card.appendChild(authorEl); // Bottom
 
           track.appendChild(card);

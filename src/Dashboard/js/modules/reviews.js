@@ -1,7 +1,7 @@
 // ============================================
 // REVIEW MANAGER MODULE
 // ============================================
-import { ctx, setHidden, showAuthLockout, getSourceMeta } from "./utils.js";
+import { ctx, setHidden, showAuthLockout, getSourceMeta, extractDriveFileId, toEmbedUrl } from "./utils.js";
 
 export function initReviews() {
   const rEl = {
@@ -24,7 +24,9 @@ export function initReviews() {
   // ----- Show Review Message -----
   function showReviewMsg(text, isError) {
     rEl.message.textContent = text;
-    rEl.message.className = "gallery-msg " + (isError ? "error" : "success");
+    rEl.message.classList.add("gallery-msg");
+    rEl.message.classList.toggle("error", isError);
+    rEl.message.classList.toggle("success", !isError);
     setHidden(rEl.message, false);
     setTimeout(() => setHidden(rEl.message, true), 5000);
   }
@@ -49,8 +51,7 @@ export function initReviews() {
     if (!ctx.db || !ctx.adminCode) return;
     rEl.list.textContent = "";
     const loader = document.createElement("p");
-    loader.className = "text-muted-2";
-    loader.style.fontSize = "0.85rem";
+    loader.className = "text-muted-2 text-xs";
     loader.textContent = "Loading reviews...";
     rEl.list.appendChild(loader);
 
@@ -106,8 +107,7 @@ export function initReviews() {
     } catch (err) {
       rEl.list.textContent = "";
       const p = document.createElement("p");
-      p.className = "text-danger";
-      p.style.fontSize = "0.85rem";
+      p.className = "text-danger text-xs";
       p.textContent = "Error: " + String(err?.message || err);
       rEl.list.appendChild(p);
     }
@@ -127,8 +127,7 @@ export function initReviews() {
 
     if (items.length === 0) {
       const p = document.createElement("p");
-      p.className = "text-muted-2";
-      p.style.fontSize = "0.85rem";
+      p.className = "text-muted-2 text-xs";
       p.textContent =
         activeReviewTab === "pending"
           ? "No pending reviews. All caught up!"
@@ -405,7 +404,84 @@ export function initReviews() {
       actions.appendChild(purgeBtn);
     }
 
-    card.append(header, sourceEl, textEl, dateEl, actions);
+    card.append(header, sourceEl, textEl, dateEl);
+
+    // --- Image URL row (paste-to-attach, like gallery URL input) ---
+    const imgRow = document.createElement("div");
+    imgRow.className = "review-img-row";
+
+    const imgLabel = document.createElement("label");
+    imgLabel.className = "review-img-label";
+    imgLabel.textContent = "📷 Attached image";
+
+    const imgInputWrap = document.createElement("div");
+    imgInputWrap.className = "review-img-input-wrap";
+
+    const imgInput = document.createElement("input");
+    imgInput.type = "text";
+    imgInput.className = "review-img-input";
+    imgInput.placeholder = "Paste image URL here...";
+    imgInput.autocomplete = "off";
+    imgInput.value = review.image_url || "";
+    imgInput.setAttribute("data-review-id", String(review.id));
+
+    const imgSaveBtn = document.createElement("button");
+    imgSaveBtn.type = "button";
+    imgSaveBtn.className = "mini-btn review-img-save";
+    imgSaveBtn.textContent = "💾";
+    imgSaveBtn.title = "Save image URL";
+    imgSaveBtn.setAttribute("data-img-save", String(review.id));
+
+    const imgClearBtn = document.createElement("button");
+    imgClearBtn.type = "button";
+    imgClearBtn.className = "mini-btn secondary review-img-clear";
+    imgClearBtn.textContent = "✕";
+    imgClearBtn.title = "Remove image";
+    imgClearBtn.setAttribute("data-img-clear", String(review.id));
+
+    imgInputWrap.append(imgInput, imgSaveBtn, imgClearBtn);
+
+    // Preview thumbnail
+    const imgPreview = document.createElement("div");
+    imgPreview.className = "review-img-preview";
+    if (review.image_url) {
+      const thumb = document.createElement("img");
+      thumb.src = review.image_url;
+      thumb.alt = "Review photo";
+      thumb.addEventListener("error", () => {
+        imgPreview.textContent = "";
+        const errSpan = document.createElement("span");
+        errSpan.className = "text-muted-2 text-3xs";
+        errSpan.textContent = "Could not load preview";
+        imgPreview.appendChild(errSpan);
+      }, { once: true });
+      imgPreview.appendChild(thumb);
+    }
+
+    // Live preview on input change (auto-resolves Drive links for preview)
+    imgInput.addEventListener("input", () => {
+      const val = imgInput.value.trim();
+      imgPreview.textContent = "";
+      if (val) {
+        const previewSrc = resolveImageUrl(val);
+        const thumb = document.createElement("img");
+        thumb.src = previewSrc;
+        thumb.alt = "Preview";
+        thumb.addEventListener("error", () => {
+          imgPreview.textContent = "";
+          const errSpan = document.createElement("span");
+          errSpan.className = "text-muted-2 text-3xs";
+          errSpan.textContent = "Could not load preview";
+          imgPreview.appendChild(errSpan);
+        }, { once: true });
+        imgPreview.appendChild(thumb);
+      }
+    });
+
+    imgRow.append(imgLabel, imgInputWrap, imgPreview);
+    card.appendChild(imgRow);
+
+    card.appendChild(actions);
     return card;
   }
 
@@ -619,6 +695,88 @@ export function initReviews() {
     }
   });
 
+  // ----- Image URL Save / Clear (event delegation) -----
+  // Auto-converts Google Drive share links to embeddable URLs (like gallery does)
+  function resolveImageUrl(raw) {
+    if (!raw) return "";
+    const fileId = extractDriveFileId(raw);
+    return fileId ? toEmbedUrl(fileId) : raw;
+  }
+
+  async function saveReviewImage(reviewId, url) {
+    if (!ctx.db || !ctx.adminCode) return;
+    try {
+      const { data, error } = await ctx.db.rpc("admin_update_review_image", {
+        p_admin_code: ctx.adminCode,
+        p_review_id: parseInt(reviewId, 10),
+        p_image_url: url || null,
+      });
+      if (error) throw new Error(error.message);
+      if (!data || !data.success) {
+        if (data?.error === "Unauthorized") {
+          ctx.adminCode = null;
+          showAuthLockout("Invalid admin code.");
+          return;
+        }
+        throw new Error(data?.error || "Image update failed");
+      }
+      // Update local data
+      for (const tab of ["pending", "approved", "deleted"]) {
+        const item = reviewData[tab].find((r) => String(r.id) === String(reviewId));
+        if (item) { item.image_url = url || null; break; }
+      }
+      showReviewMsg(url ? "Image saved!" : "Image removed.", false);
+    } catch (err) {
+      showReviewMsg("Error: " + err.message, true);
+    }
+  }
+
+  rEl.list.addEventListener("click", async (e) => {
+    // Save image button
+    const saveBtn = e.target.closest("button[data-img-save]");
+    if (saveBtn) {
+      const id = saveBtn.getAttribute("data-img-save");
+      const input = rEl.list.querySelector(`.review-img-input[data-review-id="${id}"]`);
+      if (input) {
+        const resolved = resolveImageUrl(input.value.trim());
+        if (resolved !== input.value.trim()) {
+          input.value = resolved; // show the converted URL
+        }
+        saveBtn.disabled = true;
+        saveBtn.textContent = "...";
+        await saveReviewImage(id, resolved);
+        saveBtn.disabled = false;
+        saveBtn.textContent = "💾";
+      }
+      return;
+    }
+    // Clear image button
+    const clearBtn = e.target.closest("button[data-img-clear]");
+    if (clearBtn) {
+      const id = clearBtn.getAttribute("data-img-clear");
+      const input = rEl.list.querySelector(`.review-img-input[data-review-id="${id}"]`);
+      if (input) input.value = "";
+      const preview = clearBtn.closest(".review-mgmt-card")?.querySelector(".review-img-preview");
+      if (preview) preview.textContent = "";
+      clearBtn.disabled = true;
+      clearBtn.textContent = "...";
+      await saveReviewImage(id, "");
+      clearBtn.disabled = false;
+      clearBtn.textContent = "✕";
+      return;
+    }
+  });
+
+  // Allow Enter in image input to trigger save
+  rEl.list.addEventListener("keydown", (e) => {
+    if (e.target.matches(".review-img-input") && e.key === "Enter") {
+      e.preventDefault();
+      const id = e.target.getAttribute("data-review-id");
+      const saveBtn = rEl.list.querySelector(`button[data-img-save="${id}"]`);
+      if (saveBtn) saveBtn.click();
+    }
+  });
+
   // ----- Drag & Drop Reorder for Approved Reviews (Desktop + Touch) -----
   let reviewDragSrcId = null;
   let reviewCurrentDropTarget = null;
@@ -756,19 +914,10 @@ export function initReviews() {
     const rect = row.getBoundingClientRect();
     reviewDragOffsetY = clientY - rect.top;
     reviewDragClone = row.cloneNode(true);
-    reviewDragClone.style.cssText =
-      "position:fixed;pointer-events:none;z-index:10000;transition:none;" +
-      "transform:scale(0.97);opacity:0.88;" +
-      "box-shadow:0 8px 25px rgba(0,0,0,0.18);border-radius:8px;" +
-      "width:" +
-      rect.width +
-      "px;" +
-      "left:" +
-      rect.left +
-      "px;" +
-      "top:" +
-      rect.top +
-      "px;";
+    reviewDragClone.classList.add("review-drag-clone");
+    reviewDragClone.style.width = `${rect.width}px`;
+    reviewDragClone.style.left = `${rect.left}px`;
+    reviewDragClone.style.top = `${rect.top}px`;
     document.body.appendChild(reviewDragClone);
   }
 
@@ -776,9 +925,9 @@ export function initReviews() {
     if (reviewDragClone) {
       reviewDragClone.style.top = clientY - reviewDragOffsetY + "px";
     }
-    if (reviewDragSourceRow) reviewDragSourceRow.style.pointerEvents = "none";
+    if (reviewDragSourceRow) reviewDragSourceRow.classList.add("no-pointer");
     const elBelow = document.elementFromPoint(clientX, clientY);
-    if (reviewDragSourceRow) reviewDragSourceRow.style.pointerEvents = "";
+    if (reviewDragSourceRow) reviewDragSourceRow.classList.remove("no-pointer");
     const row = elBelow ? elBelow.closest("[data-review-id]") : null;
     updateReviewDropIndicator(row, clientY);
   }
