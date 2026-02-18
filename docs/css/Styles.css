@@ -500,19 +500,15 @@ nav label:focus-visible {
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 50px;
   cursor: pointer;
+  animation: colorCycle 8s linear infinite;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(4, 162, 189, 0.4);
   /* Maintain transitions for transform and shadow */
   transition: transform var(--transition-speed), box-shadow var(--transition-speed);
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
-.hero-cta:hover {
-  /* 2. Execute the animation on hover */
-  /* Duration: 3s, Timing: linear, Loop: infinite */
-  animation: colorCycle 3s linear infinite;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(4, 162, 189, 0.4);
-}
 
 .hero-cta:focus-visible {
   outline: 2px solid #fff;
@@ -1752,7 +1748,6 @@ footer a:focus-visible {
   text-align: center;
   color: var(--color-text);
   opacity: 0.6;
-  padding: var(--spacing-2xl);
   font-size: var(--font-size-lg);
 }
 
