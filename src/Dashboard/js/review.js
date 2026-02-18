@@ -23,7 +23,10 @@ const CONFIG = {
   MAX_RETRIES: 3,
   RETRY_DELAY: 1000,
   MAX_NAME_LENGTH: 60,
-  MAX_REVIEW_LENGTH: 280
+  MAX_REVIEW_LENGTH: 280,
+  PHOTO_MAX_SIZE: 5 * 1024 * 1024,           // 5 MB
+  PHOTO_ACCEPTED_TYPES: ['image/jpeg', 'image/png', 'image/webp'],
+  PHOTO_BUCKET: 'review-images'
 };
 
 const VALID_SOURCES = [
@@ -55,7 +58,14 @@ const elements = {
   ratingScore: document.getElementById('ratingScore'),
   charCounter: document.getElementById('charCounter'),
   submitBtn: document.getElementById('submitBtn'),
-  toast: document.getElementById('toast')
+  toast: document.getElementById('toast'),
+  // Photo upload
+  photoArea: document.getElementById('photoUploadArea'),
+  photoInput: document.getElementById('photoUpload'),
+  uploadPrompt: document.getElementById('uploadPrompt'),
+  photoPreview: document.getElementById('photoPreview'),
+  previewImg: document.getElementById('previewImg'),
+  removePhoto: document.getElementById('removePhoto')
 };
 
 // ============================================
@@ -144,6 +154,84 @@ async function withRetry(operation, retries = CONFIG.MAX_RETRIES) {
       await new Promise(resolve => setTimeout(resolve, CONFIG.RETRY_DELAY * (i + 1)));
     }
   }
+}
+
+// ============================================
+// PHOTO UPLOAD
+// ============================================
+let selectedFile = null;
+
+if (elements.photoInput) {
+  elements.photoInput.addEventListener('change', handlePhotoSelect);
+}
+
+if (elements.removePhoto) {
+  elements.removePhoto.addEventListener('click', (e) => {
+    e.stopPropagation();
+    clearPhoto();
+  });
+}
+
+function handlePhotoSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (!CONFIG.PHOTO_ACCEPTED_TYPES.includes(file.type)) {
+    showFormError('Please upload a JPEG, PNG, or WebP image.');
+    elements.photoInput.value = '';
+    return;
+  }
+
+  if (file.size > CONFIG.PHOTO_MAX_SIZE) {
+    showFormError('Photo must be under 5 MB.');
+    elements.photoInput.value = '';
+    return;
+  }
+
+  selectedFile = file;
+  showPhotoPreview(file);
+}
+
+function showPhotoPreview(file) {
+  const url = URL.createObjectURL(file);
+  elements.previewImg.src = url;
+  elements.uploadPrompt.classList.add('hidden');
+  elements.photoPreview.classList.remove('hidden');
+  elements.photoArea.classList.add('has-photo');
+  elements.photoInput.classList.add('hidden');
+}
+
+function clearPhoto() {
+  if (elements.previewImg.src) {
+    URL.revokeObjectURL(elements.previewImg.src);
+  }
+  selectedFile = null;
+  elements.photoInput.value = '';
+  elements.previewImg.src = '';
+  elements.uploadPrompt.classList.remove('hidden');
+  elements.photoPreview.classList.add('hidden');
+  elements.photoArea.classList.remove('has-photo');
+  elements.photoInput.classList.remove('hidden');
+}
+
+async function uploadPhoto(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const safeName = `${tokenID}_${Date.now()}.${ext}`;
+
+  const { error } = await db.storage
+    .from(CONFIG.PHOTO_BUCKET)
+    .upload(safeName, file, {
+      contentType: file.type,
+      upsert: false
+    });
+
+  if (error) throw new Error('Photo upload failed: ' + error.message);
+
+  const { data: urlData } = db.storage
+    .from(CONFIG.PHOTO_BUCKET)
+    .getPublicUrl(safeName);
+
+  return urlData.publicUrl;
 }
 
 // ============================================
@@ -264,13 +352,27 @@ elements.form.addEventListener('submit', async (e) => {
   }
 
   try {
+    // Upload photo if selected
+    let imageUrl = null;
+    if (selectedFile) {
+      try {
+        imageUrl = await uploadPhoto(selectedFile);
+      } catch (uploadError) {
+        console.error('Photo upload failed:', uploadError);
+        showFormError('Failed to upload photo. Please try again or remove the photo.');
+        setButtonState(false);
+        return;
+      }
+    }
+
     // Submit review via atomic RPC function (prevents race conditions)
     const { data: result, error: rpcError } = await withRetry(async () => {
       return await db.rpc('submit_review', {
         p_token_id: tokenID,
         p_client_name: name,
         p_review_text: text,
-        p_rating: rating
+        p_rating: rating,
+        p_image_url: imageUrl
       });
     });
 

@@ -10,7 +10,7 @@
                script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
                style-src 'self' 'unsafe-inline';
                connect-src https://pciubbwphwpnptgawgok.supabase.co;
-               img-src 'self' data:;
+               img-src 'self' data: blob: https://pciubbwphwpnptgawgok.supabase.co;
                font-src 'self';
                object-src 'none';
                base-uri 'self';
@@ -70,6 +70,19 @@
         <textarea id="reviewText" rows="5" maxlength="280" placeholder="Loved the print..." spellcheck="true" required></textarea>
 
         <div id="charCounter">280 remaining</div>
+
+        <label for="photoUpload">Photo <span class="label-optional">(optional)</span></label>
+        <div class="photo-upload-area" id="photoUploadArea">
+          <input type="file" id="photoUpload" accept="image/jpeg,image/png,image/webp" class="file-input" aria-label="Upload a photo">
+          <div id="uploadPrompt" class="upload-prompt">
+            <span class="upload-icon">📷</span>
+            <span>Tap to add a photo</span>
+          </div>
+          <div id="photoPreview" class="photo-preview hidden">
+            <img id="previewImg" alt="Preview of your uploaded photo">
+            <button type="button" id="removePhoto" class="remove-photo" aria-label="Remove photo">✕</button>
+          </div>
+        </div>
 
         <button type="submit" class="btn" id="submitBtn">Submit Review</button>
       </form>
