@@ -179,6 +179,13 @@
                 <div id="galleryMessage" class="gallery-msg is-hidden" role="status" aria-live="polite"></div>
 
                 <div class="gallery-items-list">
+                    <div id="galleryBulkBar" class="gallery-bulk-bar is-hidden">
+                        <input type="checkbox" id="gallerySelectAll" class="gallery-select-all" title="Select / deselect all" aria-label="Select all gallery items">
+                        <span id="gallerySelectCount" class="gallery-select-count">Select all</span>
+                        <div id="galleryBulkBtns" class="gallery-bulk-btns is-hidden">
+                            <button type="button" id="galleryRandomizeBtn" class="mini-btn secondary" title="Shuffle sort order of selected items">🎲 Randomize Selected</button>
+                        </div>
+                    </div>
                     <div id="galleryCount" class="gallery-count"></div>
                     <div id="galleryList"><p class="text-muted-2 text-xs">Open this section to load gallery items...</p></div>
                 </div>

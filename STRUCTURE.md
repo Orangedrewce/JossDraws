@@ -13,7 +13,7 @@ git checkout dev
 
 # 4) Save changes
 git add -A
-git commit -m "tab cycling requires eyes"
+git commit -m "css animation"
 
 # 5) Publish to live site
 git push origin dev:main

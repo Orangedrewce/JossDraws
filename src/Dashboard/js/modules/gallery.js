@@ -24,6 +24,11 @@ export function initGallery() {
     message: document.getElementById("galleryMessage"),
     list: document.getElementById("galleryList"),
     count: document.getElementById("galleryCount"),
+    bulkBar: document.getElementById("galleryBulkBar"),
+    selectAll: document.getElementById("gallerySelectAll"),
+    selectCount: document.getElementById("gallerySelectCount"),
+    bulkBtns: document.getElementById("galleryBulkBtns"),
+    randomizeBtn: document.getElementById("galleryRandomizeBtn"),
   };
 
   let galleryLoaded = false;
@@ -32,6 +37,7 @@ export function initGallery() {
   const galleryDeletePending = new Map();
   const GALLERY_DELETE_MS = 3000;
   const dragDropTarget = { id: null, position: "before" };
+  const selectedGalleryIds = new Set();
 
   function buildCaption(title, medium, year) {
     let c = title || "";
@@ -221,9 +227,10 @@ export function initGallery() {
 
   // ----- Render Gallery Items -----
   function renderGalleryItems() {
-    const active = galleryItems.filter((i) => i.is_active).length;
+    const visibleItems = galleryItems.filter((i) => i.is_active);
+    const hiddenItems = galleryItems.filter((i) => !i.is_active);
     const total = galleryItems.length;
-    gEl.count.textContent = `${active} active / ${total} total items`;
+    gEl.count.textContent = `${visibleItems.length} active / ${total} total items`;
 
     if (total === 0) {
       gEl.list.textContent = "";
@@ -232,13 +239,20 @@ export function initGallery() {
       p.style.fontSize = "0.85rem";
       p.textContent = "No gallery items yet. Add your first artwork above!";
       gEl.list.appendChild(p);
+      if (gEl.bulkBar) gEl.bulkBar.classList.add("is-hidden");
       return;
+    }
+
+    // Prune selection: remove IDs that no longer exist
+    for (const id of selectedGalleryIds) {
+      if (!galleryItems.some((i) => String(i.id) === id)) selectedGalleryIds.delete(id);
     }
 
     gEl.list.textContent = "";
     const fragment = document.createDocumentFragment();
 
-    for (const item of galleryItems) {
+    // Helper to build a single gallery row
+    function buildRow(item) {
       const caption = buildCaption(item.title, item.medium, item.year_created);
       const isActive = Boolean(item.is_active);
       const date = new Date(item.created_at).toLocaleDateString("en-US", {
@@ -253,6 +267,21 @@ export function initGallery() {
       row.className =
         "gallery-item " + (isActive ? "" : "inactive") + flashClass;
       row.setAttribute("data-gallery-id", String(item.id));
+      if (selectedGalleryIds.has(String(item.id))) row.classList.add("selected");
+
+      // Selection checkbox
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.className = "gallery-select-cb";
+      cb.dataset.galleryId = String(item.id);
+      cb.checked = selectedGalleryIds.has(String(item.id));
+      cb.setAttribute("aria-label", "Select " + String(item.title || "Artwork"));
+      cb.addEventListener("change", () => {
+        if (cb.checked) selectedGalleryIds.add(String(item.id));
+        else selectedGalleryIds.delete(String(item.id));
+        row.classList.toggle("selected", cb.checked);
+        updateGalleryBulkBar();
+      });
 
       const handle = document.createElement("span");
       handle.className = "drag-handle";
@@ -343,17 +372,131 @@ export function initGallery() {
       delBtn.textContent = "🗑️";
 
       actions.append(toggleBtn, editBtn, delBtn);
-      row.append(handle, thumb, info, sortInput, actions);
-      fragment.appendChild(row);
+      row.append(cb, handle, thumb, info, sortInput, actions);
+      return row;
+    }
+
+    // ---- Visible section ----
+    for (const item of visibleItems) {
+      fragment.appendChild(buildRow(item));
+    }
+
+    // ---- Hidden section divider + hidden items ----
+    if (hiddenItems.length > 0) {
+      const divider = document.createElement("div");
+      divider.className = "gallery-section-divider";
+      divider.textContent = `🚫 Hidden (${hiddenItems.length})`;
+      fragment.appendChild(divider);
+
+      for (const item of hiddenItems) {
+        fragment.appendChild(buildRow(item));
+      }
     }
 
     gEl.list.appendChild(fragment);
+
+    // Show bulk bar when there are visible items
+    if (visibleItems.length > 0 && gEl.bulkBar) {
+      gEl.bulkBar.classList.remove("is-hidden");
+    } else if (gEl.bulkBar) {
+      gEl.bulkBar.classList.add("is-hidden");
+    }
+    updateGalleryBulkBar();
 
     if (lastMovedId !== null) {
       setTimeout(() => {
         lastMovedId = null;
       }, 0);
     }
+  }
+
+  // ----- Gallery Bulk Selection Bar -----
+  function updateGalleryBulkBar() {
+    if (!gEl.selectCount || !gEl.bulkBtns || !gEl.selectAll) return;
+    const visibleIds = new Set(galleryItems.filter((i) => i.is_active).map((i) => String(i.id)));
+    // Only count selections among visible items
+    const n = [...selectedGalleryIds].filter((id) => visibleIds.has(id)).length;
+    if (n > 0) {
+      gEl.selectCount.textContent = `${n} selected`;
+      gEl.bulkBtns.classList.remove("is-hidden");
+    } else {
+      gEl.selectCount.textContent = "Select all";
+      gEl.bulkBtns.classList.add("is-hidden");
+    }
+    // Sync select-all checkbox — checked only if all visible items are selected
+    gEl.selectAll.checked = visibleIds.size > 0 && n === visibleIds.size;
+  }
+
+  // Select-all toggle (visible items only)
+  if (gEl.selectAll) {
+    gEl.selectAll.addEventListener("change", () => {
+      const cbs = gEl.list.querySelectorAll(".gallery-select-cb");
+      cbs.forEach((cb) => {
+        const id = cb.dataset.galleryId;
+        // Only auto-select visible (active) items
+        const item = galleryItems.find((i) => String(i.id) === id);
+        if (!item || !item.is_active) return;
+        cb.checked = gEl.selectAll.checked;
+        if (gEl.selectAll.checked) selectedGalleryIds.add(id);
+        else selectedGalleryIds.delete(id);
+        const row = cb.closest(".gallery-item");
+        if (row) row.classList.toggle("selected", gEl.selectAll.checked);
+      });
+      updateGalleryBulkBar();
+    });
+  }
+
+  // Randomize selected items
+  if (gEl.randomizeBtn) {
+    gEl.randomizeBtn.addEventListener("click", async () => {
+      if (selectedGalleryIds.size < 2) {
+        showGalleryMsg("Select at least 2 items to randomize.", true);
+        return;
+      }
+      if (!ctx.db || !ctx.adminCode) return;
+
+      // Gather selected items that are VISIBLE (active) — hidden items are never shuffled
+      const selected = galleryItems.filter(
+        (i) => i.is_active && selectedGalleryIds.has(String(i.id))
+      );
+
+      if (selected.length < 2) {
+        showGalleryMsg("Select at least 2 visible items to randomize.", true);
+        return;
+      }
+
+      const sortOrders = selected.map((i) => i.sort_order);
+
+      // Fisher-Yates shuffle
+      for (let i = sortOrders.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [sortOrders[i], sortOrders[j]] = [sortOrders[j], sortOrders[i]];
+      }
+
+      gEl.randomizeBtn.disabled = true;
+      gEl.randomizeBtn.textContent = "🎲 Shuffling...";
+
+      try {
+        // Apply shuffled sort_orders via individual reorder calls
+        for (let i = 0; i < selected.length; i++) {
+          const { error } = await ctx.db.rpc("admin_reorder_gallery_item", {
+            p_admin_code: ctx.adminCode,
+            p_item_id: parseInt(selected[i].id, 10),
+            p_new_sort_order: sortOrders[i],
+          });
+          if (error) throw new Error(error.message);
+        }
+
+        showGalleryMsg(`Randomized ${selected.length} items!`, false);
+        selectedGalleryIds.clear();
+        loadGalleryItems();
+      } catch (err) {
+        showGalleryMsg("Randomize error: " + err.message, true);
+      } finally {
+        gEl.randomizeBtn.disabled = false;
+        gEl.randomizeBtn.textContent = "🎲 Randomize Selected";
+      }
+    });
   }
 
   // ----- Toggle Gallery Item -----

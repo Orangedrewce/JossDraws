@@ -945,6 +945,66 @@ body.is-dragging ::-moz-selection {
     font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;
 }
 
+/* Gallery bulk selection bar (mirrors .review-bulk-bar) */
+.gallery-bulk-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.6rem;
+    background: var(--color-surface-2);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border-soft);
+    flex-wrap: wrap;
+}
+.gallery-bulk-bar.is-hidden { display: none; }
+.gallery-select-all {
+    width: 1.1rem; height: 1.1rem;
+    cursor: pointer; accent-color: var(--color-primary);
+}
+.gallery-select-count {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    flex: 1 1 auto;
+}
+.gallery-bulk-btns {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+.gallery-bulk-btns.is-hidden { display: none; }
+.gallery-select-cb {
+    width: 1.1rem; height: 1.1rem;
+    flex: 0 0 auto;
+    cursor: pointer;
+    accent-color: var(--color-primary);
+}
+.gallery-item.selected {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface));
+}
+
+/* Divider between visible and hidden gallery sections */
+.gallery-section-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    margin: 0.75rem 0 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.gallery-section-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--color-border-soft);
+}
+
 /* ====== SHOP MANAGER ====== */
 .form-hint {
     font-size: 0.78rem;
