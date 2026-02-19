@@ -333,7 +333,11 @@
               if (document.hidden) {
                 stopCarousel();
               } else {
-                startCarousel();
+                // Only restart if the reviews tab is still active
+                var rt = document.getElementById("tab-reviews");
+                if (rt && rt.checked) {
+                  startCarousel();
+                }
               }
             });
           }
@@ -365,10 +369,37 @@
     })();
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initCarousel);
-  } else {
+  // Defer carousel init until user first visits the reviews tab.
+  // On terrible internet this avoids wasting bandwidth on a tab the user
+  // may never open.  If the reviews tab is already active at load, init
+  // immediately (hash deep-link scenario).
+  var _carouselReady = false;
+  function ensureCarousel() {
+    if (_carouselReady) return;
+    _carouselReady = true;
     initCarousel();
+  }
+
+  function wireCarouselDefer() {
+    var reviewsTab = document.getElementById("tab-reviews");
+    // If the user deep-linked straight to #reviews, init now
+    if (reviewsTab && reviewsTab.checked) {
+      ensureCarousel();
+      return;
+    }
+    // Otherwise wait for first tab switch to reviews
+    var allTabs = document.querySelectorAll('input[name="tabs"]');
+    allTabs.forEach(function (tab) {
+      tab.addEventListener("change", function () {
+        if (this.id === "tab-reviews" && this.checked) ensureCarousel();
+      });
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", wireCarouselDefer);
+  } else {
+    wireCarouselDefer();
   }
 
   // ---------------------------------------------------------------------------
@@ -431,10 +462,33 @@
     })();
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initAboutContent);
-  } else {
+  // Defer about content fetch until user first visits the about tab.
+  // Saves one RPC call + image download on constrained connections.
+  var _aboutReady = false;
+  function ensureAbout() {
+    if (_aboutReady) return;
+    _aboutReady = true;
     initAboutContent();
+  }
+
+  function wireAboutDefer() {
+    var aboutTab = document.getElementById("tab-about");
+    if (aboutTab && aboutTab.checked) {
+      ensureAbout();
+      return;
+    }
+    var allTabs = document.querySelectorAll('input[name="tabs"]');
+    allTabs.forEach(function (tab) {
+      tab.addEventListener("change", function () {
+        if (this.id === "tab-about" && this.checked) ensureAbout();
+      });
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", wireAboutDefer);
+  } else {
+    wireAboutDefer();
   }
 
   // ---------------------------------------------------------------------------
