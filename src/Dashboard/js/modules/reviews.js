@@ -123,7 +123,12 @@ export function initReviews() {
   function renderReviews() {
     const items = reviewData[activeReviewTab] || [];
     rEl.list.textContent = "";
-    selectedReviewIds.clear();
+
+    // Prune selections: keep only IDs still present in current data
+    const currentIds = new Set(items.map((r) => String(r.id)));
+    for (const id of selectedReviewIds) {
+      if (!currentIds.has(id)) selectedReviewIds.delete(id);
+    }
 
     if (items.length === 0) {
       const p = document.createElement("p");

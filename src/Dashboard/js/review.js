@@ -84,13 +84,16 @@ function sanitizeText(text) {
 /**
  * Shows inline error message (replaces alert())
  */
+let _formErrorTimer = null;
 function showFormError(message) {
+  if (_formErrorTimer) clearTimeout(_formErrorTimer);
   elements.formError.textContent = message;
   elements.formError.style.display = 'block';
 
   // Auto-hide after 5 seconds
-  setTimeout(() => {
+  _formErrorTimer = setTimeout(() => {
     elements.formError.style.display = 'none';
+    _formErrorTimer = null;
   }, 5000);
 }
 

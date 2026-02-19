@@ -82,7 +82,7 @@ export function initBulkImport() {
       const { data, error } = await ctx.db.rpc("admin_bulk_import_reviews", {
         p_admin_code: ctx.adminCode,
         p_source:     source,
-        p_json:       JSON.stringify(reviews),
+        p_json:       reviews,
       });
 
       Trace.log("BULK_IMPORT_RESPONSE", { data, error: error?.message });

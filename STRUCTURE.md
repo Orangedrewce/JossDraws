@@ -13,7 +13,7 @@ git checkout dev
 
 # 4) Save changes
 git add -A
-git commit -m "ADMIN randomize visible section, hidden section, random selected items, css and button"
+git commit -m "ANALYTICS ADMIN DASH, NON INVASIVE trackers, need to test. "
 
 # 5) Publish to live site
 git push origin dev:main
