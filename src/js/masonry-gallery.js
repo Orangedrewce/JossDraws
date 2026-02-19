@@ -769,8 +769,9 @@ class MasonryGallery {
     wrapper.addEventListener("mouseleave", onMouseLeave, { passive: true });
     wrapper.addEventListener("focus", onFocus, { passive: true });
 
-    // Parallax tilt — update CSS custom properties on pointer move
+    // Parallax tilt — update CSS custom properties on pointer move (mouse only)
     const onPointerMove = (e) => {
+      if (e.pointerType !== "mouse") return;
       if (wrapper.classList.contains("card-focused")) return;
       const rect = tiltCard.getBoundingClientRect();
       const hw = rect.width / 2;
@@ -1155,6 +1156,7 @@ class MasonryGallery {
 
   handleMouseEnter(element, item) {
     if (!this.hasMounted) return;
+    if (this.isMobile) return; // No hover effects on mobile
     // Don't apply hover effects if card is focused
     if (this.focusedCard === element) return;
 
@@ -1173,6 +1175,7 @@ class MasonryGallery {
 
   handleMouseLeave(element, item) {
     if (!this.hasMounted) return;
+    if (this.isMobile) return; // No hover effects on mobile
     // Don't remove hover effects if card is focused
     if (this.focusedCard === element) return;
 

@@ -1410,9 +1410,12 @@ footer a:focus-visible {
   contain: layout style;
 }
 
-/* Hovered card must sit above all neighbours so the 3D tilt isn't clipped */
-.masonry-item-wrapper:hover {
-  z-index: var(--z-elevated-card) !important;
+/* Hovered card must sit above all neighbours so the 3D tilt isn't clipped.
+   Only on devices that truly support hover (not touch). */
+@media (hover: hover) {
+  .masonry-item-wrapper:hover {
+    z-index: var(--z-elevated-card) !important;
+  }
 }
 
 /* =============================================================================
@@ -1447,9 +1450,11 @@ footer a:focus-visible {
              translateZ(var(--tilt-lift-z));
 }
 
-/* Lift toward viewer on hover */
-.masonry-item-wrapper:hover .tilt-card {
-  --tilt-lift-z: 80px;
+/* Lift toward viewer on hover — desktop only */
+@media (hover: hover) {
+  .masonry-item-wrapper:hover .tilt-card {
+    --tilt-lift-z: 80px;
+  }
 }
 
 /* Disable tilt when card is focused (expanded) */
