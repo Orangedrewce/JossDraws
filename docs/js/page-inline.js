@@ -71,6 +71,16 @@
       general: "Verified Review",
     };
 
+    // Genre → Etsy product/section links (badge becomes a hyperlink)
+    var genreLinks = {
+      coloring_book: "https://www.etsy.com/listing/4391097322/bugs-blossoms-coloring-book",
+      print: "https://www.etsy.com/shop/JossDrawsLLC?ref=shop-header-name&listing_id=4391097322&from_page=listing&section_id=32688825",
+      bookmark: "https://www.etsy.com/shop/JossDrawsLLC?ref=shop-header-name&listing_id=4391097322&from_page=listing&section_id=34093055",
+      sticker: "https://www.etsy.com/shop/JossDrawsLLC?ref=shop-header-name&listing_id=4391097322&from_page=listing&section_id=32672192",
+      pet_portrait: "https://www.etsy.com/shop/JossDrawsLLC?ref=shop-header-name&listing_id=4391097322&from_page=listing&section_id=49651267",
+      faceless_portrait: "https://www.etsy.com/shop/JossDrawsLLC?ref=shop-header-name&listing_id=4391097322&from_page=listing&section_id=49651267",
+    };
+
     function normalizeSourceKey(value) {
       return String(value || "")
         .trim()
@@ -125,6 +135,21 @@
           badgeEl.style.marginBottom = "0.5rem";
           badgeEl.style.display = "inline-block";
 
+          // Wrap badge in a hyperlink if genre has a product URL
+          var badgeNode;
+          var genreUrl = genreLinks[badgeKey];
+          if (genreUrl) {
+            var badgeLink = document.createElement("a");
+            badgeLink.href = genreUrl;
+            badgeLink.target = "_blank";
+            badgeLink.rel = "noopener";
+            badgeLink.className = "review-genre-link";
+            badgeLink.appendChild(badgeEl);
+            badgeNode = badgeLink;
+          } else {
+            badgeNode = badgeEl;
+          }
+
           // --- 2. STARS ---
           var rating = Number(review.rating) || 5;
           var safeRating = Math.max(1, Math.min(5, Math.floor(rating)));
@@ -162,7 +187,7 @@
           authorEl.textContent = "- " + (review.client_name || "Anonymous");
 
           // --- BUILD CARD ---
-          card.appendChild(badgeEl); // Top
+          card.appendChild(badgeNode); // Top (link-wrapped if genre URL exists)
           card.appendChild(starsEl);
           if (textEl) card.appendChild(textEl);
           if (imgEl) card.appendChild(imgEl);

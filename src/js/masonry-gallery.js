@@ -211,6 +211,9 @@ class MasonryGallery {
 
     // Accessibility (Peer 4): live region for screen reader announcements
     this._setupLiveRegion();
+
+    // Mobile gyro tilt — subtle device-orientation parallax for touch devices
+    this.initGyroTilt();
   }
 
   // Non-blocking video metadata — each video updates layout independently as it arrives
@@ -496,7 +499,7 @@ class MasonryGallery {
   render() {
     this.container.style.position = "relative";
     this.container.style.width = "100%";
-    this.container.style.contain = "layout paint style";
+    this.container.style.contain = "layout style"; // no paint — allows 3D tilt to overflow
     this.focusedCard = null;
 
     // Occlusion: viewport items get eager loading, rest stay lazy.
@@ -580,14 +583,17 @@ class MasonryGallery {
       left: 0;
       top: 0;
 
-      clip-path: inset(0 round 8px);
-
-      contain: strict;
+      contain: size layout style;
+      perspective: 30rem;
 
       will-change: transform;
 
       transition: ${this.reduceMotion ? "none" : "transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), filter 0.6s, opacity 0.6s"};
     `;
+
+    // Tilt card — inner container for 3D parallax hover effect
+    const tiltCard = document.createElement("div");
+    tiltCard.className = "tilt-card";
 
     // Media rendering (image or video)
     let mediaContainer;
@@ -707,7 +713,7 @@ class MasonryGallery {
     }
 
     // Append media FIRST so it's under caption overlay in DOM
-    wrapper.appendChild(mediaContainer);
+    tiltCard.appendChild(mediaContainer);
 
     // Add color shift overlay if enabled
     if (this.options.colorShiftOnHover) {
@@ -725,7 +731,7 @@ class MasonryGallery {
         border-radius: 8px;
         transition: opacity 0.3s ease;
       `;
-      wrapper.appendChild(overlay);
+      tiltCard.appendChild(overlay);
     }
 
     // Optional caption overlay — append AFTER media+overlay for correct stacking
@@ -733,8 +739,11 @@ class MasonryGallery {
       const caption = document.createElement("div");
       caption.className = "masonry-caption";
       caption.textContent = item.caption;
-      wrapper.appendChild(caption);
+      tiltCard.appendChild(caption);
     }
+
+    // Append tilt card (with all children) to the wrapper
+    wrapper.appendChild(tiltCard);
 
     // Event listeners (bound once per item, survive across filter changes)
     // Use named references so we can remove them deterministically
@@ -763,6 +772,24 @@ class MasonryGallery {
     wrapper.addEventListener("mouseleave", onMouseLeave, { passive: true });
     wrapper.addEventListener("focus", onFocus, { passive: true });
 
+    // Parallax tilt — update CSS custom properties on pointer move
+    const onPointerMove = (e) => {
+      if (wrapper.classList.contains("card-focused")) return;
+      const rect = tiltCard.getBoundingClientRect();
+      const hw = rect.width / 2;
+      const hh = rect.height / 2;
+      const ratioX = (e.clientX - (rect.x + hw)) / hw;
+      const ratioY = (e.clientY - (rect.y + hh)) / hh;
+      tiltCard.style.setProperty("--tilt-ratio-x", ratioX);
+      tiltCard.style.setProperty("--tilt-ratio-y", ratioY);
+    };
+    const onPointerLeave = () => {
+      tiltCard.style.setProperty("--tilt-ratio-x", 0);
+      tiltCard.style.setProperty("--tilt-ratio-y", 0);
+    };
+    wrapper.addEventListener("pointermove", onPointerMove, { passive: true });
+    wrapper.addEventListener("pointerleave", onPointerLeave, { passive: true });
+
     // Store a single cleanup function for deterministic listener removal
     wrapper._mvcCleanup = () => {
       wrapper.removeEventListener("click", onClick);
@@ -770,6 +797,8 @@ class MasonryGallery {
       wrapper.removeEventListener("mouseenter", onMouseEnter);
       wrapper.removeEventListener("mouseleave", onMouseLeave);
       wrapper.removeEventListener("focus", onFocus);
+      wrapper.removeEventListener("pointermove", onPointerMove);
+      wrapper.removeEventListener("pointerleave", onPointerLeave);
       // Also clean up video handlers if present
       const v = wrapper.querySelector("video");
       if (v && v._mvcHandlers) {
@@ -1031,6 +1060,13 @@ class MasonryGallery {
     this.focusedItemId = item.id;
     element.classList.add("card-focused");
     element.setAttribute("aria-expanded", "true");
+    // Reset tilt effect — CSS .card-focused rule flattens the card,
+    // resetting properties avoids a snap when unfocusing later
+    const tiltCard = element.querySelector(".tilt-card");
+    if (tiltCard) {
+      tiltCard.style.setProperty("--tilt-ratio-x", 0);
+      tiltCard.style.setProperty("--tilt-ratio-y", 0);
+    }
     this._say(`Expanded: ${item.caption || "artwork"}`);
     this._invalidateGrid();
     this.calculateGrid();
@@ -1311,6 +1347,8 @@ class MasonryGallery {
     this._allItemMap.clear();
     this.renderedCount = 0;
     this._isLoadingBatch = false;
+    // Clean up mobile gyro tilt
+    this._destroyGyroTilt();
     // Clean up live region
     if (this.liveRegion && this.liveRegion.parentNode) {
       this.liveRegion.remove();
@@ -1330,6 +1368,83 @@ class MasonryGallery {
     this.savedScrollY = null;
     this.focusScrollTargetY = null;
     this.lastFocusWasMobile = false;
+  }
+
+  // ===========================================================================
+  // MOBILE GYRO TILT — DeviceOrientation-based parallax for touch devices
+  // ===========================================================================
+  // On mobile, there's no hover, so we use the device gyroscope to give
+  // gallery cards a subtle tilt as the user physically tilts their phone.
+  // Permission gating for iOS 13+ (requires user gesture).
+  // ---------------------------------------------------------------------------
+
+  initGyroTilt() {
+    // Only activate on touch-primary devices (phones/tablets)
+    if (!window.DeviceOrientationEvent) return;
+    if (!window.matchMedia("(pointer: coarse)").matches) return;
+    if (this.reduceMotion) return;
+
+    this._gyroActive = false;
+    this._gyroBound = this._handleGyro.bind(this);
+
+    // iOS 13+ requires explicit permission request on a user gesture
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {
+      // Attach a one-time tap handler on the container to request permission
+      this._gyroPermTap = () => {
+        DeviceOrientationEvent.requestPermission()
+          .then((state) => {
+            if (state === "granted") this._startGyro();
+          })
+          .catch(() => {});
+        this.container.removeEventListener("touchstart", this._gyroPermTap);
+        this._gyroPermTap = null;
+      };
+      this.container.addEventListener("touchstart", this._gyroPermTap, {
+        once: true,
+        passive: true,
+      });
+    } else {
+      // Android / non-gated browsers — start immediately
+      this._startGyro();
+    }
+  }
+
+  _startGyro() {
+    if (this._gyroActive) return;
+    this._gyroActive = true;
+    window.addEventListener("deviceorientation", this._gyroBound, { passive: true });
+  }
+
+  _handleGyro(e) {
+    if (this.isDestroyed) return;
+    // beta  = front-to-back tilt (-180…180), gamma = left-to-right (-90…90)
+    const beta = e.beta ?? 0;   // map to Y
+    const gamma = e.gamma ?? 0; // map to X
+    // Normalize to roughly -1…1 (clamp at ±30° for comfortable range)
+    const ratioX = Math.max(-1, Math.min(1, gamma / 30));
+    const ratioY = Math.max(-1, Math.min(1, (beta - 45) / 30)); // 45° = neutral holding angle
+
+    // Apply to all visible (rendered) tilt-cards that are NOT focused
+    this.nodeMap.forEach((wrapper) => {
+      if (wrapper.classList.contains("card-focused")) return;
+      const tc = wrapper.querySelector(".tilt-card");
+      if (tc) {
+        tc.style.setProperty("--tilt-ratio-x", ratioX.toFixed(3));
+        tc.style.setProperty("--tilt-ratio-y", ratioY.toFixed(3));
+      }
+    });
+  }
+
+  _destroyGyroTilt() {
+    if (this._gyroBound) {
+      window.removeEventListener("deviceorientation", this._gyroBound);
+    }
+    if (this._gyroPermTap && this.container) {
+      this.container.removeEventListener("touchstart", this._gyroPermTap);
+    }
+    this._gyroActive = false;
+    this._gyroBound = null;
+    this._gyroPermTap = null;
   }
 
   // ===========================================================================
