@@ -2151,3 +2151,412 @@ body[data-active-shader="simple_ribbon"] .param-category[data-shader-mode="simpl
 body[data-active-shader="simple_ribbon"] .param-category[data-shader-mode="all"] {
     display: block;
 }
+
+
+/* ====================================================================
+   ANALYTICS HUB — Dashboard analytics panels
+   Reuses: .review-tab, .review-filter-tabs, .mini-btn, .gallery-form,
+           .gallery-section-content padding/spacing conventions.
+   ==================================================================== */
+
+/* ---- Period selector & refresh bar ---- */
+.analytics-controls {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.analytics-controls select {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.analytics-controls .mini-btn {
+    width: auto;
+    flex: 0 0 auto;
+}
+
+/* ---- Tab navigation — mirrors .review-filter-tabs / .review-tab ---- */
+.analytics-tabs {
+    display: flex;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.analytics-tab {
+    flex: 1;
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.82rem !important;
+    font-weight: 600;
+    border: 1px solid var(--color-border-strong) !important;
+    border-radius: var(--radius-md) !important;
+    background: var(--color-surface) !important;
+    color: var(--color-text) !important;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.analytics-tab:hover:not(:disabled) {
+    background: var(--color-surface-3) !important;
+    border-color: var(--color-primary) !important;
+    box-shadow: none !important;
+}
+
+.analytics-tab.active {
+    background: var(--color-primary) !important;
+    color: var(--color-white) !important;
+    border-color: var(--color-primary) !important;
+}
+
+/* ---- Panels (show/hide) ---- */
+.analytics-panel {
+    display: none;
+    animation: slideIn 0.2s ease-out;
+}
+
+.analytics-panel.active {
+    display: block;
+}
+
+/* ---- Metric cards row ---- */
+.analytics-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.analytics-metric-card {
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-md);
+    padding: 0.75rem;
+    text-align: center;
+}
+
+.analytics-metric-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--color-text);
+    line-height: 1.2;
+}
+
+.analytics-metric-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.analytics-metric-trend {
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-top: 0.15rem;
+}
+
+.analytics-metric-trend.up {
+    color: var(--color-success);
+}
+
+.analytics-metric-trend.down {
+    color: var(--color-danger);
+}
+
+/* ---- Panel subtitles — matches gallery-count / section-divider style ---- */
+.analytics-panel-subtitle {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 1rem 0 0.5rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--color-border-soft);
+}
+
+/* ---- Bar chart ---- */
+.analytics-bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.analytics-bar-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+}
+
+.analytics-bar-label {
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+}
+
+.analytics-bar-rank {
+    color: var(--text-muted-soft);
+    font-weight: 600;
+}
+
+.analytics-bar-track {
+    height: 16px;
+    background: var(--color-surface-3);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.analytics-bar-fill {
+    height: 100%;
+    border-radius: var(--radius-sm);
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    min-width: 2px;
+}
+
+.analytics-bar-value {
+    font-weight: 600;
+    color: var(--text-muted-strong);
+    white-space: nowrap;
+    font-size: 0.72rem;
+    text-align: right;
+    min-width: 60px;
+}
+
+.analytics-bar-secondary {
+    color: var(--text-muted-soft);
+    font-weight: 400;
+    font-size: 0.68rem;
+}
+
+/* ---- Sparkline ---- */
+.analytics-sparkline {
+    width: 100%;
+    height: 80px;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+/* ---- Source badges — mirrors .filter-badge style ---- */
+.analytics-source-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+}
+
+.analytics-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border-strong);
+    background: var(--color-surface-2);
+    color: var(--color-text);
+}
+
+.analytics-source-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* ---- Device badges ---- */
+.analytics-devices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+}
+
+.analytics-device-badge {
+    font-size: 0.78rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border-soft);
+    background: var(--color-surface-2);
+    color: var(--color-text);
+}
+
+/* ---- Funnel ---- */
+.analytics-funnel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+}
+
+.analytics-funnel-step {
+    display: grid;
+    grid-template-columns: 100px 1fr auto;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.analytics-funnel-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-text);
+    white-space: nowrap;
+}
+
+.analytics-funnel-bar-track {
+    height: 20px;
+    background: var(--color-surface-3);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.analytics-funnel-bar {
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: var(--radius-sm);
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    min-width: 4px;
+}
+
+.analytics-funnel-value {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted-strong);
+    white-space: nowrap;
+    min-width: 70px;
+    text-align: right;
+}
+
+/* ---- Flow diagram ---- */
+.analytics-flow {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border-soft);
+}
+
+.analytics-flow-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 0.5rem;
+}
+
+.analytics-flow-row {
+    display: grid;
+    grid-template-columns: 60px 20px 60px 1fr 40px;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.3rem;
+    font-size: 0.75rem;
+}
+
+.analytics-flow-from,
+.analytics-flow-to {
+    font-weight: 600;
+    color: var(--color-text);
+    text-align: center;
+}
+
+.analytics-flow-arrow {
+    color: var(--text-muted-soft);
+    text-align: center;
+}
+
+.analytics-flow-bar-track {
+    height: 12px;
+    background: var(--color-surface-3);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.analytics-flow-bar {
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: var(--radius-sm);
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    min-width: 2px;
+}
+
+.analytics-flow-count {
+    font-weight: 600;
+    color: var(--text-muted-strong);
+    text-align: right;
+}
+
+/* ---- Insight list ---- */
+.analytics-insight-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-bottom: 0.5rem;
+}
+
+.analytics-insight-item {
+    font-size: 0.78rem;
+    color: var(--color-text);
+    padding: 0.5rem 0.75rem;
+    background: var(--color-surface-2);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border-soft);
+    border-left: 3px solid var(--color-warning);
+}
+
+/* ---- Analytics message ---- */
+.analytics-msg {
+    margin-top: 0.5rem;
+}
+
+/* ---- Empty state ---- */
+.analytics-empty {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    color: var(--text-muted-soft);
+}
+
+/* ---- Mobile adjustments ---- */
+@media (max-width: 480px) {
+    .analytics-metrics {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.35rem;
+    }
+
+    .analytics-metric-card {
+        padding: 0.5rem;
+    }
+
+    .analytics-metric-value {
+        font-size: 1rem;
+    }
+
+    .analytics-bar-row {
+        grid-template-columns: 70px 1fr auto;
+        font-size: 0.72rem;
+    }
+
+    .analytics-bar-label {
+        max-width: 70px;
+    }
+
+    .analytics-funnel-step {
+        grid-template-columns: 80px 1fr auto;
+    }
+
+    .analytics-flow-row {
+        grid-template-columns: 50px 16px 50px 1fr 30px;
+        font-size: 0.68rem;
+    }
+
+    .analytics-tab {
+        font-size: 0.75rem !important;
+        padding: 0.4rem 0.5rem !important;
+    }
+}

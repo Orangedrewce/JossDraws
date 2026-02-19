@@ -304,6 +304,9 @@
     grid.setAttribute('aria-busy', 'false');
     renderPagination();
     updatePageTitle();
+
+    // Notify analytics tracker that visible cards changed
+    try { grid.dispatchEvent(new CustomEvent('shop-page-change')); } catch (_) {}
   }
 
   // -------------------------------------------------------------------------

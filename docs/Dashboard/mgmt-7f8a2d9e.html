@@ -757,6 +757,54 @@
             </div>
         </details>
 
+        <details class="recent-links" id="analyticsSection">
+            <summary class="section-summary">
+                <span>Analytics Hub</span>
+            </summary>
+
+            <div class="gallery-section-content">
+                <p class="description section-description">Understand your audience: what art captures attention, where you lose customers, which products are sleeper hits, and whether the audience is growing.</p>
+
+                <!-- Period selector & refresh -->
+                <div class="analytics-controls">
+                    <select id="analyticsPeriod">
+                        <option value="7">Last 7 Days</option>
+                        <option value="30" selected>Last 30 Days</option>
+                        <option value="90">Last 90 Days</option>
+                    </select>
+                    <button type="button" id="analyticsRefreshBtn" class="mini-btn">Refresh</button>
+                    <button type="button" id="analyticsClearBtn" class="mini-btn danger">Clear All Data</button>
+                </div>
+
+                <!-- Tab navigation -->
+                <div class="analytics-tabs" role="tablist">
+                    <button type="button" class="analytics-tab active" data-analytics-tab="gallery" role="tab" aria-selected="true">Gallery</button>
+                    <button type="button" class="analytics-tab" data-analytics-tab="traffic" role="tab" aria-selected="false">Traffic</button>
+                    <button type="button" class="analytics-tab" data-analytics-tab="shop" role="tab" aria-selected="false">Shop</button>
+                    <button type="button" class="analytics-tab" data-analytics-tab="journey" role="tab" aria-selected="false">Journey</button>
+                </div>
+
+                <!-- Panels -->
+                <div id="analyticsGalleryPanel" class="analytics-panel active" role="tabpanel" data-analytics-panel="gallery">
+                    <p class="text-muted-2 text-xs">Open this section to load gallery analytics...</p>
+                </div>
+
+                <div id="analyticsTrafficPanel" class="analytics-panel" role="tabpanel" data-analytics-panel="traffic">
+                    <p class="text-muted-2 text-xs">Open this section to load traffic analytics...</p>
+                </div>
+
+                <div id="analyticsShopPanel" class="analytics-panel" role="tabpanel" data-analytics-panel="shop">
+                    <p class="text-muted-2 text-xs">Open this section to load shop analytics...</p>
+                </div>
+
+                <div id="analyticsJourneyPanel" class="analytics-panel" role="tabpanel" data-analytics-panel="journey">
+                    <p class="text-muted-2 text-xs">Open this section to load journey analytics...</p>
+                </div>
+
+                <div id="analyticsMessage" class="gallery-msg is-hidden" role="status" aria-live="polite"></div>
+            </div>
+        </details>
+
         <details class="recent-links" id="settingsSection">
             <summary class="section-summary">
                 <span>Settings</span>

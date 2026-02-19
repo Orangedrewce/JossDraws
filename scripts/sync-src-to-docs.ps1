@@ -38,6 +38,7 @@ $relativePaths = @(
     'js/shop-renderer.js',
     'js/tabs-router.js',
     'js/webgl.js',
+    'js/analytics-tracker.js',
     
     'Dashboard/mgmt-7f8a2d9e.html',
     'Dashboard/review.html',
@@ -55,7 +56,8 @@ $relativePaths = @(
     'Dashboard/js/modules/about.js',
     'Dashboard/js/modules/banner-shaders.js',
     'Dashboard/js/modules/banner-editor.js',
-    'Dashboard/js/modules/bulk-import.js'
+    'Dashboard/js/modules/bulk-import.js',
+    'Dashboard/js/modules/analytics.js'
 )
 
 $copied = New-Object System.Collections.Generic.List[string]
