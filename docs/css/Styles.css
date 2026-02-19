@@ -488,6 +488,15 @@ nav label:focus-visible {
   80%      { background-color: rgb(239, 87, 141); }   /* Contact (Pink) */
 }
 
+/* Synchronized glow animation */
+@keyframes glowCycle {
+  0%, 100% { box-shadow: 0 6px 20px rgba(1, 145, 169, 0.6); }    /* Home (Blue) */
+  20%      { box-shadow: 0 6px 20px rgba(123, 205, 203, 0.6); }  /* Gallery (Teal) */
+  40%      { box-shadow: 0 6px 20px rgba(252, 218, 6, 0.6); }    /* About (Yellow) */
+  60%      { box-shadow: 0 6px 20px rgba(248, 143, 44, 0.6); }   /* Shop (Orange) */
+  80%      { box-shadow: 0 6px 20px rgba(239, 87, 141, 0.6); }   /* Contact (Pink) */
+}
+
 .hero-cta {
   pointer-events: auto;
   display: inline-block;
@@ -500,11 +509,11 @@ nav label:focus-visible {
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 50px;
   cursor: pointer;
-  animation: colorCycle 8s linear infinite;
+  animation: colorCycle 8s linear infinite, glowCycle 8s linear infinite;
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(4, 162, 189, 0.4);
   /* Maintain transitions for transform and shadow */
-  transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+  transition: transform var(--transition-speed);
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
@@ -513,7 +522,8 @@ nav label:focus-visible {
 /* 3D lift on hover — matches gallery tilt card feel */
 .hero-cta:hover {
   transform: perspective(600px) translateZ(20px) translateY(-4px);
-  box-shadow: 0 12px 32px rgba(4, 162, 189, 0.5);
+  /* Glow animation continues, but intensified on hover */
+  filter: brightness(1.1) drop-shadow(0 6px 12px currentColor);
 }
 
 .hero-cta:active {

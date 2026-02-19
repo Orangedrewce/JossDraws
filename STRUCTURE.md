@@ -13,7 +13,7 @@ git checkout dev
 
 # 4) Save changes
 git add -A
-git commit -m "gallery tilt, hover clip removal, hyperlinks for reviews"
+git commit -m "tab cycling requires eyes"
 
 # 5) Publish to live site
 git push origin dev:main
