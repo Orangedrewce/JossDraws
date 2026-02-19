@@ -211,9 +211,6 @@ class MasonryGallery {
 
     // Accessibility (Peer 4): live region for screen reader announcements
     this._setupLiveRegion();
-
-    // Mobile gyro tilt — subtle device-orientation parallax for touch devices
-    this.initGyroTilt();
   }
 
   // Non-blocking video metadata — each video updates layout independently as it arrives
@@ -1347,8 +1344,6 @@ class MasonryGallery {
     this._allItemMap.clear();
     this.renderedCount = 0;
     this._isLoadingBatch = false;
-    // Clean up mobile gyro tilt
-    this._destroyGyroTilt();
     // Clean up live region
     if (this.liveRegion && this.liveRegion.parentNode) {
       this.liveRegion.remove();
@@ -1368,83 +1363,6 @@ class MasonryGallery {
     this.savedScrollY = null;
     this.focusScrollTargetY = null;
     this.lastFocusWasMobile = false;
-  }
-
-  // ===========================================================================
-  // MOBILE GYRO TILT — DeviceOrientation-based parallax for touch devices
-  // ===========================================================================
-  // On mobile, there's no hover, so we use the device gyroscope to give
-  // gallery cards a subtle tilt as the user physically tilts their phone.
-  // Permission gating for iOS 13+ (requires user gesture).
-  // ---------------------------------------------------------------------------
-
-  initGyroTilt() {
-    // Only activate on touch-primary devices (phones/tablets)
-    if (!window.DeviceOrientationEvent) return;
-    if (!window.matchMedia("(pointer: coarse)").matches) return;
-    if (this.reduceMotion) return;
-
-    this._gyroActive = false;
-    this._gyroBound = this._handleGyro.bind(this);
-
-    // iOS 13+ requires explicit permission request on a user gesture
-    if (typeof DeviceOrientationEvent.requestPermission === "function") {
-      // Attach a one-time tap handler on the container to request permission
-      this._gyroPermTap = () => {
-        DeviceOrientationEvent.requestPermission()
-          .then((state) => {
-            if (state === "granted") this._startGyro();
-          })
-          .catch(() => {});
-        this.container.removeEventListener("touchstart", this._gyroPermTap);
-        this._gyroPermTap = null;
-      };
-      this.container.addEventListener("touchstart", this._gyroPermTap, {
-        once: true,
-        passive: true,
-      });
-    } else {
-      // Android / non-gated browsers — start immediately
-      this._startGyro();
-    }
-  }
-
-  _startGyro() {
-    if (this._gyroActive) return;
-    this._gyroActive = true;
-    window.addEventListener("deviceorientation", this._gyroBound, { passive: true });
-  }
-
-  _handleGyro(e) {
-    if (this.isDestroyed) return;
-    // beta  = front-to-back tilt (-180…180), gamma = left-to-right (-90…90)
-    const beta = e.beta ?? 0;   // map to Y
-    const gamma = e.gamma ?? 0; // map to X
-    // Normalize to roughly -1…1 (clamp at ±30° for comfortable range)
-    const ratioX = Math.max(-1, Math.min(1, gamma / 30));
-    const ratioY = Math.max(-1, Math.min(1, (beta - 45) / 30)); // 45° = neutral holding angle
-
-    // Apply to all visible (rendered) tilt-cards that are NOT focused
-    this.nodeMap.forEach((wrapper) => {
-      if (wrapper.classList.contains("card-focused")) return;
-      const tc = wrapper.querySelector(".tilt-card");
-      if (tc) {
-        tc.style.setProperty("--tilt-ratio-x", ratioX.toFixed(3));
-        tc.style.setProperty("--tilt-ratio-y", ratioY.toFixed(3));
-      }
-    });
-  }
-
-  _destroyGyroTilt() {
-    if (this._gyroBound) {
-      window.removeEventListener("deviceorientation", this._gyroBound);
-    }
-    if (this._gyroPermTap && this.container) {
-      this.container.removeEventListener("touchstart", this._gyroPermTap);
-    }
-    this._gyroActive = false;
-    this._gyroBound = null;
-    this._gyroPermTap = null;
   }
 
   // ===========================================================================
