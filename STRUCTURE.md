@@ -13,7 +13,7 @@ git checkout dev
 
 # 4) Save changes
 git add -A
-git commit -m "Your message"
+git commit -m "Experemental photo branch for review html"
 
 # 5) Publish to live site
 git push origin dev:main
