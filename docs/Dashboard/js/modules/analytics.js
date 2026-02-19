@@ -54,6 +54,9 @@ export function initAnalytics() {
   function getPeriod() {
     return parseInt(periodSelect ? periodSelect.value : 30, 10);
   }
+  function periodLabel(days) {
+    return days > 0 ? days + 'd' : 'All Time';
+  }
 
   // ---- Message helper ----
   function showMsg(text, isError) {
@@ -73,7 +76,7 @@ export function initAnalytics() {
     return (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
   }
   function fmtDuration(ms) {
-    const s = Math.round((ms || 0) / 1000);
+    const s = Math.ceil((ms || 0) / 1000);
     if (s < 60) return s + 's';
     return Math.floor(s / 60) + 'm ' + (s % 60) + 's';
   }
@@ -89,6 +92,7 @@ export function initAnalytics() {
     const suffix = options.suffix || '';
     const secondaryKey = options.secondaryKey;
     const secondarySuffix = options.secondarySuffix || '';
+    const secondaryFmt = options.secondaryFmt || null;
 
     let html = '<div class="analytics-bar-chart">';
     items.forEach((item, idx) => {
@@ -99,8 +103,9 @@ export function initAnalytics() {
 
       let secondary = '';
       if (secondaryKey && item[secondaryKey] !== undefined) {
+        const secVal = secondaryFmt ? secondaryFmt(item[secondaryKey]) : String(item[secondaryKey]);
         secondary = ' <span class="analytics-bar-secondary">' +
-          escHTML(String(item[secondaryKey])) + secondarySuffix + '</span>';
+          escHTML(secVal) + secondarySuffix + '</span>';
       }
 
       html += '<div class="analytics-bar-row">' +
@@ -311,12 +316,17 @@ export function initAnalytics() {
             : 0;
           const topItem = items[0];
 
+          // Note: Total Views includes bot traffic & inflated referrer data
           galleryPanel.innerHTML =
+            '<div class="analytics-data-notice">' +
+              '<small class="text-muted-2">⚠️ Note: View counts may include bot traffic from external referrers. ' +
+              'Use Avg Dwell Time and Unique Sessions for more reliable engagement metrics.</small>' +
+            '</div>' +
             renderMetricCards([
-              { label: 'Total Views', value: fmt(totalViews) },
+              { label: 'Total Views (' + periodLabel(days) + ')', value: fmt(totalViews) },
               { label: 'Avg Dwell Time', value: fmtDuration(avgDwell) },
               { label: 'Artworks Tracked', value: fmt(items.length) },
-              { label: 'Top Artwork', value: topItem ? topItem.title : '—' },
+              { label: 'Unique Sessions', value: fmt(items.reduce((s, i) => s + (Number(i.unique_sessions) || 0), 0)) },
             ]) +
             '<h5 class="analytics-panel-subtitle">Top Performing Gallery Items</h5>' +
             renderBarChart(
@@ -326,7 +336,8 @@ export function initAnalytics() {
                 color: 'var(--color-primary)',
                 suffix: ' views',
                 secondaryKey: 'avg_dwell_ms',
-                secondarySuffix: 'ms avg'
+                secondaryFmt: v => String(Math.ceil((Number(v) || 0) / 1000)),
+                secondarySuffix: 's avg'
               }
             );
         } else {
@@ -339,13 +350,19 @@ export function initAnalytics() {
         const td = trafficRes?.data;
         if (td && td.success) {
           const growth = Number(td.growth_pct) || 0;
+          const sources = td.sources || [];
+          const facebookSource = sources.find(s => s.source?.toLowerCase().includes('facebook'));
+          const facebookNote = facebookSource
+            ? '<small class="text-muted-2"><strong>⚠️ Facebook traffic detected (' + facebookSource.pct + '%):</strong> May include bot activity. Consider using Unique Sessions and Dwell Time metrics for accuracy.</small>'
+            : '';
 
           trafficPanel.innerHTML =
+            '<div class="analytics-data-notice">' + facebookNote + '</div>' +
             renderMetricCards([
-              { label: 'Total Views', value: fmt(td.total_views), trend: growth },
+              { label: 'Total Views (' + periodLabel(days) + ')', value: fmt(td.total_views), trend: days > 0 ? growth : undefined },
               { label: 'Unique Sessions', value: fmt(td.unique_sessions) },
-              { label: 'Period', value: days + ' days' },
-              { label: 'Prev Period', value: fmt(td.prev_period_views) + ' views' },
+              { label: 'Period', value: periodLabel(days) },
+              ...(days > 0 ? [{ label: 'Prev Period', value: fmt(td.prev_period_views) + ' views' }] : []),
             ]) +
             '<h5 class="analytics-panel-subtitle">Daily Traffic</h5>' +
             renderSparkline(td.daily || [], 'views') +
@@ -386,7 +403,7 @@ export function initAnalytics() {
 
           shopPanel.innerHTML =
             renderMetricCards([
-              { label: 'Total Impressions', value: fmt(totalImpressions) },
+              { label: 'Impressions (' + periodLabel(days) + ')', value: fmt(totalImpressions) },
               { label: 'Etsy Clicks', value: fmt(totalClicks) },
               { label: 'Conversion Rate', value: overallConversion + '%' },
               { label: 'Products Tracked', value: fmt(items.length) },
@@ -416,8 +433,8 @@ export function initAnalytics() {
         if (jd && jd.success) {
           journeyPanel.innerHTML =
             renderMetricCards([
-              { label: 'Total Sessions', value: fmt(jd.total_sessions) },
-              { label: 'Period', value: days + ' days' },
+              { label: 'Sessions (' + periodLabel(days) + ')', value: fmt(jd.total_sessions) },
+              { label: 'Period', value: periodLabel(days) },
             ]) +
             '<h5 class="analytics-panel-subtitle">Visitor Funnel</h5>' +
             renderFunnel(jd.funnel || []) +

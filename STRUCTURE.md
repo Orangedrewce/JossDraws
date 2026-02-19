@@ -13,7 +13,7 @@ git checkout dev
 
 # 4) Save changes
 git add -A
-git commit -m "ANALYTICS ADMIN DASH, NON INVASIVE trackers, need to test. "
+git commit -m "Bug fixes, double stringify, disapearing checkmarks, form error timeout pattern match.. "
 
 # 5) Publish to live site
 git push origin dev:main
