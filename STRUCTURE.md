@@ -13,7 +13,7 @@ git checkout dev
 
 # 4) Save changes
 git add -A
-git commit -m "more accurate data tracking, bot detection"
+git commit -m "more accurate descriptions"
 
 # 5) Publish to live site
 git push origin dev:main

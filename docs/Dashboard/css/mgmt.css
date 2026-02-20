@@ -61,6 +61,44 @@
     --z-lockout: 100000;       /* Auth lockout (must sit above everything) */
 }
 
+:root.dark-mode {
+    color-scheme: dark;
+
+    --color-bg: #0b0f14;
+    --color-card: #0f172a;
+    --color-text: #e5e7eb;
+    --text-muted: #9ca3af;
+    --text-muted-soft: #6b7280;
+    --text-muted-strong: #cbd5e1;
+
+    --color-border: #223043;
+    --color-border-soft: #1b2736;
+    --color-border-strong: #2b3b52;
+
+    --color-surface: #0b1220;
+    --color-surface-2: #0f172a;
+    --color-surface-3: #111c2f;
+
+    /* Use existing “info” palette as primary in dark mode for contrast */
+    --color-primary: var(--color-info);
+    --color-primary-hover: var(--color-info-hover);
+    --color-primary-light: #0b1220;
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.35);
+    --shadow-md: 0 2px 10px rgba(0,0,0,0.45);
+    --shadow-lg: 0 6px 18px rgba(0,0,0,0.45);
+    --shadow-xl: 0 10px 30px rgba(0,0,0,0.55);
+
+    --color-success-bg: #06251a;
+    --color-danger-bg: #2b0b0b;
+    --color-warning-bg: #2b1a05;
+
+    /* Contrast fixes for dark backgrounds */
+    --color-success-dark: #34d399;
+    --color-danger-text: #f87171;
+    --color-warning-dark: #fbbf24;
+}
+
 body { 
     font-family: system-ui, -apple-system, sans-serif;
     padding: 2rem; 
@@ -83,6 +121,54 @@ body {
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--color-border-soft);
+    position: relative;
+}
+
+.theme-toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: auto;
+    min-height: 32px;
+}
+
+:root.dark-mode input,
+:root.dark-mode textarea {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+}
+
+:root.dark-mode input.link-box {
+    background-color: var(--color-surface-3);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+}
+
+:root.dark-mode .source-tag {
+    background-color: var(--color-surface-3);
+    border-color: var(--color-success);
+    color: var(--color-success-dark);
+}
+
+:root.dark-mode textarea.link-item-url-field {
+    background-color: var(--color-surface-3);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+}
+
+:root.dark-mode input::placeholder,
+:root.dark-mode textarea::placeholder {
+    color: var(--text-muted-soft);
+}
+
+:root.dark-mode select {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
 }
 
 h1 { 
@@ -118,10 +204,12 @@ select {
     margin-bottom: 1.25rem; 
     border: 1px solid var(--color-border-strong); 
     border-radius: var(--radius-md);
-    background: var(--color-white);
+    background-color: var(--color-white);
     cursor: pointer;
     transition: border-color 0.2s, box-shadow 0.2s;
     color: var(--color-text);
+    -webkit-appearance: none;
+    -moz-appearance: none;
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
@@ -533,10 +621,7 @@ textarea.link-item-url-field {
 }
 
 .source-name::after {
-    content: ' ›';
-    font-size: 0.85rem;
-    opacity: 0.4;
-    font-weight: 400;
+    content: '';
 }
 
 .filter-badge {

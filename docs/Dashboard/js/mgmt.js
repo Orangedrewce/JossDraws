@@ -24,6 +24,58 @@ import { initBulkImport }  from './modules/bulk-import.js';
 import { initAnalytics }    from './modules/analytics.js';
 
 // ============================================
+// 0. THEME TOGGLE (localStorage)
+// ============================================
+
+const THEME_STORAGE_KEY = 'jd_admin_theme';
+
+function applyTheme(theme) {
+  const isDark = theme === 'dark';
+  document.documentElement.classList.toggle('dark-mode', isDark);
+
+  const toggleBtn = document.getElementById('themeToggle');
+  if (toggleBtn) {
+    toggleBtn.setAttribute('aria-pressed', String(isDark));
+    toggleBtn.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+    toggleBtn.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+  }
+}
+
+function loadStoredTheme() {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === 'dark' || stored === 'light') return stored;
+  } catch {
+    /* noop */
+  }
+  return 'light';
+}
+
+function saveTheme(theme) {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    /* noop */
+  }
+}
+
+// Apply ASAP to minimize flash
+applyTheme(loadStoredTheme());
+
+// Hook up toggle button
+{
+  const toggleBtn = document.getElementById('themeToggle');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      const isDark = document.documentElement.classList.contains('dark-mode');
+      const next = isDark ? 'light' : 'dark';
+      applyTheme(next);
+      saveTheme(next);
+    });
+  }
+}
+
+// ============================================
 // 1. AUTH PROMPT
 // ============================================
 Trace.log("APP_INIT");
