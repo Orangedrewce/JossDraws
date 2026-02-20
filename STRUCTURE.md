@@ -13,7 +13,7 @@ git checkout dev
 
 # 4) Save changes
 git add -A
-git commit -m "BACK TO TOP — Floating action button, scroll-position driven"
+git commit -m "wasd arroww controls on focused gallery items"
 
 # 5) Publish to live site
 git push origin dev:main
