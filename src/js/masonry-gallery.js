@@ -465,6 +465,43 @@ class MasonryGallery {
     this.gridIndex = new Map(this.grid.map((g) => [g.id, g]));
   }
 
+  /**
+   * Compute the natural (unfocused) masonry grid for W/S spatial navigation.
+   * Always runs items in data order without focus expansion so that Up/Down
+   * navigate based on where items *actually* sit in the column layout, not
+   * the distorted positions caused by the focused card going full-width.
+   */
+  _computeNaturalGrid() {
+    const cols = this.columns;
+    if (!cols || !this.width) return this.gridIndex; // fallback
+    const colHeights = new Array(cols).fill(0);
+    const columnWidth = this.width / cols;
+    const result = new Map();
+
+    for (const item of this.items) {
+      // Find shortest column (same logic as calculateGrid, minus focus)
+      let minCol = 0;
+      let minH = colHeights[0];
+      for (let c = 1; c < cols; c++) {
+        if (colHeights[c] < minH) {
+          minH = colHeights[c];
+          minCol = c;
+        }
+      }
+      const x = columnWidth * minCol;
+      const ratio = item.ratio ||
+        (item.naturalHeight && item.naturalWidth
+          ? item.naturalHeight / item.naturalWidth
+          : 1);
+      const height = Math.max(80, Math.round(columnWidth * ratio));
+      const y = colHeights[minCol];
+      colHeights[minCol] += height;
+      result.set(item.id, { x, y, w: columnWidth, h: height, col: minCol });
+    }
+
+    return result;
+  }
+
   getInitialPosition(item, index) {
     const containerRect = this.container.getBoundingClientRect();
     let direction = this.options.animateFrom;
@@ -1137,19 +1174,106 @@ class MasonryGallery {
   initEscapeToClose() {
     if (this.boundHandleKeyDown) return;
     this.boundHandleKeyDown = (e) => {
-      if (e.key !== "Escape") return;
-      // Don't steal ESC from form controls
+      // Don't steal keys from form controls
       const tag =
         e.target && e.target.tagName ? e.target.tagName.toUpperCase() : "";
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
-      if (this.focusedCard) {
-        this.unfocusCard(this.focusedCard, {
-          restoreScroll: true,
-          skipLayout: false,
-        });
-        this.focusedCard = null;
+      // Only handle keys when gallery container is visible
+      if (this.container.clientWidth === 0) return;
+
+      if (e.key === "Escape") {
+        if (this.focusedCard) {
+          e.preventDefault();
+          this.unfocusCard(this.focusedCard, {
+            restoreScroll: true,
+            skipLayout: false,
+          });
+          this.focusedCard = null;
+        }
+        return;
       }
+
+      // Arrow / WASD navigation
+      const NAV = new Set([
+        "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+        "a", "A", "d", "D", "w", "W", "s", "S",
+      ]);
+      if (!NAV.has(e.key)) return;
+
+      // Prevent the page from scrolling while navigating the gallery
+      e.preventDefault();
+
+      const items = this.items;
+      if (!items.length) return;
+
+      // Nothing focused yet — activate the first card and stop
+      if (!this.focusedItemId) {
+        const first = items[0];
+        const wrapper = this.nodeMap.get(first.id);
+        if (wrapper) this.toggleFocus(wrapper, first);
+        return;
+      }
+
+      const curIdx = items.findIndex((i) => i.id === this.focusedItemId);
+      if (curIdx === -1) return;
+
+      const key = e.key.toLowerCase();
+      let nextItem = null;
+
+      if (key === "arrowleft" || key === "a") {
+        // Previous item in data order
+        if (curIdx > 0) nextItem = items[curIdx - 1];
+
+      } else if (key === "arrowright" || key === "d") {
+        // Next item in data order
+        if (curIdx < items.length - 1) nextItem = items[curIdx + 1];
+
+      } else if (key === "arrowup" || key === "w") {
+        // Use the *natural* (unfocused) grid so Up/Down navigate based on
+        // real column positions, not the distorted focused-card layout.
+        const natGrid = this._computeNaturalGrid();
+        const cur = natGrid.get(this.focusedItemId);
+        if (cur) {
+          const curCX = cur.x + cur.w / 2;
+          const OVERLAP_SLACK = 8; // px — forgives sub-pixel border differences
+          let bestScore = Infinity;
+          for (const item of items) {
+            const g = natGrid.get(item.id);
+            if (!g || item.id === this.focusedItemId) continue;
+            // Candidate must be fully above the current card (no row overlap)
+            if (g.y + g.h > cur.y + OVERLAP_SLACK) continue;
+            const yDist = cur.y - (g.y + g.h);          // gap between bottoms
+            const xDist = Math.abs((g.x + g.w / 2) - curCX);
+            const score = yDist + xDist * 0.25;
+            if (score < bestScore) { bestScore = score; nextItem = item; }
+          }
+        }
+
+      } else if (key === "arrowdown" || key === "s") {
+        // Use the *natural* (unfocused) grid for spatial navigation.
+        const natGrid = this._computeNaturalGrid();
+        const cur = natGrid.get(this.focusedItemId);
+        if (cur) {
+          const curCX = cur.x + cur.w / 2;
+          const OVERLAP_SLACK = 8;
+          let bestScore = Infinity;
+          for (const item of items) {
+            const g = natGrid.get(item.id);
+            if (!g || item.id === this.focusedItemId) continue;
+            // Candidate must start below the current card's bottom
+            if (g.y < cur.y + cur.h - OVERLAP_SLACK) continue;
+            const yDist = g.y - (cur.y + cur.h);        // gap between bottoms
+            const xDist = Math.abs((g.x + g.w / 2) - curCX);
+            const score = yDist + xDist * 0.25;
+            if (score < bestScore) { bestScore = score; nextItem = item; }
+          }
+        }
+      }
+
+      if (!nextItem) return;
+      const wrapper = this.nodeMap.get(nextItem.id);
+      if (wrapper) this.toggleFocus(wrapper, nextItem);
     };
     document.addEventListener("keydown", this.boundHandleKeyDown);
   }

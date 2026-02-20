@@ -13,7 +13,7 @@ git checkout dev
 
 # 4) Save changes
 git add -A
-git commit -m "Click spark tab color match"
+git commit -m "BACK TO TOP — Floating action button, scroll-position driven"
 
 # 5) Publish to live site
 git push origin dev:main
