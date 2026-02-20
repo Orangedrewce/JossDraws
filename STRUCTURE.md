@@ -13,7 +13,7 @@ git checkout dev
 
 # 4) Save changes
 git add -A
-git commit -m "more accurate descriptions"
+git commit -m "Dark mode admin"
 
 # 5) Publish to live site
 git push origin dev:main

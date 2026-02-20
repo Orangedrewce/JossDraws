@@ -136,13 +136,40 @@ class ClickSpark {
     };
   }
   
+  // Converts a WEBGL_CONFIG { r, g, b } (0.0–1.0) entry to a CSS hex string.
+  _paletteHex(ch) {
+    const to2 = (v) => Math.round(Math.min(Math.max(v, 0), 1) * 255)
+      .toString(16).padStart(2, '0');
+    return '#' + to2(ch.r) + to2(ch.g) + to2(ch.b);
+  }
+
   handleClick(e) {
     if (!this.canvas) return;
-    
+
+    // Sync spark color with the active painter palette color when available.
+    try {
+      const cfg = window.WEBGL_CONFIG;
+      if (cfg && cfg.painter && cfg.colors) {
+        const palette = ['c0', 'c1', 'c2', 'c3', 'c4'];
+        const raw = Math.round(cfg.painter.colorIndex);
+        if (raw >= palette.length) {
+          // Index 5 = reviews tab → grey sparks
+          this.sparkColor = '#888888';
+        } else {
+          const key = palette[raw];
+          if (cfg.colors[key]) {
+            this.sparkColor = this._paletteHex(cfg.colors[key]);
+          }
+        }
+      }
+    } catch (_) {
+      // WEBGL_CONFIG not present (e.g. non-WebGL page) — keep sparkColor as-is.
+    }
+
     // Get coordinates relative to viewport (fixed positioning)
     const x = e.clientX;
     const y = e.clientY;
-    
+
     const now = performance.now();
     for (let i = 0; i < this.sparkCount; i++) {
       this.sparks.push({

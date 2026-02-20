@@ -21,11 +21,14 @@
   const TAB_NAMES = ["home", "gallery", "about", "shop", "contact", "reviews"];
   const idFor = (name) => `tab-${name}`;
 
-  // Map tab index to painter brush color (c0–c4, reviews wraps to c0)
+  // Map tab index to painter brush color.
+  // Indices 0–4 map to c0–c4 in the shader; index 5 (reviews) is stored as 5
+  // so click-spark can identify it and render grey sparks, while the shader's
+  // getTabColor() already falls through to c0 for any value >= 4.5.
   function syncPainterColor(tabName) {
     if (window.WEBGL_CONFIG && window.WEBGL_CONFIG.painter) {
       const idx = TAB_NAMES.indexOf(tabName);
-      window.WEBGL_CONFIG.painter.colorIndex = idx >= 0 ? idx % 5 : 0;
+      window.WEBGL_CONFIG.painter.colorIndex = idx >= 0 ? idx : 0;
     }
   }
 
