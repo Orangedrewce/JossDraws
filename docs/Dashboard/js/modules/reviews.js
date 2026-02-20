@@ -516,7 +516,7 @@ export function initReviews() {
       if (!reviewDeletePending.has(key)) {
         reviewDeletePending.set(key, true);
         btn.textContent =
-          action === "delete" ? "⚠️ U Sure?" : "⚠️ Purge forever?";
+            action === "delete" ? "⚠️ Sure?" : "⚠️ Purge forever?";
         btn.classList.remove("danger");
         btn.classList.add("confirm-armed");
         setTimeout(() => {

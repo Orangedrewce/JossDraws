@@ -521,7 +521,7 @@ export function initAnalytics() {
       if (!clearArmed) {
         // First click — arm the confirmation
         clearArmed = true;
-        clearBtn.textContent = 'U Sure?';
+        clearBtn.textContent = '⚠️ Sure?';
         clearBtn.classList.remove('danger');
         clearBtn.classList.add('confirm-armed');
         clearTimer = setTimeout(() => {

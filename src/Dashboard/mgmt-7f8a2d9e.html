@@ -15,7 +15,7 @@
     <main class="card">
         <div class="card-header">
             <h1>Admin Dashboard</h1>
-            <p class="description">Manage review links, gallery content, shop products, and site settings</p>
+            <p class="description">Manage review links, customer reviews, gallery artwork, hero slides, shop products, About content, banner settings, analytics, and admin settings</p>
         </div>
 
         <details class="recent-links" open>
@@ -36,7 +36,7 @@
         <div id="errorMessage" class="error-message is-hidden" role="alert" aria-live="assertive"></div>
 
         <div id="resultArea" class="is-hidden" role="status" aria-live="polite">
-            <div class="result-label">Send this link to your customer:</div>
+            <div class="result-label">Send this one-time link to your customer (expires in 30 days):</div>
             <div class="link-container">
                 <input 
                     type="text" 
@@ -69,7 +69,7 @@
                 <button type="button" class="filter-badge clear-filter is-hidden" id="clearFilterBtn" title="Clear filter">✖ Clear</button>
             </div>
             <div id="recentLinks" class="is-hidden">
-                <p class="filter-hint">Tap a source name to filter by type</p>
+                <p class="filter-hint">Click a source name to filter recent links</p>
                 <div id="recentLinksList"></div>
                 <div id="recentLinksSentinel" class="links-sentinel"></div>
             </div>
@@ -89,7 +89,7 @@
             </summary>
 
             <div class="gallery-section-content">
-                <p class="description section-description">Paste an Etsy reviews JSON export below, then click Import. Duplicates are auto-skipped.</p>
+                <p class="description section-description">Paste an Etsy reviews JSON export below, then click Import. Duplicates are auto-skipped. Imported reviews publish immediately (approved).</p>
 
                 <form id="bulkImportForm" class="gallery-form">
                     <label for="bulkImportSource">Import Source</label>
@@ -126,7 +126,7 @@
             </summary>
 
             <div class="gallery-section-content">
-                <p class="description section-description">Approve, deny, or delete customer reviews. New reviews are pending until approved.</p>
+                <p class="description section-description">Approve, unpublish, delete, restore, or permanently purge customer reviews. Customer-submitted reviews start pending until approved.</p>
 
                 <div class="review-filter-tabs" id="reviewTabs">
                     <button type="button" class="review-tab active" data-tab="pending">⏳ Pending <span id="reviewPendingCount" class="review-tab-count">0</span></button>
@@ -148,11 +148,11 @@
             </summary>
 
             <div class="gallery-section-content">
-                <p class="description section-description">Add artwork to the website gallery. Paste a Google Drive share link and it will be auto-converted. <em>Drag items to cut in line and reorder.</em></p>
+                <p class="description section-description">Add artwork to the website gallery. Google Drive share links auto-convert; direct image URLs also work. <em>Drag items to reorder.</em> Randomize Selected shuffles the order of selected visible (active) items.</p>
 
                 <form id="galleryForm" class="gallery-form">
-                    <label for="galleryUrl">Google Drive Image URL</label>
-                    <input type="text" id="galleryUrl" placeholder="Paste Google Drive share link here..." autocomplete="off">
+                    <label for="galleryUrl">Image URL</label>
+                    <input type="text" id="galleryUrl" placeholder="Paste Google Drive share link or direct image URL" autocomplete="off">
                     <div id="galleryUrlStatus" class="gallery-url-status is-hidden"></div>
                     <div id="galleryPreview" class="gallery-preview is-hidden"></div>
 
@@ -183,7 +183,7 @@
                         <input type="checkbox" id="gallerySelectAll" class="gallery-select-all" title="Select / deselect all" aria-label="Select all gallery items">
                         <span id="gallerySelectCount" class="gallery-select-count">Select all</span>
                         <div id="galleryBulkBtns" class="gallery-bulk-btns is-hidden">
-                            <button type="button" id="galleryRandomizeBtn" class="mini-btn secondary" title="Shuffle sort order of selected items">🎲 Randomize Selected</button>
+                                <button type="button" id="galleryRandomizeBtn" class="mini-btn secondary" title="Shuffle sort order of selected visible (active) items">🎲 Randomize Selected</button>
                         </div>
                     </div>
                     <div id="galleryCount" class="gallery-count"></div>
@@ -198,11 +198,11 @@
             </summary>
 
             <div class="gallery-section-content">
-                <p class="description section-description">Manage the banner images at the top of the landing page. A random active slide is shown to each visitor. Paste a Google Drive share link and it will be auto-converted. <em>Drag items to reorder.</em></p>
+                <p class="description section-description">Manage the banner images at the top of the landing page. A random active slide is picked on each page load. Google Drive share links auto-convert; direct image URLs also work. <em>Drag items to reorder.</em></p>
 
                 <form id="heroForm" class="gallery-form">
-                    <label for="heroUrl">Google Drive Image URL</label>
-                    <input type="text" id="heroUrl" placeholder="Paste Google Drive share link here..." autocomplete="off">
+                    <label for="heroUrl">Image URL</label>
+                    <input type="text" id="heroUrl" placeholder="Paste Google Drive share link or direct image URL" autocomplete="off">
                     <div id="heroUrlStatus" class="gallery-url-status is-hidden"></div>
                     <div id="heroPreview" class="gallery-preview is-hidden"></div>
 
@@ -228,7 +228,7 @@
 
             <div class="gallery-section-content">
                 <p class="description section-description">
-                    Manage Etsy product cards shown in the Shop tab. Paste Google Drive links for media and they will auto-convert.
+                    Manage Etsy product cards shown in the Shop tab. Google Drive share links auto-convert; other URLs are used as-is.
                     <em>Drag items to reorder.</em>
                 </p>
 
@@ -269,7 +269,7 @@
                 <div class="shop-page-titles-editor">
                     <h4 class="shop-page-titles-heading">Page Titles</h4>
                     <p class="description shop-page-titles-description">
-                        3 items per page gets a title heading shown above the cards.
+                        Shop displays 3 items per page. Each page can have an optional title shown above the cards.
                         Leave blank to hide the title for that page.
                     </p>
                     <div id="shopPageTitlesList"></div>
@@ -315,7 +315,7 @@
 
                     <label for="aboutBioText">Bio / About Text (HTML allowed)</label>
                     <textarea id="aboutBioText" rows="10" placeholder="Write your bio here... HTML tags like <strong>, <em>, <br>, <h3>, <p> are supported."></textarea>
-                    <small class="form-hint">Supports basic HTML: &lt;strong&gt;, &lt;em&gt;, &lt;br&gt;, &lt;h3&gt;, &lt;p&gt;. Changes go live instantly.</small>
+                    <small class="form-hint">Supports basic HTML: &lt;strong&gt;, &lt;em&gt;, &lt;br&gt;, &lt;h3&gt;, &lt;p&gt;. Changes go live after saving (visitors see it on refresh).</small>
 
                     <button type="submit" id="aboutSaveBtn" class="gallery-add-btn">Save Changes</button>
                 </form>
@@ -333,7 +333,7 @@
             </summary>
 
             <div class="gallery-section-content">
-                <p class="description section-description">Fine-tune the animated banner's visual and motion parameters in real-time.</p>
+                <p class="description section-description">Fine-tune the animated banner's visual and motion parameters with a live preview. Publish to Site saves the current settings for visitors. Saved Profiles are stored in this browser only.</p>
 
                 <!-- Live Preview -->
                 <div class="banner-preview-wrapper" id="bannerPreviewWrapper">
@@ -721,11 +721,11 @@
                 <div class="saved-profiles-section">
                     <h4 class="saved-profiles-heading">Saved Profiles</h4>
                     <p class="description saved-profiles-description">
-                        Save your current settings as a named profile, or load a previously saved configuration.
+                        Save your current settings as a named profile, or load a previously saved configuration. Profiles are stored locally in this browser.
                     </p>
 
                     <div id="profilesList" class="profiles-list">
-                        <p class="text-muted-2 text-xs profiles-empty">No saved profiles yet. Click “💾 Save as Profile” below to create one.</p>
+                        <p class="text-muted-2 text-xs profiles-empty">No saved profiles in this browser yet. Click “💾 Save as Profile” below to create one.</p>
                     </div>
 
                     <div id="saveProfileForm" class="save-profile-form is-hidden">
@@ -763,7 +763,7 @@
             </summary>
 
             <div class="gallery-section-content">
-                <p class="description section-description">Understand your audience: what art captures attention, where you lose customers, which products are sleeper hits, and whether the audience is growing.</p>
+                <p class="description section-description">View site analytics for the selected period. Clear All Data permanently deletes all stored analytics events.</p>
 
                 <!-- Period selector & refresh -->
                 <div class="analytics-controls">

@@ -13,7 +13,7 @@ git checkout dev
 
 # 4) Save changes
 git add -A
-git commit -m "Bug fixes, double stringify, disapearing checkmarks, form error timeout pattern match.. "
+git commit -m "more accurate data tracking, bot detection"
 
 # 5) Publish to live site
 git push origin dev:main
